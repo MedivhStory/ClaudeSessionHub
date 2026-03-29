@@ -53,6 +53,7 @@ struct TestMain {
     static func main() {
         print("Running Claude Session Hub Tests...\n")
         CanonicalModelsTests.run()
+        JSONLParserTests.run()
         printResults()
     }
 }
