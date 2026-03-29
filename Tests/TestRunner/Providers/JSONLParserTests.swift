@@ -8,6 +8,8 @@ enum JSONLParserTests {
         testReadLastEntries()
         testReadLastEntriesChronologicalOrder()
         testSkipsUnparseableLines()
+        testLargeLineSpanningChunkBoundary()
+        testLargeLineReverseSpanningChunkBoundary()
     }
 
     static func testReadFirstEntries() {
@@ -73,5 +75,40 @@ enum JSONLParserTests {
 
         let entries = try! JSONLParser.readFirstEntries(at: tmp, count: 10)
         assertEqual(entries.count, 2, "corrupt line should be skipped")
+    }
+
+    // P2 fix: test single JSONL line > 8KB crossing chunk boundary
+    static func testLargeLineSpanningChunkBoundary() {
+        let tmp = NSTemporaryDirectory() + "test-large-\(UUID().uuidString).jsonl"
+        // Create a JSON line that's ~12KB — well over the 8192 chunk size
+        let bigValue = String(repeating: "x", count: 12_000)
+        let line1 = "{\"type\":\"small\",\"idx\":1}"
+        let line2 = "{\"type\":\"big\",\"idx\":2,\"data\":\"\(bigValue)\"}"
+        let line3 = "{\"type\":\"small\",\"idx\":3}"
+        let content = [line1, line2, line3].joined(separator: "\n")
+        try! content.write(toFile: tmp, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(atPath: tmp) }
+
+        let entries = try! JSONLParser.readFirstEntries(at: tmp, count: 10)
+        assertEqual(entries.count, 3, "should parse all 3 including >8KB line")
+        assertEqual(entries[1]["type"] as? String, "big", "big line should parse correctly")
+        assertEqual(entries[1]["idx"] as? Int, 2)
+    }
+
+    static func testLargeLineReverseSpanningChunkBoundary() {
+        let tmp = NSTemporaryDirectory() + "test-large-rev-\(UUID().uuidString).jsonl"
+        let bigValue = String(repeating: "y", count: 12_000)
+        let line1 = "{\"type\":\"first\",\"idx\":1}"
+        let line2 = "{\"type\":\"big\",\"idx\":2,\"data\":\"\(bigValue)\"}"
+        let line3 = "{\"type\":\"last\",\"idx\":3}"
+        let content = [line1, line2, line3].joined(separator: "\n")
+        try! content.write(toFile: tmp, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(atPath: tmp) }
+
+        let entries = try! JSONLParser.readLastEntries(at: tmp, count: 2)
+        assertEqual(entries.count, 2, "should get last 2 including >8KB line")
+        assertEqual(entries[0]["type"] as? String, "big", "big line via reverse scan")
+        assertEqual(entries[0]["idx"] as? Int, 2)
+        assertEqual(entries[1]["type"] as? String, "last")
     }
 }
