@@ -1,27 +1,30 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 5.9
 import PackageDescription
 
 let package = Package(
     name: "ClaudeSessionHub",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v13)],
     targets: [
         .target(
             name: "ClaudeSessionHubLib",
             path: "Sources/ClaudeSessionHub",
-            exclude: ["App"],
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            exclude: ["App"]
         ),
         .executableTarget(
             name: "ClaudeSessionHub",
             dependencies: ["ClaudeSessionHubLib"],
-            path: "Sources/ClaudeSessionHub/App",
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            path: "Sources/ClaudeSessionHub/App"
+        ),
+        .testTarget(
+            name: "ClaudeSessionHubTests",
+            dependencies: ["ClaudeSessionHubLib"],
+            path: "Tests/XCTests",
+            resources: [.copy("Fixtures")]
         ),
         .executableTarget(
             name: "TestRunner",
             dependencies: ["ClaudeSessionHubLib"],
-            path: "Tests/ClaudeSessionHubTests",
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            path: "Tests/TestRunner"
         ),
     ]
 )
