@@ -18,11 +18,17 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     // MARK: - discoverSessions
 
+    /// Cached session metadata (pid.json files) — loaded once per scan
+    private var sessionMetadata: [String: (pid: Int32, startedAt: Date?)] = [:]
+
     public func discoverSessions() async throws -> [SessionSummary] {
         let fm = FileManager.default
         let projectsDir = baseDirectory + "/projects"
 
         guard fm.fileExists(atPath: projectsDir) else { return [] }
+
+        // Load session metadata (sessions/<pid>.json) for createdAt preference
+        sessionMetadata = loadSessionMetadata()
 
         var jsonlFiles: [String] = []
         // Scan projects/*/  for *.jsonl files (top-level only, no recursion into subdirectories)
@@ -100,8 +106,10 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         // turnCount
         let turnCount = countUserTurns(from: allEntries)
 
-        // timestamps
-        let createdAt = extractTimestamp(from: firstEntries.first) ?? Date()
+        // timestamps — prefer metadata startedAt for createdAt (spec: startedAt > JSONL first > birthtime)
+        let createdAt = sessionMetadata[sessionID]?.startedAt
+            ?? extractTimestamp(from: firstEntries.first)
+            ?? Date()
         let lastActiveAt = extractTimestamp(from: lastEntries.last) ?? Date()
 
         return SessionSummary(
@@ -210,7 +218,10 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
     // MARK: - currentTaskSummary
 
     private func extractCurrentTaskSummary(from entries: [[String: Any]]) -> String? {
-        // Reverse scan for last user entry that is not meta and has plain String content
+        // Reverse scan for last user entry that is:
+        // - not isMeta
+        // - has plain String content (not array / tool_result)
+        // - not an internal command or system noise
         for entry in entries.reversed() {
             guard entry["type"] as? String == "user" else { continue }
             guard entry["isMeta"] as? Bool != true else { continue }
@@ -219,9 +230,28 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
             guard let content = message["content"] as? String else { continue }
             let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty { continue }
+            // Skip internal noise: local-command-stdout, local-command-caveat,
+            // command-name tags, /resume, /login, task-notification
+            if isInternalCommandNoise(trimmed) { continue }
             return truncate(trimmed, to: 80)
         }
         return nil
+    }
+
+    /// Returns true if the content is internal Claude Code command noise, not human intent
+    private func isInternalCommandNoise(_ content: String) -> Bool {
+        // XML-wrapped internal messages
+        if content.hasPrefix("<local-command-stdout>") { return true }
+        if content.hasPrefix("<local-command-caveat>") { return true }
+        if content.hasPrefix("<command-name>") { return true }
+        if content.hasPrefix("<task-notification>") { return true }
+        if content.hasPrefix("<system-reminder>") { return true }
+        // Slash commands
+        if content.hasPrefix("/resume") { return true }
+        if content.hasPrefix("/login") { return true }
+        if content.hasPrefix("/logout") { return true }
+        if content.hasPrefix("/clear") { return true }
+        return false
     }
 
     // MARK: - contextUsage
@@ -274,10 +304,16 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     // MARK: - recentErrorCount
 
+    /// Count errors from tool_result.is_error in the last 20 user turns only.
+    /// This ensures old errors from early debugging don't permanently flag a session.
     private func extractRecentErrorCount(from entries: [[String: Any]]) -> Int {
+        // Collect the last 20 non-meta user turns, then count errors within them
+        let recentUserEntries = entries.reversed()
+            .filter { $0["type"] as? String == "user" && $0["isMeta"] as? Bool != true }
+            .prefix(20)
+
         var count = 0
-        for entry in entries {
-            // tool_result entries appear as user-type messages
+        for entry in recentUserEntries {
             guard let message = entry["message"] as? [String: Any] else { continue }
             guard let contentArray = message["content"] as? [[String: Any]] else { continue }
             for item in contentArray {
@@ -420,23 +456,43 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     // MARK: - refreshRuntimeState
 
-    public func refreshRuntimeState(for refs: [SessionRef]) async -> [SessionRef: SessionRuntimeState] {
+    /// Build a sessionID → (pid, startedAt) map from sessions/<pid>.json files.
+    /// Claude stores metadata as `sessions/<pid>.json` with sessionId inside the JSON body.
+    private func loadSessionMetadata() -> [String: (pid: Int32, startedAt: Date?)] {
         let fm = FileManager.default
         let sessionsDir = baseDirectory + "/sessions"
+        var map: [String: (pid: Int32, startedAt: Date?)] = [:]
+
+        guard let files = try? fm.contentsOfDirectory(atPath: sessionsDir) else { return map }
+        for file in files where file.hasSuffix(".json") {
+            let path = sessionsDir + "/" + file
+            guard let data = fm.contents(atPath: path),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let pid = json["pid"] as? Int,
+                  let sid = json["sessionId"] as? String else { continue }
+
+            var startedAt: Date? = nil
+            if let ts = json["startedAt"] as? Double {
+                startedAt = Date(timeIntervalSince1970: ts / 1000.0)
+            } else if let ts = json["startedAt"] as? Int {
+                startedAt = Date(timeIntervalSince1970: Double(ts) / 1000.0)
+            }
+            map[sid] = (pid: Int32(pid), startedAt: startedAt)
+        }
+        return map
+    }
+
+    public func refreshRuntimeState(for refs: [SessionRef]) async -> [SessionRef: SessionRuntimeState] {
+        let metadata = loadSessionMetadata()
         var result: [SessionRef: SessionRuntimeState] = [:]
 
         for ref in refs {
-            let metadataPath = sessionsDir + "/\(ref.sessionID).json"
-            guard fm.fileExists(atPath: metadataPath),
-                  let data = fm.contents(atPath: metadataPath),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let pid = json["pid"] as? Int32 else {
-                result[ref] = .dead
-                continue
+            if let meta = metadata[ref.sessionID] {
+                let alive = kill(meta.pid, 0) == 0
+                result[ref] = alive ? .alive(pid: meta.pid) : .dead
+            } else {
+                result[ref] = .dead // no metadata → assumed stopped
             }
-
-            let alive = kill(pid, 0) == 0
-            result[ref] = alive ? .alive(pid: pid) : .dead
         }
 
         return result

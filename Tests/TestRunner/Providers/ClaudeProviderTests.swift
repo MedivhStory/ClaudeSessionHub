@@ -8,6 +8,7 @@ enum ClaudeProviderTests {
         testTitleSkipsMetaExtractsVerbPattern()
         testCwdAndBranchExtracted()
         testCurrentTaskSummarySkipsMetaAndToolResults()
+        testCurrentTaskSummarySkipsInternalCommandNoise()
         testContextUsageIncludesCacheTokens()
         testFilesTouchedCountsUnique()
         testRecentErrorCountFromToolResult()
@@ -149,6 +150,37 @@ enum ClaudeProviderTests {
         }
     }
 
+    static func testCurrentTaskSummarySkipsInternalCommandNoise() {
+        let base = createTempDir()
+        defer { cleanup(base) }
+
+        // JSONL where last user messages are internal noise, then a real message
+        let lines = [
+            "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"帮我修复 bug\"},\"timestamp\":\"2026-03-01T10:00:00Z\",\"cwd\":\"/tmp\"}",
+            "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"<local-command-stdout>Login interrupted</local-command-stdout>\"},\"timestamp\":\"2026-03-01T10:00:01Z\"}",
+            "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"<command-name>/login</command-name>\\n            <command-message>login</command-message>\"},\"timestamp\":\"2026-03-01T10:00:02Z\"}",
+            "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"/resume\"},\"timestamp\":\"2026-03-01T10:00:03Z\"}"
+        ]
+        let projectDir = base + "/projects/proj"
+        try! FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try! lines.joined(separator: "\n").write(toFile: projectDir + "/noise-test.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let sessions = try! runAsync { try await provider.discoverSessions() }
+
+        if let s = sessions.first {
+            // Should skip all noise and return "帮我修复 bug"
+            check(s.currentTaskSummary != nil, "should find summary past noise")
+            if let summary = s.currentTaskSummary {
+                check(summary.contains("修复 bug"), "should be human intent, got: \(summary)")
+                check(!summary.contains("local-command"), "should not contain noise")
+                check(!summary.contains("/resume"), "should not contain /resume")
+            }
+        } else {
+            check(false, "no sessions")
+        }
+    }
+
     static func testContextUsageIncludesCacheTokens() {
         let base = createTempDir()
         defer { cleanup(base) }
@@ -246,12 +278,12 @@ enum ClaudeProviderTests {
         let base = createTempDir()
         defer { cleanup(base) }
 
-        // Create sessions dir with a metadata file containing a bogus PID
+        // Create sessions dir with a <pid>.json metadata file (Claude's actual scheme)
         let sessionsDir = base + "/sessions"
         try! FileManager.default.createDirectory(atPath: sessionsDir, withIntermediateDirectories: true)
-        let metadata: [String: Any] = ["pid": 99999999]
+        let metadata: [String: Any] = ["pid": 99999999, "sessionId": "test-session", "cwd": "/tmp", "startedAt": 1772645500000]
         let data = try! JSONSerialization.data(withJSONObject: metadata)
-        try! data.write(to: URL(fileURLWithPath: sessionsDir + "/test-session.json"))
+        try! data.write(to: URL(fileURLWithPath: sessionsDir + "/99999999.json"))
 
         let provider = ClaudeProvider(baseDirectory: base)
         let ref = SessionRef(providerID: "claude", sessionID: "test-session")
