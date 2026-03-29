@@ -55,6 +55,7 @@ struct TestMain {
         CanonicalModelsTests.run()
         JSONLParserTests.run()
         ClaudeProviderTests.run()
+        HealthEngineTests.run()
         printResults()
     }
 }
