@@ -424,22 +424,206 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         return String(s.prefix(maxLen - 1)) + "…"
     }
 
-    // MARK: - loadSessionDetail (minimal for Task 3)
+    // MARK: - loadSessionDetail (full JSONL scan)
 
     public func loadSessionDetail(for ref: SessionRef) async throws -> SessionDetail {
-        // Minimal: discover and find the matching summary
+        // Find the JSONL file for this session
+        let jsonlPath = try findJSONLPath(for: ref.sessionID)
+
+        // Read ALL entries for full scan
+        let allEntries = try JSONLParser.readAllEntries(at: jsonlPath)
+
+        // Build summary via discoverSessions (reuses existing logic)
         let sessions = try await discoverSessions()
         guard let summary = sessions.first(where: { $0.ref == ref }) else {
             throw CocoaError(.fileReadNoSuchFile)
         }
+
+        // 1. totalErrorCount — count ALL tool_result with is_error:true
+        let totalErrorCount = countTotalErrors(from: allEntries)
+
+        // 2. cumulativeTokens — sum ALL usage objects from assistant entries
+        let cumulativeTokens = sumCumulativeTokens(from: allEntries)
+
+        // 3. recentFiles — all unique file_path from Edit/Write/MultiEdit, last 10
+        let recentFiles = extractRecentFiles(from: allEntries)
+
+        // 4. nextStep — reverse scan for forward-looking sentence
+        let nextStep = extractNextStep(from: allEntries)
+
+        // 5. modelInfo — from latest assistant message.model
+        let modelInfo = extractModelInfo(from: allEntries)
+
         return SessionDetail(
             summary: summary,
-            totalErrorCount: summary.recentErrorCount,
-            cumulativeTokens: nil,
-            recentFiles: [],
-            nextStep: nil,
-            modelInfo: nil
+            totalErrorCount: totalErrorCount,
+            cumulativeTokens: cumulativeTokens,
+            recentFiles: recentFiles,
+            nextStep: nextStep,
+            modelInfo: modelInfo
         )
+    }
+
+    // MARK: - Detail Extraction Helpers
+
+    private func findJSONLPath(for sessionID: String) throws -> String {
+        let fm = FileManager.default
+        let projectsDir = baseDirectory + "/projects"
+        guard fm.fileExists(atPath: projectsDir) else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        let filename = sessionID + ".jsonl"
+        if let topLevelContents = try? fm.contentsOfDirectory(atPath: projectsDir) {
+            for projectDir in topLevelContents {
+                let projectPath = projectsDir + "/" + projectDir
+                var isDir: ObjCBool = false
+                guard fm.fileExists(atPath: projectPath, isDirectory: &isDir), isDir.boolValue else { continue }
+                if projectDir == "memory" { continue }
+                if projectPath.contains("/subagents/") { continue }
+                let candidate = projectPath + "/" + filename
+                if fm.fileExists(atPath: candidate) {
+                    return candidate
+                }
+            }
+        }
+        throw CocoaError(.fileReadNoSuchFile)
+    }
+
+    private func countTotalErrors(from entries: [[String: Any]]) -> Int {
+        var count = 0
+        for entry in entries {
+            guard entry["type"] as? String == "user" else { continue }
+            guard let message = entry["message"] as? [String: Any] else { continue }
+            guard let contentArray = message["content"] as? [[String: Any]] else { continue }
+            for item in contentArray {
+                guard item["type"] as? String == "tool_result" else { continue }
+                if item["is_error"] as? Bool == true {
+                    count += 1
+                }
+            }
+        }
+        return count
+    }
+
+    private func sumCumulativeTokens(from entries: [[String: Any]]) -> TokenBreakdown? {
+        var inputTokens = 0
+        var outputTokens = 0
+        var cacheReadTokens = 0
+        var cacheWriteTokens = 0
+        var found = false
+
+        for entry in entries {
+            guard entry["type"] as? String == "assistant" else { continue }
+            guard let message = entry["message"] as? [String: Any] else { continue }
+            guard let usage = message["usage"] as? [String: Any] else { continue }
+            found = true
+            inputTokens += usage["input_tokens"] as? Int ?? 0
+            outputTokens += usage["output_tokens"] as? Int ?? 0
+            cacheReadTokens += usage["cache_read_input_tokens"] as? Int ?? 0
+            cacheWriteTokens += usage["cache_creation_input_tokens"] as? Int ?? 0
+        }
+
+        guard found else { return nil }
+        return TokenBreakdown(
+            inputTokens: inputTokens,
+            outputTokens: outputTokens,
+            cacheReadTokens: cacheReadTokens,
+            cacheWriteTokens: cacheWriteTokens
+        )
+    }
+
+    private func extractRecentFiles(from entries: [[String: Any]]) -> [String] {
+        let toolNames: Set<String> = ["Edit", "Write", "MultiEdit"]
+        var orderedFiles: [String] = []
+        var seen = Set<String>()
+
+        for entry in entries {
+            guard entry["type"] as? String == "assistant" else { continue }
+            guard let message = entry["message"] as? [String: Any] else { continue }
+            guard let contentArray = message["content"] as? [[String: Any]] else { continue }
+            for item in contentArray {
+                guard item["type"] as? String == "tool_use" else { continue }
+                guard let name = item["name"] as? String, toolNames.contains(name) else { continue }
+                if let input = item["input"] as? [String: Any],
+                   let filePath = input["file_path"] as? String {
+                    if seen.contains(filePath) {
+                        // Move to end (most recent)
+                        orderedFiles.removeAll { $0 == filePath }
+                    } else {
+                        seen.insert(filePath)
+                    }
+                    orderedFiles.append(filePath)
+                }
+            }
+        }
+        return Array(orderedFiles.suffix(10))
+    }
+
+    private func extractNextStep(from entries: [[String: Any]]) -> String? {
+        let chinesePattern = "接下来|下一步|然后|建议|需要|可以继续|之后"
+        let englishPattern = "next|then|should|let's|we can|after that|TODO"
+        let combinedPattern = "\(chinesePattern)|\(englishPattern)"
+
+        guard let regex = try? NSRegularExpression(pattern: combinedPattern, options: .caseInsensitive) else {
+            return nil
+        }
+
+        // Reverse scan assistant messages
+        for entry in entries.reversed() {
+            guard entry["type"] as? String == "assistant" else { continue }
+            guard let message = entry["message"] as? [String: Any] else { continue }
+
+            // Handle content as array of blocks
+            if let contentArray = message["content"] as? [[String: Any]] {
+                // Reverse scan blocks within this entry
+                for block in contentArray.reversed() {
+                    guard block["type"] as? String == "text" else { continue }
+                    guard let text = block["text"] as? String else { continue }
+                    if let sentence = findForwardLookingSentence(in: text, regex: regex) {
+                        return sentence
+                    }
+                }
+            }
+            // Handle content as plain string
+            else if let content = message["content"] as? String {
+                if let sentence = findForwardLookingSentence(in: content, regex: regex) {
+                    return sentence
+                }
+            }
+        }
+        return nil
+    }
+
+    private func findForwardLookingSentence(in text: String, regex: NSRegularExpression) -> String? {
+        // Split into sentences (handle Chinese and English punctuation)
+        let sentenceDelimiters = CharacterSet(charactersIn: "。！？.!?\n")
+        let sentences = text.components(separatedBy: sentenceDelimiters)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        // Find last matching sentence
+        var lastMatch: String? = nil
+        for sentence in sentences {
+            let range = NSRange(sentence.startIndex..., in: sentence)
+            if regex.firstMatch(in: sentence, range: range) != nil {
+                lastMatch = sentence
+            }
+        }
+
+        guard let match = lastMatch else { return nil }
+        if match.count <= 120 { return match }
+        return String(match.prefix(119)) + "…"
+    }
+
+    private func extractModelInfo(from entries: [[String: Any]]) -> ModelInfo? {
+        for entry in entries.reversed() {
+            guard entry["type"] as? String == "assistant" else { continue }
+            guard let message = entry["message"] as? [String: Any] else { continue }
+            if let model = message["model"] as? String {
+                return ModelInfo.resolve(modelName: model)
+            }
+        }
+        return nil
     }
 
     // MARK: - makeResumeTarget

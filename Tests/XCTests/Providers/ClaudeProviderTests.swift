@@ -179,4 +179,126 @@ final class ClaudeProviderXCTests: XCTestCase {
             XCTFail("Expected .dead for non-existent PID")
         }
     }
+
+    // MARK: - Detail Tests
+
+    private func buildDetailTestJSONL() -> String {
+        let lines: [String] = [
+            """
+            {"type":"system","timestamp":"2026-03-01T10:00:00Z","cwd":"/Users/test/project","gitBranch":"feature/detail"}
+            """,
+            """
+            {"type":"user","message":{"role":"user","content":"帮我重构这个模块"},"timestamp":"2026-03-01T10:00:01Z"}
+            """,
+            """
+            {"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/Users/test/project/a.swift","old_string":"x","new_string":"y"}}],"usage":{"input_tokens":500,"output_tokens":100,"cache_creation_input_tokens":200,"cache_read_input_tokens":100}},"timestamp":"2026-03-01T10:00:02Z"}
+            """,
+            """
+            {"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"Error: not found","is_error":true}]},"timestamp":"2026-03-01T10:00:03Z"}
+            """,
+            """
+            {"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","name":"Write","input":{"file_path":"/Users/test/project/b.swift","content":"new"}}],"usage":{"input_tokens":600,"output_tokens":150,"cache_creation_input_tokens":250,"cache_read_input_tokens":120}},"timestamp":"2026-03-01T10:00:04Z"}
+            """,
+            """
+            {"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"compile error","is_error":true}]},"timestamp":"2026-03-01T10:00:05Z"}
+            """,
+            """
+            {"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/Users/test/project/c.swift","old_string":"old","new_string":"new"}}],"usage":{"input_tokens":700,"output_tokens":200,"cache_creation_input_tokens":300,"cache_read_input_tokens":150}},"timestamp":"2026-03-01T10:00:06Z"}
+            """,
+            """
+            {"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"代码已修改完成。接下来需要运行测试确认所有功能正常工作。"}],"usage":{"input_tokens":800,"output_tokens":50,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}},"timestamp":"2026-03-01T10:00:07Z"}
+            """,
+            """
+            {"type":"user","message":{"role":"user","content":"好的，请继续"},"timestamp":"2026-03-01T10:00:08Z"}
+            """
+        ]
+        return lines.joined(separator: "\n")
+    }
+
+    func testLoadSessionDetailTotalErrorCount() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try buildDetailTestJSONL().write(toFile: projectDir + "/detail1.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail1")
+        let detail = try await provider.loadSessionDetail(for: ref)
+
+        XCTAssertEqual(detail.totalErrorCount, 2)
+    }
+
+    func testLoadSessionDetailCumulativeTokens() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try buildDetailTestJSONL().write(toFile: projectDir + "/detail2.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail2")
+        let detail = try await provider.loadSessionDetail(for: ref)
+
+        XCTAssertNotNil(detail.cumulativeTokens)
+        XCTAssertEqual(detail.cumulativeTokens?.inputTokens, 2600)
+        XCTAssertEqual(detail.cumulativeTokens?.outputTokens, 500)
+        XCTAssertEqual(detail.cumulativeTokens?.cacheReadTokens, 370)
+        XCTAssertEqual(detail.cumulativeTokens?.cacheWriteTokens, 750)
+        XCTAssertEqual(detail.cumulativeTokens?.totalTokens, 4220)
+    }
+
+    func testLoadSessionDetailRecentFiles() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try buildDetailTestJSONL().write(toFile: projectDir + "/detail3.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail3")
+        let detail = try await provider.loadSessionDetail(for: ref)
+
+        XCTAssertEqual(detail.recentFiles.count, 3)
+        XCTAssertTrue(detail.recentFiles.contains("/Users/test/project/a.swift"))
+        XCTAssertTrue(detail.recentFiles.contains("/Users/test/project/b.swift"))
+        XCTAssertTrue(detail.recentFiles.contains("/Users/test/project/c.swift"))
+    }
+
+    func testLoadSessionDetailModelInfo() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try buildDetailTestJSONL().write(toFile: projectDir + "/detail4.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail4")
+        let detail = try await provider.loadSessionDetail(for: ref)
+
+        XCTAssertNotNil(detail.modelInfo)
+        XCTAssertEqual(detail.modelInfo?.modelName, "claude-sonnet-4-20250514")
+        XCTAssertEqual(detail.modelInfo?.contextLimit, 200_000)
+    }
+
+    func testLoadSessionDetailNextStep() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try buildDetailTestJSONL().write(toFile: projectDir + "/detail5.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail5")
+        let detail = try await provider.loadSessionDetail(for: ref)
+
+        XCTAssertNotNil(detail.nextStep)
+        XCTAssertTrue(detail.nextStep?.contains("接下来") ?? false)
+        XCTAssertTrue((detail.nextStep?.count ?? 999) <= 120)
+    }
 }

@@ -87,6 +87,40 @@ public enum JSONLParser {
         return entries.reversed() // Return in chronological order
     }
 
+    /// Read ALL parseable JSON entries from file (line by line streaming)
+    public static func readAllEntries(at path: String) throws -> [[String: Any]] {
+        guard let handle = FileHandle(forReadingAtPath: path) else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        defer { handle.closeFile() }
+
+        let chunkSize = 65536
+        var buffer = Data()
+        var entries: [[String: Any]] = []
+
+        while true {
+            let chunk = handle.readData(ofLength: chunkSize)
+            if chunk.isEmpty {
+                // Process remaining buffer
+                if !buffer.isEmpty, let entry = parseLine(buffer) {
+                    entries.append(entry)
+                }
+                break
+            }
+            buffer.append(chunk)
+
+            while let newlineRange = buffer.range(of: Data([0x0A])) {
+                let lineData = buffer[buffer.startIndex..<newlineRange.lowerBound]
+                buffer = Data(buffer[newlineRange.upperBound...])
+
+                if let entry = parseLine(lineData) {
+                    entries.append(entry)
+                }
+            }
+        }
+        return entries
+    }
+
     private static func parseLine(_ data: Data) -> [String: Any]? {
         var start = data.startIndex
         var end = data.endIndex

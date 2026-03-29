@@ -15,6 +15,11 @@ enum ClaudeProviderTests {
         testExcludesSubagentDirectories()
         testMakeResumeTarget()
         testRefreshRuntimeStateDeadForNonExistentPID()
+        testLoadSessionDetailTotalErrorCount()
+        testLoadSessionDetailCumulativeTokens()
+        testLoadSessionDetailRecentFiles()
+        testLoadSessionDetailModelInfo()
+        testLoadSessionDetailNextStep()
     }
 
     // MARK: - Helpers
@@ -298,6 +303,151 @@ enum ClaudeProviderTests {
             }
         } else {
             check(false, "should have state for ref")
+        }
+    }
+
+    /// Build test JSONL with additional entries for detail testing (nextStep, extra errors, more tokens)
+    private static func buildDetailTestJSONL() -> String {
+        let lines: [String] = [
+            // Entry 1: system/init
+            """
+            {"type":"system","timestamp":"2026-03-01T10:00:00Z","cwd":"/Users/test/project","gitBranch":"feature/detail"}
+            """,
+            // Entry 2: normal user
+            """
+            {"type":"user","message":{"role":"user","content":"帮我重构这个模块"},"timestamp":"2026-03-01T10:00:01Z"}
+            """,
+            // Entry 3: assistant with Edit + usage
+            """
+            {"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/Users/test/project/a.swift","old_string":"x","new_string":"y"}}],"usage":{"input_tokens":500,"output_tokens":100,"cache_creation_input_tokens":200,"cache_read_input_tokens":100}},"timestamp":"2026-03-01T10:00:02Z"}
+            """,
+            // Entry 4: user with error tool_result
+            """
+            {"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"Error: not found","is_error":true}]},"timestamp":"2026-03-01T10:00:03Z"}
+            """,
+            // Entry 5: assistant with Write + usage
+            """
+            {"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","name":"Write","input":{"file_path":"/Users/test/project/b.swift","content":"new"}}],"usage":{"input_tokens":600,"output_tokens":150,"cache_creation_input_tokens":250,"cache_read_input_tokens":120}},"timestamp":"2026-03-01T10:00:04Z"}
+            """,
+            // Entry 6: user with another error
+            """
+            {"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"compile error","is_error":true}]},"timestamp":"2026-03-01T10:00:05Z"}
+            """,
+            // Entry 7: assistant with Edit on new file + usage
+            """
+            {"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/Users/test/project/c.swift","old_string":"old","new_string":"new"}}],"usage":{"input_tokens":700,"output_tokens":200,"cache_creation_input_tokens":300,"cache_read_input_tokens":150}},"timestamp":"2026-03-01T10:00:06Z"}
+            """,
+            // Entry 8: assistant with forward-looking text (nextStep)
+            """
+            {"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"代码已修改完成。接下来需要运行测试确认所有功能正常工作。"}],"usage":{"input_tokens":800,"output_tokens":50,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}},"timestamp":"2026-03-01T10:00:07Z"}
+            """,
+            // Entry 9: final user
+            """
+            {"type":"user","message":{"role":"user","content":"好的，请继续"},"timestamp":"2026-03-01T10:00:08Z"}
+            """
+        ]
+        return lines.joined(separator: "\n")
+    }
+
+    // MARK: - Detail Tests
+
+    static func testLoadSessionDetailTotalErrorCount() {
+        let base = createTempDir()
+        defer { cleanup(base) }
+
+        let projectDir = base + "/projects/myproject"
+        try! FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try! buildDetailTestJSONL().write(toFile: projectDir + "/detail1.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail1")
+        let detail = try! runAsync { try await provider.loadSessionDetail(for: ref) }
+
+        // 2 tool_result entries with is_error:true (entries 4 and 6)
+        assertEqual(detail.totalErrorCount, 2, "totalErrorCount should be 2")
+    }
+
+    static func testLoadSessionDetailCumulativeTokens() {
+        let base = createTempDir()
+        defer { cleanup(base) }
+
+        let projectDir = base + "/projects/myproject"
+        try! FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try! buildDetailTestJSONL().write(toFile: projectDir + "/detail2.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail2")
+        let detail = try! runAsync { try await provider.loadSessionDetail(for: ref) }
+
+        check(detail.cumulativeTokens != nil, "cumulativeTokens should not be nil")
+        if let tokens = detail.cumulativeTokens {
+            // input: 500+600+700+800 = 2600
+            assertEqual(tokens.inputTokens, 2600, "cumulative inputTokens")
+            // output: 100+150+200+50 = 500
+            assertEqual(tokens.outputTokens, 500, "cumulative outputTokens")
+            // cacheRead: 100+120+150+0 = 370
+            assertEqual(tokens.cacheReadTokens, 370, "cumulative cacheReadTokens")
+            // cacheWrite: 200+250+300+0 = 750
+            assertEqual(tokens.cacheWriteTokens, 750, "cumulative cacheWriteTokens")
+            // total: 2600+500+370+750 = 4220
+            assertEqual(tokens.totalTokens, 4220, "cumulative totalTokens")
+        }
+    }
+
+    static func testLoadSessionDetailRecentFiles() {
+        let base = createTempDir()
+        defer { cleanup(base) }
+
+        let projectDir = base + "/projects/myproject"
+        try! FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try! buildDetailTestJSONL().write(toFile: projectDir + "/detail3.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail3")
+        let detail = try! runAsync { try await provider.loadSessionDetail(for: ref) }
+
+        // Files: a.swift (Edit), b.swift (Write), c.swift (Edit) = 3 unique, in order
+        assertEqual(detail.recentFiles.count, 3, "recentFiles count")
+        check(detail.recentFiles.contains("/Users/test/project/a.swift"), "should contain a.swift")
+        check(detail.recentFiles.contains("/Users/test/project/b.swift"), "should contain b.swift")
+        check(detail.recentFiles.contains("/Users/test/project/c.swift"), "should contain c.swift")
+    }
+
+    static func testLoadSessionDetailModelInfo() {
+        let base = createTempDir()
+        defer { cleanup(base) }
+
+        let projectDir = base + "/projects/myproject"
+        try! FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try! buildDetailTestJSONL().write(toFile: projectDir + "/detail4.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail4")
+        let detail = try! runAsync { try await provider.loadSessionDetail(for: ref) }
+
+        check(detail.modelInfo != nil, "modelInfo should not be nil")
+        if let model = detail.modelInfo {
+            assertEqual(model.modelName, "claude-sonnet-4-20250514", "model name")
+            assertEqual(model.contextLimit, 200_000, "sonnet context limit")
+        }
+    }
+
+    static func testLoadSessionDetailNextStep() {
+        let base = createTempDir()
+        defer { cleanup(base) }
+
+        let projectDir = base + "/projects/myproject"
+        try! FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        try! buildDetailTestJSONL().write(toFile: projectDir + "/detail5.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "detail5")
+        let detail = try! runAsync { try await provider.loadSessionDetail(for: ref) }
+
+        check(detail.nextStep != nil, "nextStep should not be nil")
+        if let nextStep = detail.nextStep {
+            check(nextStep.contains("接下来"), "nextStep should contain forward-looking pattern, got: \(nextStep)")
+            check(nextStep.count <= 120, "nextStep should be <= 120 chars")
         }
     }
 
