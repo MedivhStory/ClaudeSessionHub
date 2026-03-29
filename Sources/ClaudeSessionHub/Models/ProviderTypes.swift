@@ -1,20 +1,26 @@
 import Foundation
 
-typealias ProviderID = String
+public typealias ProviderID = String
 
-struct ProviderCapabilities: OptionSet, Sendable {
-    let rawValue: Int
-    static let resume        = ProviderCapabilities(rawValue: 1 << 0)
-    static let contextUsage  = ProviderCapabilities(rawValue: 1 << 1)
-    static let errorTracking = ProviderCapabilities(rawValue: 1 << 2)
-    static let branchInfo    = ProviderCapabilities(rawValue: 1 << 3)
+public struct ProviderCapabilities: OptionSet, Sendable {
+    public let rawValue: Int
+    public init(rawValue: Int) { self.rawValue = rawValue }
+    public static let resume        = ProviderCapabilities(rawValue: 1 << 0)
+    public static let contextUsage  = ProviderCapabilities(rawValue: 1 << 1)
+    public static let errorTracking = ProviderCapabilities(rawValue: 1 << 2)
+    public static let branchInfo    = ProviderCapabilities(rawValue: 1 << 3)
 }
 
-struct ModelInfo: Sendable, Equatable {
-    let modelName: String
-    let contextLimit: Int
+public struct ModelInfo: Sendable, Equatable {
+    public let modelName: String
+    public let contextLimit: Int
 
-    static func resolve(modelName: String?) -> ModelInfo {
+    public init(modelName: String, contextLimit: Int) {
+        self.modelName = modelName
+        self.contextLimit = contextLimit
+    }
+
+    public static func resolve(modelName: String?) -> ModelInfo {
         guard let name = modelName else {
             return ModelInfo(modelName: "unknown", contextLimit: 200_000)
         }
