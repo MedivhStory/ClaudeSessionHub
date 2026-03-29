@@ -162,11 +162,12 @@ final class ClaudeProviderXCTests: XCTestCase {
         let base = createTempDir()
         defer { try? FileManager.default.removeItem(atPath: base) }
 
+        // Claude stores metadata as sessions/<pid>.json with sessionId inside the JSON body
         let sessionsDir = base + "/sessions"
         try FileManager.default.createDirectory(atPath: sessionsDir, withIntermediateDirectories: true)
-        let metadata: [String: Any] = ["pid": 99999999]
+        let metadata: [String: Any] = ["pid": 99999999, "sessionId": "test-session", "cwd": "/tmp", "startedAt": 1772645500000]
         let data = try JSONSerialization.data(withJSONObject: metadata)
-        try data.write(to: URL(fileURLWithPath: sessionsDir + "/test-session.json"))
+        try data.write(to: URL(fileURLWithPath: sessionsDir + "/99999999.json"))
 
         let provider = ClaudeProvider(baseDirectory: base)
         let ref = SessionRef(providerID: "claude", sessionID: "test-session")

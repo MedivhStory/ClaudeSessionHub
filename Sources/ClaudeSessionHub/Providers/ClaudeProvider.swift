@@ -97,8 +97,8 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         // filesTouched
         let filesTouched = extractFilesTouched(from: allEntries)
 
-        // recentErrorCount
-        let recentErrorCount = extractRecentErrorCount(from: allEntries)
+        // recentErrorCount — from lastEntries only (tail of session), not merged
+        let recentErrorCount = extractRecentErrorCount(from: lastEntries)
 
         // taskPhase
         let taskPhase = extractTaskPhase(from: allEntries)
