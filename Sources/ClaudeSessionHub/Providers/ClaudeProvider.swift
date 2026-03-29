@@ -67,7 +67,9 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     private func buildSummary(from path: String) throws -> SessionSummary {
         let firstEntries = try JSONLParser.readFirstEntries(at: path, count: 10)
-        let lastEntries = try JSONLParser.readLastEntries(at: path, count: 10)
+        // Read more tail entries (50) so recentErrorCount has enough turns to sample from.
+        // 20 user turns can easily span 40-60 entries (interleaved assistant/system/progress).
+        let lastEntries = try JSONLParser.readLastEntries(at: path, count: 50)
         let allEntries = mergeEntries(first: firstEntries, last: lastEntries)
 
         // Session ID from filename
@@ -369,9 +371,23 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     // MARK: - turnCount
 
+    /// Prefer system subtype == turn_duration events (structural, accurate).
+    /// Fallback to counting non-meta user messages with plain string content
+    /// (excludes tool_result entries which are also type=="user").
     private func countUserTurns(from entries: [[String: Any]]) -> Int {
+        // Try structured turn_duration events first
+        let turnDurationCount = entries.filter { entry in
+            entry["type"] as? String == "system" && entry["subtype"] as? String == "turn_duration"
+        }.count
+        if turnDurationCount > 0 { return turnDurationCount }
+
+        // Fallback: count non-meta user entries with string content only
+        // (tool_result entries have array content, not string)
         return entries.filter { entry in
-            entry["type"] as? String == "user" && entry["isMeta"] as? Bool != true
+            guard entry["type"] as? String == "user" else { return false }
+            guard entry["isMeta"] as? Bool != true else { return false }
+            guard let message = entry["message"] as? [String: Any] else { return false }
+            return message["content"] is String
         }.count
     }
 
@@ -595,9 +611,12 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
     }
 
     private func findForwardLookingSentence(in text: String, regex: NSRegularExpression) -> String? {
+        // Strip fenced code blocks before searching
+        let strippedText = stripCodeBlocks(text)
+
         // Split into sentences (handle Chinese and English punctuation)
         let sentenceDelimiters = CharacterSet(charactersIn: "。！？.!?\n")
-        let sentences = text.components(separatedBy: sentenceDelimiters)
+        let sentences = strippedText.components(separatedBy: sentenceDelimiters)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
@@ -613,6 +632,23 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         guard let match = lastMatch else { return nil }
         if match.count <= 120 { return match }
         return String(match.prefix(119)) + "…"
+    }
+
+    /// Remove fenced code blocks (```...```) and inline code (`...`) to avoid
+    /// matching keywords like TODO/next/should inside code snippets.
+    private func stripCodeBlocks(_ text: String) -> String {
+        var result = text
+        // Remove fenced code blocks (``` ... ```)
+        if let fencedRegex = try? NSRegularExpression(pattern: "```[\\s\\S]*?```", options: []) {
+            result = fencedRegex.stringByReplacingMatches(
+                in: result, range: NSRange(result.startIndex..., in: result), withTemplate: "")
+        }
+        // Remove inline code (` ... `)
+        if let inlineRegex = try? NSRegularExpression(pattern: "`[^`]+`", options: []) {
+            result = inlineRegex.stringByReplacingMatches(
+                in: result, range: NSRange(result.startIndex..., in: result), withTemplate: "")
+        }
+        return result
     }
 
     private func extractModelInfo(from entries: [[String: Any]]) -> ModelInfo? {
