@@ -54,6 +54,7 @@ struct TestMain {
         print("Running Claude Session Hub Tests...\n")
         CanonicalModelsTests.run()
         JSONLParserTests.run()
+        ClaudeProviderTests.run()
         printResults()
     }
 }
