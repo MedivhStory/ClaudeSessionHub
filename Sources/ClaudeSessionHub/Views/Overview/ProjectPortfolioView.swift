@@ -93,7 +93,7 @@ struct ProjectPortfolioView: View {
             }
 
             HStack(spacing: 8) {
-                statLabel("\(sessions.count)s", color: .secondary)
+                statLabel("\(sessions.count) sessions", color: .secondary)
                 if activeCount > 0 {
                     statLabel("\(activeCount) active", color: .green)
                 }
