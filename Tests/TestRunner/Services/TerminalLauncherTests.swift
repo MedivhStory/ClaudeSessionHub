@@ -4,18 +4,20 @@ import Foundation
 enum TerminalLauncherTests {
     static func run() {
         print("── TerminalLauncherTests ──")
-        testCopyCommandFormat()
+        testCopyCommandWithExistingCwd()
         testCopyCommandWithoutCwd()
+        testCopyCommandWithMissingCwdOmitsCd()
         testCopyCommandEscapesSpaces()
-        testCopyCommandWithSpecialChars()
+        testCwdExistsCheck()
     }
 
-    static func testCopyCommandFormat() {
+    static func testCopyCommandWithExistingCwd() {
+        // Use /tmp which always exists
         let target = ResumeTarget(executable: "claude", arguments: ["-r", "abc-123"],
-                                  workingDirectory: "/Users/test/OACP",
+                                  workingDirectory: "/tmp",
                                   displayCommand: "claude -r abc-123")
         let command = TerminalLauncher.copyCommand(for: target)
-        assertEqual(command, "cd /Users/test/OACP && claude -r abc-123")
+        assertEqual(command, "cd /tmp && claude -r abc-123")
     }
 
     static func testCopyCommandWithoutCwd() {
@@ -26,21 +28,41 @@ enum TerminalLauncherTests {
         assertEqual(command, "claude -r abc-123")
     }
 
-    static func testCopyCommandEscapesSpaces() {
+    static func testCopyCommandWithMissingCwdOmitsCd() {
+        // Spec: cwd missing → execute without cd, show notice "原目录不存在"
         let target = ResumeTarget(executable: "claude", arguments: ["-r", "abc-123"],
-                                  workingDirectory: "/Users/test/my project",
+                                  workingDirectory: "/nonexistent/path/that/does/not/exist",
                                   displayCommand: "claude -r abc-123")
         let command = TerminalLauncher.copyCommand(for: target)
-        check(command.contains("\"/Users/test/my project\"") || command.contains("my\\ project"),
-              "spaces in cwd should be escaped/quoted, got: \(command)")
+        // Should NOT have "cd" prefix since the directory doesn't exist
+        assertEqual(command, "claude -r abc-123", "missing cwd should omit cd prefix")
     }
 
-    static func testCopyCommandWithSpecialChars() {
-        // Chinese characters in path (real scenario on this machine)
+    static func testCopyCommandEscapesSpaces() {
+        // Create a temp dir with spaces to test quoting
+        let spacedDir = NSTemporaryDirectory() + "my project \(UUID().uuidString)"
+        try! FileManager.default.createDirectory(atPath: spacedDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: spacedDir) }
+
         let target = ResumeTarget(executable: "claude", arguments: ["-r", "abc-123"],
-                                  workingDirectory: "/Users/test/claude任务管理器",
+                                  workingDirectory: spacedDir,
                                   displayCommand: "claude -r abc-123")
         let command = TerminalLauncher.copyCommand(for: target)
-        check(command.contains("claude任务管理器"), "Chinese path should be preserved, got: \(command)")
+        check(command.hasPrefix("cd \""), "spaces in cwd should be quoted, got: \(command)")
+        check(command.contains("my project"), "path with spaces should be preserved")
+    }
+
+    static func testCwdExistsCheck() {
+        let existing = ResumeTarget(executable: "claude", arguments: [],
+                                    workingDirectory: "/tmp", displayCommand: "claude")
+        check(TerminalLauncher.cwdExists(for: existing), "/tmp should exist")
+
+        let missing = ResumeTarget(executable: "claude", arguments: [],
+                                   workingDirectory: "/nonexistent", displayCommand: "claude")
+        check(!TerminalLauncher.cwdExists(for: missing), "/nonexistent should not exist")
+
+        let noCwd = ResumeTarget(executable: "claude", arguments: [],
+                                 workingDirectory: nil, displayCommand: "claude")
+        check(!TerminalLauncher.cwdExists(for: noCwd), "nil cwd should return false")
     }
 }

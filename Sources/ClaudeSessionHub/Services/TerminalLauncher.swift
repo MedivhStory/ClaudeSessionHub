@@ -9,13 +9,21 @@ public enum TerminalLauncher {
         case terminalApp = "Terminal"
     }
 
-    /// Build the shell command string for clipboard copy
+    /// Build the shell command string for clipboard copy.
+    /// Checks if cwd exists — if not, omits the `cd` prefix (spec: "原目录不存在").
     public static func copyCommand(for target: ResumeTarget) -> String {
-        if let cwd = target.workingDirectory {
+        if let cwd = target.workingDirectory,
+           FileManager.default.fileExists(atPath: cwd) {
             let escaped = cwd.contains(" ") ? "\"\(cwd)\"" : cwd
             return "cd \(escaped) && \(target.displayCommand)"
         }
         return target.displayCommand
+    }
+
+    /// Whether the cwd in a ResumeTarget still exists on disk.
+    public static func cwdExists(for target: ResumeTarget) -> Bool {
+        guard let cwd = target.workingDirectory else { return false }
+        return FileManager.default.fileExists(atPath: cwd)
     }
 
     /// Copy string to system clipboard
@@ -26,10 +34,30 @@ public enum TerminalLauncher {
         #endif
     }
 
-    /// Attempt to launch terminal with resume command. Silent fallback to clipboard on failure.
+    /// Attempt to launch terminal with resume command.
+    /// If the selected terminal fails, falls back to the other terminal.
+    /// If both fail, falls back to clipboard copy + notification.
     public static func launch(target: ResumeTarget, in terminal: Terminal) {
         let command = copyCommand(for: target)
 
+        // Try the selected terminal first
+        if tryLaunch(command: command, terminal: terminal) { return }
+
+        // Fallback to the other supported terminal (spec: "Ghostty not installed → Fall back to Terminal.app")
+        let fallbackTerminal: Terminal = (terminal == .ghostty) ? .terminalApp : .ghostty
+        if tryLaunch(command: command, terminal: fallbackTerminal) { return }
+
+        // Both failed — silent clipboard fallback
+        copyToClipboard(command)
+        if target.workingDirectory != nil && !cwdExists(for: target) {
+            sendNotification(message: "原目录不存在，已复制命令，请在终端粘贴执行")
+        } else {
+            sendNotification(message: "已复制命令，请在终端粘贴执行")
+        }
+    }
+
+    /// Returns true if launch succeeded
+    private static func tryLaunch(command: String, terminal: Terminal) -> Bool {
         do {
             switch terminal {
             case .ghostty:
@@ -37,10 +65,9 @@ public enum TerminalLauncher {
             case .terminalApp:
                 try launchTerminalApp(command: command)
             }
+            return true
         } catch {
-            // Silent fallback: copy to clipboard + notification
-            copyToClipboard(command)
-            sendNotification(message: "已复制命令，请在终端粘贴执行")
+            return false
         }
     }
 
@@ -52,6 +79,7 @@ public enum TerminalLauncher {
             process.arguments = ["-na", "Ghostty.app", "--args", "-e", command]
             try process.run()
         } else {
+            // Try CLI in PATH
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
             process.arguments = ["ghostty", "-e", command]

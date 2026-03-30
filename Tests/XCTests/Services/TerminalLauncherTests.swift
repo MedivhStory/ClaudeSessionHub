@@ -3,12 +3,12 @@ import XCTest
 
 final class TerminalLauncherXCTests: XCTestCase {
 
-    func testCopyCommandFormat() {
+    func testCopyCommandWithExistingCwd() {
         let target = ResumeTarget(executable: "claude", arguments: ["-r", "abc-123"],
-                                  workingDirectory: "/Users/test/OACP",
+                                  workingDirectory: "/tmp",
                                   displayCommand: "claude -r abc-123")
         let command = TerminalLauncher.copyCommand(for: target)
-        XCTAssertEqual(command, "cd /Users/test/OACP && claude -r abc-123")
+        XCTAssertEqual(command, "cd /tmp && claude -r abc-123")
     }
 
     func testCopyCommandWithoutCwd() {
@@ -19,21 +19,37 @@ final class TerminalLauncherXCTests: XCTestCase {
         XCTAssertEqual(command, "claude -r abc-123")
     }
 
-    func testCopyCommandEscapesSpaces() {
+    func testCopyCommandWithMissingCwdOmitsCd() {
         let target = ResumeTarget(executable: "claude", arguments: ["-r", "abc-123"],
-                                  workingDirectory: "/Users/test/my project",
+                                  workingDirectory: "/nonexistent/path/that/does/not/exist",
                                   displayCommand: "claude -r abc-123")
         let command = TerminalLauncher.copyCommand(for: target)
-        XCTAssertTrue(command.contains("\"/Users/test/my project\"") || command.contains("my\\ project"),
-                      "spaces in cwd should be escaped/quoted, got: \(command)")
+        XCTAssertEqual(command, "claude -r abc-123", "missing cwd should omit cd prefix")
     }
 
-    func testCopyCommandWithSpecialChars() {
+    func testCopyCommandEscapesSpaces() throws {
+        let spacedDir = NSTemporaryDirectory() + "my project \(UUID().uuidString)"
+        try FileManager.default.createDirectory(atPath: spacedDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: spacedDir) }
+
         let target = ResumeTarget(executable: "claude", arguments: ["-r", "abc-123"],
-                                  workingDirectory: "/Users/test/claude任务管理器",
+                                  workingDirectory: spacedDir,
                                   displayCommand: "claude -r abc-123")
         let command = TerminalLauncher.copyCommand(for: target)
-        XCTAssertTrue(command.contains("claude任务管理器"),
-                      "Chinese path should be preserved, got: \(command)")
+        XCTAssertTrue(command.hasPrefix("cd \""), "spaces in cwd should be quoted, got: \(command)")
+    }
+
+    func testCwdExistsCheck() {
+        let existing = ResumeTarget(executable: "claude", arguments: [],
+                                    workingDirectory: "/tmp", displayCommand: "claude")
+        XCTAssertTrue(TerminalLauncher.cwdExists(for: existing))
+
+        let missing = ResumeTarget(executable: "claude", arguments: [],
+                                   workingDirectory: "/nonexistent", displayCommand: "claude")
+        XCTAssertFalse(TerminalLauncher.cwdExists(for: missing))
+
+        let noCwd = ResumeTarget(executable: "claude", arguments: [],
+                                 workingDirectory: nil, displayCommand: "claude")
+        XCTAssertFalse(TerminalLauncher.cwdExists(for: noCwd))
     }
 }
