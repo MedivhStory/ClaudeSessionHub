@@ -57,6 +57,7 @@ struct TestMain {
         ClaudeProviderTests.run()
         HealthEngineTests.run()
         LabelStoreTests.run()
+        ScanCoordinatorTests.run()
         printResults()
     }
 }
