@@ -63,13 +63,16 @@ struct QuickFactsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Spec: no high-confidence data → hide from tile signals. In Quick Facts only,
+    /// show estimated value with ~ prefix if cumulativeTokens available, else hide entirely.
+    @ViewBuilder
     private var contextUsageCard: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label("上下文占用", systemImage: "chart.bar")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            if let usage = session.contextUsage {
+        if let usage = session.contextUsage {
+            // High-confidence: show progress bar + exact value
+            VStack(alignment: .leading, spacing: 4) {
+                Label("上下文占用", systemImage: "chart.bar")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 let usedK = usage.promptContext / 1000
                 let limitM = usage.limit / 1_000_000
                 ProgressView(value: usage.percentage)
@@ -77,13 +80,25 @@ struct QuickFactsView: View {
                 Text("\(usedK)k / \(limitM > 0 ? "\(limitM)M" : "\(usage.limit / 1000)k")")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-            } else {
-                Text("N/A")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else if let tokens = detail?.cumulativeTokens, let modelInfo = detail?.modelInfo {
+            // No high-confidence usage, but we have cumulative tokens — show estimate with ~
+            VStack(alignment: .leading, spacing: 4) {
+                Label("上下文占用", systemImage: "chart.bar")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                let estimateK = tokens.inputTokens / 1000
+                let limitM = modelInfo.contextLimit / 1_000_000
+                Text("~\(estimateK)k / \(limitM > 0 ? "\(limitM)M" : "?")")
+                    .font(.caption2)
+                    .foregroundStyle(.quaternary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            // No data at all — empty cell to maintain grid
+            Color.clear.frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Only shown when nextStep is non-nil (spec: "nextStep = nil → hide row")
@@ -123,8 +138,11 @@ struct QuickFactsView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            if let totalErrors = detail?.totalErrorCount, totalErrors > 0 {
-                Text("总错误 \(totalErrors)")
+            // Show both recent and total errors so users can distinguish active warnings from history
+            if session.recentErrorCount > 0 || (detail?.totalErrorCount ?? 0) > 0 {
+                let recentStr = "近期 \(session.recentErrorCount) errors"
+                let totalStr = detail.map { "总计 \($0.totalErrorCount)" } ?? ""
+                Text("\(recentStr)\(totalStr.isEmpty ? "" : " · \(totalStr)")")
                     .font(.caption2)
                     .foregroundStyle(.red.opacity(0.7))
             }
