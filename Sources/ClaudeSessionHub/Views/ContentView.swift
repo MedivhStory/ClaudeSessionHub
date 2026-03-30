@@ -58,6 +58,7 @@ public struct ContentView: View {
                 )
             }
         }
+        .withScanTimers()
         .task {
             await store.performScan()
         }
