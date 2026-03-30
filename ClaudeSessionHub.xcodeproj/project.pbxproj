@@ -1,0 +1,521 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1000001 /* ClaudeSessionHubApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001; };
+		A1000002 /* CanonicalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002; };
+		A1000003 /* HealthSignal.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003; };
+		A1000004 /* ProviderTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004; };
+		A1000005 /* ResumeTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005; };
+		A1000006 /* AgentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000006; };
+		A1000007 /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000007; };
+		A1000008 /* CodexProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008; };
+		A1000009 /* JSONLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000009; };
+		A1000010 /* HealthEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010; };
+		A1000011 /* LabelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000011; };
+		A1000012 /* ScanCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000012; };
+		A1000013 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000013; };
+		A1000014 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000014; };
+		A1000015 /* TerminalLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000015; };
+		A1000016 /* BadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000016; };
+		A1000017 /* FilterChips.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000017; };
+		A1000018 /* SearchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000018; };
+		A1000019 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000019; };
+		A1000020 /* AttentionInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020; };
+		A1000021 /* HeatStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000021; };
+		A1000022 /* OverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000022; };
+		A1000023 /* ProjectPortfolioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000023; };
+		A1000024 /* SummaryCardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000024; };
+		A1000025 /* ScanTimerModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000025; };
+		A1000026 /* QuickFactsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000026; };
+		A1000027 /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000027; };
+		A1000028 /* SessionTileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000028; };
+		A1000029 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000029; };
+		A1000030 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000030; };
+		A2000001 /* ClaudeSessionHubUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C1000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ROOT00000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = TARGET0001;
+			remoteInfo = ClaudeSessionHub;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		B1000001 /* ClaudeSessionHubApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSessionHubApp.swift; sourceTree = "<group>"; };
+		B1000002 /* CanonicalModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanonicalModels.swift; sourceTree = "<group>"; };
+		B1000003 /* HealthSignal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSignal.swift; sourceTree = "<group>"; };
+		B1000004 /* ProviderTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTypes.swift; sourceTree = "<group>"; };
+		B1000005 /* ResumeTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResumeTarget.swift; sourceTree = "<group>"; };
+		B1000006 /* AgentProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentProvider.swift; sourceTree = "<group>"; };
+		B1000007 /* ClaudeProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeProvider.swift; sourceTree = "<group>"; };
+		B1000008 /* CodexProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexProvider.swift; sourceTree = "<group>"; };
+		B1000009 /* JSONLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLParser.swift; sourceTree = "<group>"; };
+		B1000010 /* HealthEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthEngine.swift; sourceTree = "<group>"; };
+		B1000011 /* LabelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabelStore.swift; sourceTree = "<group>"; };
+		B1000012 /* ScanCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanCoordinator.swift; sourceTree = "<group>"; };
+		B1000013 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		B1000014 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
+		B1000015 /* TerminalLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLauncher.swift; sourceTree = "<group>"; };
+		B1000016 /* BadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BadgeView.swift; sourceTree = "<group>"; };
+		B1000017 /* FilterChips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterChips.swift; sourceTree = "<group>"; };
+		B1000018 /* SearchBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBar.swift; sourceTree = "<group>"; };
+		B1000019 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B1000020 /* AttentionInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttentionInboxView.swift; sourceTree = "<group>"; };
+		B1000021 /* HeatStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeatStripView.swift; sourceTree = "<group>"; };
+		B1000022 /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
+		B1000023 /* ProjectPortfolioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectPortfolioView.swift; sourceTree = "<group>"; };
+		B1000024 /* SummaryCardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryCardsView.swift; sourceTree = "<group>"; };
+		B1000025 /* ScanTimerModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanTimerModifier.swift; sourceTree = "<group>"; };
+		B1000026 /* QuickFactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickFactsView.swift; sourceTree = "<group>"; };
+		B1000027 /* SessionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListView.swift; sourceTree = "<group>"; };
+		B1000028 /* SessionTileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTileView.swift; sourceTree = "<group>"; };
+		B1000029 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		B1000030 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B2000001 /* ClaudeSessionHubUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSessionHubUITests.swift; sourceTree = "<group>"; };
+		PRODUCT001 /* ClaudeSessionHub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeSessionHub.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		PRODUCT002 /* ClaudeSessionHubUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudeSessionHubUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FRMWRK01 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FRMWRK02 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		MAINGRP0 = {
+			isa = PBXGroup;
+			children = (
+				SRCGRP00 /* Sources */,
+				UITSTGRP /* UITests */,
+				PRODGRP0 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		PRODGRP0 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				PRODUCT001 /* ClaudeSessionHub.app */,
+				PRODUCT002 /* ClaudeSessionHubUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		SRCGRP00 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				GRPAPP00 /* App */,
+				GRPMODEL /* Models */,
+				GRPPROVD /* Providers */,
+				GRPSERVS /* Services */,
+				GRPVIEWS /* Views */,
+			);
+			name = Sources;
+			path = Sources/ClaudeSessionHub;
+			sourceTree = "<group>";
+		};
+		GRPAPP00 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B1000001 /* ClaudeSessionHubApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		GRPMODEL /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B1000002 /* CanonicalModels.swift */,
+				B1000003 /* HealthSignal.swift */,
+				B1000004 /* ProviderTypes.swift */,
+				B1000005 /* ResumeTarget.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		GRPPROVD /* Providers */ = {
+			isa = PBXGroup;
+			children = (
+				B1000006 /* AgentProvider.swift */,
+				B1000007 /* ClaudeProvider.swift */,
+				B1000008 /* CodexProvider.swift */,
+				B1000009 /* JSONLParser.swift */,
+			);
+			path = Providers;
+			sourceTree = "<group>";
+		};
+		GRPSERVS /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B1000010 /* HealthEngine.swift */,
+				B1000011 /* LabelStore.swift */,
+				B1000012 /* ScanCoordinator.swift */,
+				B1000013 /* SessionStore.swift */,
+				B1000014 /* SettingsStore.swift */,
+				B1000015 /* TerminalLauncher.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		GRPVIEWS /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B1000019 /* ContentView.swift */,
+				B1000025 /* ScanTimerModifier.swift */,
+				B1000030 /* SettingsView.swift */,
+				GRPVWCMN /* Common */,
+				GRPVWOVR /* Overview */,
+				GRPVWSES /* Sessions */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		GRPVWCMN /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				B1000016 /* BadgeView.swift */,
+				B1000017 /* FilterChips.swift */,
+				B1000018 /* SearchBar.swift */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		GRPVWOVR /* Overview */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020 /* AttentionInboxView.swift */,
+				B1000021 /* HeatStripView.swift */,
+				B1000022 /* OverviewView.swift */,
+				B1000023 /* ProjectPortfolioView.swift */,
+				B1000024 /* SummaryCardsView.swift */,
+			);
+			path = Overview;
+			sourceTree = "<group>";
+		};
+		GRPVWSES /* Sessions */ = {
+			isa = PBXGroup;
+			children = (
+				B1000026 /* QuickFactsView.swift */,
+				B1000027 /* SessionListView.swift */,
+				B1000028 /* SessionTileView.swift */,
+				B1000029 /* SidebarView.swift */,
+			);
+			path = Sessions;
+			sourceTree = "<group>";
+		};
+		UITSTGRP /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				B2000001 /* ClaudeSessionHubUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		TARGET0001 /* ClaudeSessionHub */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BLDCFG01;
+			buildPhases = (
+				SRCBLD01 /* Sources */,
+				FRMWRK01 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ClaudeSessionHub;
+			productName = ClaudeSessionHub;
+			productReference = PRODUCT001 /* ClaudeSessionHub.app */;
+			productType = "com.apple.product-type.application";
+		};
+		TARGET0002 /* ClaudeSessionHubUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BLDCFG02;
+			buildPhases = (
+				SRCBLD02 /* Sources */,
+				FRMWRK02 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DEPDNCY1 /* PBXTargetDependency */,
+			);
+			name = ClaudeSessionHubUITests;
+			productName = ClaudeSessionHubUITests;
+			productReference = PRODUCT002 /* ClaudeSessionHubUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		ROOT00000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1540;
+			};
+			buildConfigurationList = PRJCFG00;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = MAINGRP0;
+			productRefGroup = PRODGRP0 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				TARGET0001 /* ClaudeSessionHub */,
+				TARGET0002 /* ClaudeSessionHubUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		SRCBLD01 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000001 /* ClaudeSessionHubApp.swift in Sources */,
+				A1000002 /* CanonicalModels.swift in Sources */,
+				A1000003 /* HealthSignal.swift in Sources */,
+				A1000004 /* ProviderTypes.swift in Sources */,
+				A1000005 /* ResumeTarget.swift in Sources */,
+				A1000006 /* AgentProvider.swift in Sources */,
+				A1000007 /* ClaudeProvider.swift in Sources */,
+				A1000008 /* CodexProvider.swift in Sources */,
+				A1000009 /* JSONLParser.swift in Sources */,
+				A1000010 /* HealthEngine.swift in Sources */,
+				A1000011 /* LabelStore.swift in Sources */,
+				A1000012 /* ScanCoordinator.swift in Sources */,
+				A1000013 /* SessionStore.swift in Sources */,
+				A1000014 /* SettingsStore.swift in Sources */,
+				A1000015 /* TerminalLauncher.swift in Sources */,
+				A1000016 /* BadgeView.swift in Sources */,
+				A1000017 /* FilterChips.swift in Sources */,
+				A1000018 /* SearchBar.swift in Sources */,
+				A1000019 /* ContentView.swift in Sources */,
+				A1000020 /* AttentionInboxView.swift in Sources */,
+				A1000021 /* HeatStripView.swift in Sources */,
+				A1000022 /* OverviewView.swift in Sources */,
+				A1000023 /* ProjectPortfolioView.swift in Sources */,
+				A1000024 /* SummaryCardsView.swift in Sources */,
+				A1000025 /* ScanTimerModifier.swift in Sources */,
+				A1000026 /* QuickFactsView.swift in Sources */,
+				A1000027 /* SessionListView.swift in Sources */,
+				A1000028 /* SessionTileView.swift in Sources */,
+				A1000029 /* SidebarView.swift in Sources */,
+				A1000030 /* SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		SRCBLD02 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2000001 /* ClaudeSessionHubUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DEPDNCY1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = TARGET0001 /* ClaudeSessionHub */;
+			targetProxy = C1000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		PRJDBG00 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		PRJREL00 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		TGTDBG01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMainStoryboardFile = "";
+				INFOPLIST_KEY_NSPrincipalClass = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claudehub.ClaudeSessionHub;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		TGTREL01 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMainStoryboardFile = "";
+				INFOPLIST_KEY_NSPrincipalClass = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claudehub.ClaudeSessionHub;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		TGTDBG02 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claudehub.ClaudeSessionHubUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = ClaudeSessionHub;
+			};
+			name = Debug;
+		};
+		TGTREL02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claudehub.ClaudeSessionHubUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = ClaudeSessionHub;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		PRJCFG00 /* Build configuration list for PBXProject "ClaudeSessionHub" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				PRJDBG00 /* Debug */,
+				PRJREL00 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BLDCFG01 /* Build configuration list for PBXNativeTarget "ClaudeSessionHub" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				TGTDBG01 /* Debug */,
+				TGTREL01 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BLDCFG02 /* Build configuration list for PBXNativeTarget "ClaudeSessionHubUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				TGTDBG02 /* Debug */,
+				TGTREL02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = ROOT00000 /* Project object */;
+}

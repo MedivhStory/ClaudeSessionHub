@@ -32,6 +32,7 @@ struct SessionListView: View {
                     .padding(.horizontal)
                     .padding(.bottom, 12)
                 }
+                .accessibilityIdentifier("sessionList")
             }
         }
     }

@@ -1,6 +1,8 @@
 import SwiftUI
 import AppKit
+#if canImport(ClaudeSessionHubLib)
 import ClaudeSessionHubLib
+#endif
 
 @main
 struct ClaudeSessionHubApp: App {

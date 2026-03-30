@@ -67,6 +67,7 @@ struct HeatStripView: View {
         .background(Color(.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
+        .accessibilityIdentifier("heatStrip_\(name)")
     }
 
     private func relativeTime(_ date: Date) -> String {

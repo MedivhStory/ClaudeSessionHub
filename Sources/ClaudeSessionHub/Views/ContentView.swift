@@ -19,6 +19,7 @@ public struct ContentView: View {
                     Text("Overview").tag(true)
                 }
                 .pickerStyle(.segmented)
+                .accessibilityIdentifier("viewToggle")
                 .padding(8)
 
                 SidebarView(

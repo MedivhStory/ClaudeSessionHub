@@ -47,6 +47,7 @@ struct SessionTileView: View {
                 .stroke(borderColor, lineWidth: borderColor == .clear ? 0 : 1.5)
         )
         .contentShape(Rectangle())
+        .accessibilityIdentifier("sessionTile_\(session.ref.sessionID)")
         .onTapGesture {
             withAnimation(.easeInOut(duration: 0.2)) {
                 isExpanded.toggle()

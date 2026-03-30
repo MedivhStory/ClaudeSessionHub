@@ -76,6 +76,7 @@ struct SidebarView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityIdentifier("projectsSection")
 
             // MARK: - Status Section
             Section(isExpanded: $statusExpanded) {

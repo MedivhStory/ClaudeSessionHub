@@ -46,6 +46,7 @@ struct OverviewView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("overviewRoot")
     }
 
     // MARK: - Filtered Data
