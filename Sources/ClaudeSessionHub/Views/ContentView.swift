@@ -30,10 +30,15 @@ public struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
         } detail: {
             if showOverview {
-                Text("Overview \u{2014} coming in Task 9")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                OverviewView(
+                    onNavigateToProject: { project in
+                        selectedProject = project
+                        showOverview = false
+                    },
+                    onNavigateToSessions: {
+                        showOverview = false
+                    }
+                )
             } else {
                 SessionListView(
                     searchText: $searchText,
