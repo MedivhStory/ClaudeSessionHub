@@ -8,7 +8,8 @@ enum TerminalLauncherTests {
         testCopyCommandWithoutCwd()
         testCopyCommandWithMissingCwdOmitsCd()
         testCopyCommandEscapesSpaces()
-        testCwdExistsCheck()
+        testCwdStatusTriState()
+        testTerminalAvailability()
     }
 
     static func testCopyCommandWithExistingCwd() {
@@ -52,17 +53,29 @@ enum TerminalLauncherTests {
         check(command.contains("my project"), "path with spaces should be preserved")
     }
 
-    static func testCwdExistsCheck() {
+    static func testCwdStatusTriState() {
         let existing = ResumeTarget(executable: "claude", arguments: [],
                                     workingDirectory: "/tmp", displayCommand: "claude")
-        check(TerminalLauncher.cwdExists(for: existing), "/tmp should exist")
+        if case .exists = TerminalLauncher.cwdStatus(for: existing) {} else {
+            check(false, "/tmp should be .exists")
+        }
 
         let missing = ResumeTarget(executable: "claude", arguments: [],
-                                   workingDirectory: "/nonexistent", displayCommand: "claude")
-        check(!TerminalLauncher.cwdExists(for: missing), "/nonexistent should not exist")
+                                   workingDirectory: "/nonexistent/deleted/project", displayCommand: "claude")
+        if case .missing = TerminalLauncher.cwdStatus(for: missing) {} else {
+            check(false, "deleted path should be .missing")
+        }
 
         let noCwd = ResumeTarget(executable: "claude", arguments: [],
                                  workingDirectory: nil, displayCommand: "claude")
-        check(!TerminalLauncher.cwdExists(for: noCwd), "nil cwd should return false")
+        if case .unknown = TerminalLauncher.cwdStatus(for: noCwd) {} else {
+            check(false, "nil cwd should be .unknown")
+        }
+    }
+
+    static func testTerminalAvailability() {
+        // Terminal.app should always be available on macOS
+        check(TerminalLauncher.isTerminalAvailable(.terminalApp), "Terminal.app should be available on macOS")
+        // We don't assert Ghostty availability — it may or may not be installed
     }
 }

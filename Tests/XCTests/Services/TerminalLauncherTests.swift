@@ -39,17 +39,27 @@ final class TerminalLauncherXCTests: XCTestCase {
         XCTAssertTrue(command.hasPrefix("cd \""), "spaces in cwd should be quoted, got: \(command)")
     }
 
-    func testCwdExistsCheck() {
+    func testCwdStatusTriState() {
         let existing = ResumeTarget(executable: "claude", arguments: [],
                                     workingDirectory: "/tmp", displayCommand: "claude")
-        XCTAssertTrue(TerminalLauncher.cwdExists(for: existing))
+        if case .exists = TerminalLauncher.cwdStatus(for: existing) {} else {
+            XCTFail("/tmp should be .exists")
+        }
 
         let missing = ResumeTarget(executable: "claude", arguments: [],
-                                   workingDirectory: "/nonexistent", displayCommand: "claude")
-        XCTAssertFalse(TerminalLauncher.cwdExists(for: missing))
+                                   workingDirectory: "/nonexistent/deleted", displayCommand: "claude")
+        if case .missing = TerminalLauncher.cwdStatus(for: missing) {} else {
+            XCTFail("deleted path should be .missing")
+        }
 
         let noCwd = ResumeTarget(executable: "claude", arguments: [],
                                  workingDirectory: nil, displayCommand: "claude")
-        XCTAssertFalse(TerminalLauncher.cwdExists(for: noCwd))
+        if case .unknown = TerminalLauncher.cwdStatus(for: noCwd) {} else {
+            XCTFail("nil cwd should be .unknown")
+        }
+    }
+
+    func testTerminalAvailability() {
+        XCTAssertTrue(TerminalLauncher.isTerminalAvailable(.terminalApp), "Terminal.app should be available")
     }
 }
