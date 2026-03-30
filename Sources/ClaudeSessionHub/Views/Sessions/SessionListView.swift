@@ -45,6 +45,7 @@ struct SessionListView: View {
                 Text(project)
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .accessibilityIdentifier("sessionListProjectTitle")
                 Text("-- \(filteredSessions.count) sessions")
                     .foregroundStyle(.secondary)
             } else if let filter = statusFilter {

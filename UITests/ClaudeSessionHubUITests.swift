@@ -46,6 +46,11 @@ final class ClaudeSessionHubUITests: XCTestCase {
         XCTAssertTrue(openButton.waitForExistence(timeout: 5),
                       "Open Project button must exist — fixture has 2 projects (OACP, openclaw)")
 
+        // Extract the project name from the button's identifier (format: "openProject_<name>")
+        let buttonID = openButton.identifier
+        let expectedProject = String(buttonID.dropFirst("openProject_".count))
+        XCTAssertFalse(expectedProject.isEmpty, "Should extract project name from button ID")
+
         openButton.click()
 
         // Should switch to Sessions view with session list visible
@@ -53,9 +58,16 @@ final class ClaudeSessionHubUITests: XCTestCase {
         XCTAssertTrue(sessionList.waitForExistence(timeout: 5),
                       "Session list must appear after navigating from project")
 
+        // Verify the SPECIFIC project we clicked is now shown in the header
+        let projectTitle = app.staticTexts["sessionListProjectTitle"].firstMatch
+        XCTAssertTrue(projectTitle.waitForExistence(timeout: 5),
+                      "Project title must appear in session list header")
+        XCTAssertEqual(projectTitle.label, expectedProject,
+                       "Session list should show the clicked project '\(expectedProject)', not a default view")
+
         // Overview should no longer be showing
-        let overviewGone = app.otherElements["overviewRoot"].firstMatch
-        XCTAssertFalse(overviewGone.exists, "Overview should be hidden after project navigation")
+        XCTAssertFalse(app.otherElements["overviewRoot"].firstMatch.exists,
+                       "Overview should be hidden after project navigation")
     }
 
     // 4. Tile expand shows quick facts
