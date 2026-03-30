@@ -86,24 +86,24 @@ struct QuickFactsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Only shown when nextStep is non-nil (spec: "nextStep = nil → hide row")
+    @ViewBuilder
     private var nextStepCard: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label("下一步", systemImage: "arrow.right.circle")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            if let nextStep = detail?.nextStep {
+        if let nextStep = detail?.nextStep {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("下一步", systemImage: "arrow.right.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Text(nextStep)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .lineLimit(3)
-            } else {
-                Text("--")
-                    .font(.caption2)
-                    .foregroundStyle(.quaternary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            // Empty cell to maintain grid layout, but no visible content
+            Color.clear.frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var sessionStatsCard: some View {
@@ -137,15 +137,19 @@ struct QuickFactsView: View {
     private var actionsRow: some View {
         HStack(spacing: 12) {
             actionButton("Resume", icon: "play.fill", color: .blue) {
-                if let target = store.makeResumeTarget(for: session.ref) {
-                    TerminalLauncher.launch(target: target, in: store.selectedTerminal)
+                Task {
+                    if let target = await store.makeResumeTarget(for: session.ref) {
+                        TerminalLauncher.launch(target: target, in: store.selectedTerminal)
+                    }
                 }
             }
 
             actionButton("Copy Command", icon: "doc.on.doc", color: .secondary) {
-                if let target = store.makeResumeTarget(for: session.ref) {
-                    let cmd = TerminalLauncher.copyCommand(for: target)
-                    TerminalLauncher.copyToClipboard(cmd)
+                Task {
+                    if let target = await store.makeResumeTarget(for: session.ref) {
+                        let cmd = TerminalLauncher.copyCommand(for: target)
+                        TerminalLauncher.copyToClipboard(cmd)
+                    }
                 }
             }
 

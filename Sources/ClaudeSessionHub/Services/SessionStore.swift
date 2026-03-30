@@ -65,26 +65,12 @@ public final class SessionStore: @unchecked Sendable {
         return try? await provider.loadSessionDetail(for: ref)
     }
 
-    /// Get a ResumeTarget via the appropriate provider
-    @MainActor
-    public func makeResumeTarget(for ref: SessionRef) -> ResumeTarget? {
-        // Synchronous — providers generate targets from cached data
-        // We need to find the provider synchronously, but coordinator is an actor.
-        // Use the cached cwd from the session summary instead.
-        guard let session = sessions.first(where: { $0.ref == ref }) else { return nil }
-        // Build target using provider conventions
-        let executable: String
-        switch ref.providerID {
-        case "claude": executable = "claude"
-        case "codex": executable = "codex"
-        default: executable = ref.providerID
-        }
-        return ResumeTarget(
-            executable: executable,
-            arguments: ["-r", ref.sessionID],
-            workingDirectory: session.cwd,
-            displayCommand: "\(executable) -r \(ref.sessionID)"
-        )
+    /// Get a ResumeTarget by delegating to the actual provider.
+    /// This ensures provider-specific resume logic (arguments, executable, cwd) is respected.
+    public func makeResumeTarget(for ref: SessionRef) async -> ResumeTarget? {
+        let providers = await coordinator.activeProviders
+        guard let provider = providers.first(where: { $0.id == ref.providerID }) else { return nil }
+        return try? provider.makeResumeTarget(for: ref)
     }
 
     /// Get the user's selected terminal from settings

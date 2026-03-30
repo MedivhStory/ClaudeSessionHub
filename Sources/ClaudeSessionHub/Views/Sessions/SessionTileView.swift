@@ -156,8 +156,10 @@ struct SessionTileView: View {
 
     private var resumeButton: some View {
         Button {
-            if let target = store.makeResumeTarget(for: session.ref) {
-                TerminalLauncher.launch(target: target, in: store.selectedTerminal)
+            Task {
+                if let target = await store.makeResumeTarget(for: session.ref) {
+                    TerminalLauncher.launch(target: target, in: store.selectedTerminal)
+                }
             }
         } label: {
             Image(systemName: "play.fill")
