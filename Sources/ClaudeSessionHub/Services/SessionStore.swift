@@ -55,6 +55,43 @@ public final class SessionStore: @unchecked Sendable {
     public var activeProviderIDs: Set<ProviderID> {
         Set(sessions.map(\.ref.providerID))
     }
+
+    // MARK: - Provider-delegated actions
+
+    /// Load full session detail via the appropriate provider
+    public func loadDetail(for ref: SessionRef) async -> SessionDetail? {
+        let providers = await coordinator.activeProviders
+        guard let provider = providers.first(where: { $0.id == ref.providerID }) else { return nil }
+        return try? await provider.loadSessionDetail(for: ref)
+    }
+
+    /// Get a ResumeTarget via the appropriate provider
+    @MainActor
+    public func makeResumeTarget(for ref: SessionRef) -> ResumeTarget? {
+        // Synchronous — providers generate targets from cached data
+        // We need to find the provider synchronously, but coordinator is an actor.
+        // Use the cached cwd from the session summary instead.
+        guard let session = sessions.first(where: { $0.ref == ref }) else { return nil }
+        // Build target using provider conventions
+        let executable: String
+        switch ref.providerID {
+        case "claude": executable = "claude"
+        case "codex": executable = "codex"
+        default: executable = ref.providerID
+        }
+        return ResumeTarget(
+            executable: executable,
+            arguments: ["-r", ref.sessionID],
+            workingDirectory: session.cwd,
+            displayCommand: "\(executable) -r \(ref.sessionID)"
+        )
+    }
+
+    /// Get the user's selected terminal from settings
+    @MainActor
+    public var selectedTerminal: TerminalLauncher.Terminal {
+        TerminalLauncher.Terminal(rawValue: settings.selectedTerminal) ?? .ghostty
+    }
 }
 
 public enum ProjectNameResolver {

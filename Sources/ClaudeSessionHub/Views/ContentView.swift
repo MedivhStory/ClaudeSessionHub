@@ -5,6 +5,7 @@ public struct ContentView: View {
     @State private var showOverview = false
     @State private var selectedProject: String?
     @State private var statusFilter: RuntimeState?
+    @State private var agentFilter: ProviderID?
     @State private var searchText = ""
 
     public init() {}
@@ -20,7 +21,11 @@ public struct ContentView: View {
                 .pickerStyle(.segmented)
                 .padding(8)
 
-                SidebarView(selectedProject: $selectedProject, statusFilter: $statusFilter)
+                SidebarView(
+                    selectedProject: $selectedProject,
+                    statusFilter: $statusFilter,
+                    agentFilter: $agentFilter
+                )
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
         } detail: {
@@ -33,7 +38,8 @@ public struct ContentView: View {
                 SessionListView(
                     searchText: $searchText,
                     selectedProject: selectedProject,
-                    statusFilter: statusFilter
+                    statusFilter: statusFilter,
+                    agentFilter: agentFilter
                 )
             }
         }

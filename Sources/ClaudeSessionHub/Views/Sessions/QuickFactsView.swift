@@ -1,54 +1,80 @@
 import SwiftUI
+#if canImport(AppKit)
+import AppKit
+#endif
 
 struct QuickFactsView: View {
+    @Environment(SessionStore.self) var store
     let session: SessionSummary
+    @State private var detail: SessionDetail?
+    @State private var isLoading = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // 2x2 grid
-            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
-                GridRow {
-                    recentFilesCard
-                    contextUsageCard
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+            } else {
+                // 2x2 grid
+                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
+                    GridRow {
+                        recentFilesCard
+                        contextUsageCard
+                    }
+                    GridRow {
+                        nextStepCard
+                        sessionStatsCard
+                    }
                 }
-                GridRow {
-                    nextStepCard
-                    sessionStatsCard
-                }
-            }
 
-            // Actions row
-            actionsRow
+                // Actions row
+                actionsRow
+            }
         }
         .padding(.top, 4)
+        .task {
+            detail = await store.loadDetail(for: session.ref)
+            isLoading = false
+        }
     }
 
     // MARK: - Cards
 
     private var recentFilesCard: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Recent Files", systemImage: "doc.text")
+            Label("最近改动", systemImage: "doc.text")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("\(session.filesTouched) files touched")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+
+            if let files = detail?.recentFiles, !files.isEmpty {
+                ForEach(files.suffix(5), id: \.self) { file in
+                    Text((file as NSString).lastPathComponent)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+            } else {
+                Text("\(session.filesTouched) files touched")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var contextUsageCard: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Context", systemImage: "chart.bar")
+            Label("上下文占用", systemImage: "chart.bar")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             if let usage = session.contextUsage {
                 let usedK = usage.promptContext / 1000
-                let limitK = usage.limit / 1000
+                let limitM = usage.limit / 1_000_000
                 ProgressView(value: usage.percentage)
                     .tint(contextBarColor(usage.percentage))
-                Text("\u{4E0A}\u{4E0B}\u{6587}\u{5360}\u{7528} \(usedK)k / \(limitK > 0 ? "\(limitK / 1000)M" : "?")")
+                Text("\(usedK)k / \(limitM > 0 ? "\(limitM)M" : "\(usage.limit / 1000)k")")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             } else {
@@ -62,26 +88,46 @@ struct QuickFactsView: View {
 
     private var nextStepCard: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Next Step", systemImage: "arrow.right.circle")
+            Label("下一步", systemImage: "arrow.right.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("--")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+
+            if let nextStep = detail?.nextStep {
+                Text(nextStep)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(3)
+            } else {
+                Text("--")
+                    .font(.caption2)
+                    .foregroundStyle(.quaternary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var sessionStatsCard: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Stats", systemImage: "chart.xyaxis.line")
+            Label("统计", systemImage: "chart.xyaxis.line")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             let dateStr = session.createdAt.formatted(date: .abbreviated, time: .omitted)
-            Text("\u{521B}\u{5EFA} \(dateStr) \u{00B7} \(session.turnCount) turns")
+            Text("创建 \(dateStr) · \(session.turnCount) turns")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+
+            if let tokens = detail?.cumulativeTokens {
+                Text("累计消耗 \(formatTokenCount(tokens.totalTokens)) tokens")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            if let totalErrors = detail?.totalErrorCount, totalErrors > 0 {
+                Text("总错误 \(totalErrors)")
+                    .font(.caption2)
+                    .foregroundStyle(.red.opacity(0.7))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -90,27 +136,17 @@ struct QuickFactsView: View {
 
     private var actionsRow: some View {
         HStack(spacing: 12) {
-            if session.runtimeState == .stopped {
-                actionButton("Resume", icon: "play.fill", color: .blue) {
-                    let target = ResumeTarget(
-                        executable: "claude",
-                        arguments: ["--resume", session.ref.sessionID],
-                        workingDirectory: session.cwd,
-                        displayCommand: "claude --resume \(session.ref.sessionID)"
-                    )
-                    TerminalLauncher.launch(target: target, in: .ghostty)
+            actionButton("Resume", icon: "play.fill", color: .blue) {
+                if let target = store.makeResumeTarget(for: session.ref) {
+                    TerminalLauncher.launch(target: target, in: store.selectedTerminal)
                 }
             }
 
             actionButton("Copy Command", icon: "doc.on.doc", color: .secondary) {
-                let target = ResumeTarget(
-                    executable: "claude",
-                    arguments: ["--resume", session.ref.sessionID],
-                    workingDirectory: session.cwd,
-                    displayCommand: "claude --resume \(session.ref.sessionID)"
-                )
-                let cmd = TerminalLauncher.copyCommand(for: target)
-                TerminalLauncher.copyToClipboard(cmd)
+                if let target = store.makeResumeTarget(for: session.ref) {
+                    let cmd = TerminalLauncher.copyCommand(for: target)
+                    TerminalLauncher.copyToClipboard(cmd)
+                }
             }
 
             if let cwd = session.cwd {
@@ -138,5 +174,11 @@ struct QuickFactsView: View {
         if percentage >= 0.9 { return .red }
         if percentage >= 0.75 { return .orange }
         return .green
+    }
+
+    private func formatTokenCount(_ count: Int) -> String {
+        if count >= 1_000_000 { return String(format: "%.1fM", Double(count) / 1_000_000) }
+        if count >= 1_000 { return String(format: "%.1fk", Double(count) / 1_000) }
+        return "\(count)"
     }
 }

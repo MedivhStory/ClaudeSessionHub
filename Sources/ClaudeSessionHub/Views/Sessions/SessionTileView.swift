@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SessionTileView: View {
+    @Environment(SessionStore.self) var store
     let session: SessionSummary
     @State private var isExpanded = false
 
@@ -155,13 +156,9 @@ struct SessionTileView: View {
 
     private var resumeButton: some View {
         Button {
-            let target = ResumeTarget(
-                executable: "claude",
-                arguments: ["--resume", session.ref.sessionID],
-                workingDirectory: session.cwd,
-                displayCommand: "claude --resume \(session.ref.sessionID)"
-            )
-            TerminalLauncher.launch(target: target, in: .ghostty)
+            if let target = store.makeResumeTarget(for: session.ref) {
+                TerminalLauncher.launch(target: target, in: store.selectedTerminal)
+            }
         } label: {
             Image(systemName: "play.fill")
                 .font(.caption)

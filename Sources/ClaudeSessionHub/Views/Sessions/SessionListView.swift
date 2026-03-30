@@ -5,6 +5,7 @@ struct SessionListView: View {
     @Binding var searchText: String
     var selectedProject: String?
     var statusFilter: RuntimeState?
+    var agentFilter: ProviderID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -100,6 +101,11 @@ struct SessionListView: View {
             let projectSessions = store.projects[project] ?? []
             let projectRefs = Set(projectSessions.map(\.ref))
             result = result.filter { projectRefs.contains($0.ref) }
+        }
+
+        // Filter by agent
+        if let agent = agentFilter {
+            result = result.filter { $0.ref.providerID == agent }
         }
 
         // Filter by status

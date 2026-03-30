@@ -4,6 +4,7 @@ struct SidebarView: View {
     @Environment(SessionStore.self) var store
     @Binding var selectedProject: String?
     @Binding var statusFilter: RuntimeState?
+    @Binding var agentFilter: ProviderID?
 
     @State private var agentsExpanded = true
     @State private var projectsExpanded = true
@@ -15,7 +16,7 @@ struct SidebarView: View {
             Section(isExpanded: $agentsExpanded) {
                 ForEach(agentRows, id: \.id) { row in
                     Button {
-                        // Clear other filters, could add agent filter later
+                        agentFilter = (agentFilter == row.id) ? nil : row.id
                         selectedProject = nil
                         statusFilter = nil
                     } label: {
