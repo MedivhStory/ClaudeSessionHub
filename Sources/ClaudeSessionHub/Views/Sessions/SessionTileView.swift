@@ -168,6 +168,7 @@ struct SessionTileView: View {
                 .foregroundStyle(.blue)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("resumeButton_\(session.ref.sessionID)")
         .help("Resume session")
     }
 

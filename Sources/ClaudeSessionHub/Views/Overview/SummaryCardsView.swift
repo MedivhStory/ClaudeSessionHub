@@ -14,24 +14,28 @@ struct SummaryCardsView: View {
                 color: .orange,
                 icon: "exclamationmark.triangle.fill"
             )
+            .accessibilityIdentifier("summaryAttention")
             card(
                 value: "\(activeCount)",
                 label: "Active",
                 color: .green,
                 icon: "bolt.fill"
             )
+            .accessibilityIdentifier("summaryActive")
             card(
                 value: "\(projectCount)",
                 label: "Projects",
                 color: .purple,
                 icon: "folder.fill"
             )
+            .accessibilityIdentifier("summaryProjects")
             card(
                 value: scanTimeText,
                 label: "Last Scan",
                 color: .gray,
                 icon: "clock"
             )
+            .accessibilityIdentifier("summaryLastScan")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)

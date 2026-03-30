@@ -23,6 +23,9 @@ struct ScanTimerModifier: ViewModifier {
     }
 
     private func startTimers() {
+        // In UI test mode, skip all timers for deterministic behavior
+        guard !CommandLine.arguments.contains("--ui-test-mode") else { return }
+
         // PID liveness check: fixed 10s, cheap — only refreshes runtimeState
         pidTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { _ in
             Task { await store.refreshRuntimeState() }

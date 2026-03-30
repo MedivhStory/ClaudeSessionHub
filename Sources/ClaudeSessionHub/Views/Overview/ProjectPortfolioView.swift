@@ -42,6 +42,7 @@ struct ProjectPortfolioView: View {
                     .foregroundStyle(.blue)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("viewAllSessions")
                 .padding(.top, 4)
             }
         }
@@ -89,6 +90,7 @@ struct ProjectPortfolioView: View {
                         .foregroundStyle(.blue)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("openProject_\(name)")
                 }
             }
 
@@ -131,6 +133,7 @@ struct ProjectPortfolioView: View {
         .padding(10)
         .background(Color(.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .accessibilityIdentifier("projectCard_\(name)")
     }
 
     // MARK: - Finished Row

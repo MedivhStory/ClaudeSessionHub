@@ -49,6 +49,7 @@ struct AttentionInboxView: View {
             }
         }
         .padding(12)
+        .accessibilityIdentifier("attentionInbox")
     }
 
     // MARK: - Section Header

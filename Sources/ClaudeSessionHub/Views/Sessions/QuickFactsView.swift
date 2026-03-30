@@ -33,6 +33,7 @@ struct QuickFactsView: View {
             }
         }
         .padding(.top, 4)
+        .accessibilityIdentifier("quickFacts_\(session.ref.sessionID)")
         .task {
             detail = await store.loadDetail(for: session.ref)
             isLoading = false
