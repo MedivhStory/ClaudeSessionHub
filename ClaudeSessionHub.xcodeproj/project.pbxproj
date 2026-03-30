@@ -37,6 +37,7 @@
 		A1000028 /* SessionTileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000028; };
 		A1000029 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000029; };
 		A1000030 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000030; };
+		A1000031 /* FixtureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000031; };
 		A2000001 /* ClaudeSessionHubUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001; };
 /* End PBXBuildFile section */
 
@@ -84,6 +85,7 @@
 		B2000001 /* ClaudeSessionHubUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSessionHubUITests.swift; sourceTree = "<group>"; };
 		PRODUCT001 /* ClaudeSessionHub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeSessionHub.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		PRODUCT002 /* ClaudeSessionHubUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudeSessionHubUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1000031 /* FixtureProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureProvider.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -160,6 +162,7 @@
 				B1000006 /* AgentProvider.swift */,
 				B1000007 /* ClaudeProvider.swift */,
 				B1000008 /* CodexProvider.swift */,
+				B1000031 /* FixtureProvider.swift */,
 				B1000009 /* JSONLParser.swift */,
 			);
 			path = Providers;
@@ -331,6 +334,7 @@
 				A1000028 /* SessionTileView.swift in Sources */,
 				A1000029 /* SidebarView.swift in Sources */,
 				A1000030 /* SettingsView.swift in Sources */,
+				A1000031 /* FixtureProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
