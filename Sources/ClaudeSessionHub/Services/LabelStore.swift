@@ -1,5 +1,7 @@
 import Foundation
+import Observation
 
+@Observable
 public final class LabelStore {
     private var labels: [String: String] = [:]
     private let filePath: String

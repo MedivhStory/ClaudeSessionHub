@@ -31,8 +31,13 @@ public final class SessionStore: @unchecked Sendable {
 
     @MainActor
     public var projects: [String: [SessionSummary]] {
-        Dictionary(grouping: sessions) { session in
-            session.cwd.map { ProjectNameResolver.displayName(for: $0) } ?? "Unknown"
+        // Resolve collisions first: two cwds with same basename get disambiguated
+        let allCwds = Array(Set(sessions.compactMap(\.cwd)))
+        let nameMap = ProjectNameResolver.resolveCollisions(allCwds)
+
+        return Dictionary(grouping: sessions) { session in
+            guard let cwd = session.cwd else { return "Unknown" }
+            return nameMap[cwd] ?? ProjectNameResolver.displayName(for: cwd)
         }
     }
 

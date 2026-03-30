@@ -1,5 +1,7 @@
 import Foundation
+import Observation
 
+@Observable
 public final class SettingsStore {
     public var selectedTerminal: String = "Ghostty"
     public var claudeDataDirectory: String = NSHomeDirectory() + "/.claude"
