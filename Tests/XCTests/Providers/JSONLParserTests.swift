@@ -68,11 +68,11 @@ final class JSONLParserXCTests: XCTestCase {
     }
 
     func testWithSampleFixture() throws {
-        let bundle = Bundle(for: type(of: self))
-        guard let fixturePath = bundle.path(forResource: "sample-session", ofType: "jsonl", inDirectory: "Fixtures") else {
+        guard let fixtureURL = Bundle.module.url(forResource: "sample-session", withExtension: "jsonl", subdirectory: "Fixtures") else {
             XCTFail("sample-session.jsonl fixture not found in bundle")
             return
         }
+        let fixturePath = fixtureURL.path
 
         let first = try JSONLParser.readFirstEntries(at: fixturePath, count: 5)
         XCTAssertGreaterThan(first.count, 0, "should read at least 1 entry from fixture")
