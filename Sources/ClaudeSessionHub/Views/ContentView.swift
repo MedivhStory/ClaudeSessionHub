@@ -32,10 +32,20 @@ public struct ContentView: View {
             if showOverview {
                 OverviewView(
                     onNavigateToProject: { project in
+                        // Clear all filters before navigating — prevents stale filters
+                        // from hiding sessions in the target project
+                        statusFilter = nil
+                        agentFilter = nil
+                        searchText = ""
                         selectedProject = project
                         showOverview = false
                     },
                     onNavigateToSessions: {
+                        // Clear filters for clean "View All" landing
+                        statusFilter = nil
+                        agentFilter = nil
+                        searchText = ""
+                        selectedProject = nil
                         showOverview = false
                     }
                 )

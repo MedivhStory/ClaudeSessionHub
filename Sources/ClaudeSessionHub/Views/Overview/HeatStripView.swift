@@ -31,25 +31,35 @@ struct HeatStripView: View {
     private func projectBlock(name: String, sessions: [SessionSummary]) -> some View {
         let activeCount = sessions.filter { $0.runtimeState == .active }.count
         let attentionCount = sessions.filter { !HealthEngine.computeSignals(for: $0).isEmpty }.count
+        let lastActive = sessions.map(\.lastActiveAt).max()
 
-        return HStack(spacing: 3) {
-            Text(name)
-                .font(.caption)
-                .lineLimit(1)
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 3) {
+                Text(name)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
 
-            if activeCount > 0 {
-                ForEach(0..<min(activeCount, 3), id: \.self) { _ in
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
+                if activeCount > 0 {
+                    ForEach(0..<min(activeCount, 3), id: \.self) { _ in
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                    }
+                }
+                if attentionCount > 0 {
+                    ForEach(0..<min(attentionCount, 3), id: \.self) { _ in
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 6, height: 6)
+                    }
                 }
             }
-            if attentionCount > 0 {
-                ForEach(0..<min(attentionCount, 3), id: \.self) { _ in
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 6, height: 6)
-                }
+            // Last active time — spec: "name + active dots + attention dots + last active time"
+            if let lastActive {
+                Text(relativeTime(lastActive))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding(.horizontal, 8)
@@ -57,5 +67,11 @@ struct HeatStripView: View {
         .background(Color(.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
