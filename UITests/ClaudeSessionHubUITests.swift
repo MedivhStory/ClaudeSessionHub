@@ -26,10 +26,13 @@ final class ClaudeSessionHubUITests: XCTestCase {
         let overview = app.otherElements["overviewRoot"].firstMatch
         XCTAssertTrue(overview.waitForExistence(timeout: 5), "Overview root must appear")
 
-        // All 4 summary cards must exist (not "any of these" — all of them)
-        XCTAssertTrue(app.otherElements["summaryAttention"].waitForExistence(timeout: 3)
-            || app.staticTexts["summaryAttention"].waitForExistence(timeout: 1),
-            "Attention summary card must exist")
+        // All 4 summary cards must exist individually
+        for cardID in ["summaryAttention", "summaryActive", "summaryProjects", "summaryLastScan"] {
+            let found = app.otherElements[cardID].waitForExistence(timeout: 3)
+                || app.staticTexts[cardID].waitForExistence(timeout: 1)
+                || app.descendants(matching: .any).matching(identifier: cardID).firstMatch.waitForExistence(timeout: 1)
+            XCTAssertTrue(found, "\(cardID) summary card must exist in Overview")
+        }
     }
 
     // 3. Overview → click project → lands in Sessions for THAT project
