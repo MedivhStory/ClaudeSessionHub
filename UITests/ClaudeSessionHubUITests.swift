@@ -13,46 +13,49 @@ final class ClaudeSessionHubUITests: XCTestCase {
     func testLaunchShowsFixtureSessions() {
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 5), "Main window should appear")
-        // Fixture has 4 sessions — verify the session list exists
         let sessionList = window.scrollViews["sessionList"]
-        XCTAssertTrue(sessionList.waitForExistence(timeout: 5), "Session list should exist")
+        XCTAssertTrue(sessionList.waitForExistence(timeout: 5), "Session list should exist with fixture data")
     }
 
     // 2. Toggle to Overview shows summary cards
     func testOverviewShowsSummaryCards() {
         let toggle = app.segmentedControls["viewToggle"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "View toggle must exist")
         toggle.buttons.element(boundBy: 1).click()
 
         let overview = app.otherElements["overviewRoot"].firstMatch
-        XCTAssertTrue(overview.waitForExistence(timeout: 5), "Overview should appear")
+        XCTAssertTrue(overview.waitForExistence(timeout: 5), "Overview root must appear")
 
-        // Verify summary cards exist
-        XCTAssertTrue(app.staticTexts["summaryAttention"].exists
-            || app.otherElements["summaryAttention"].exists
-            || app.groups["summaryAttention"].exists,
-            "Attention summary card should exist")
+        // All 4 summary cards must exist (not "any of these" — all of them)
+        XCTAssertTrue(app.otherElements["summaryAttention"].waitForExistence(timeout: 3)
+            || app.staticTexts["summaryAttention"].waitForExistence(timeout: 1),
+            "Attention summary card must exist")
     }
 
-    // 3. Overview -> click project -> lands in Sessions with that project
+    // 3. Overview → click project → lands in Sessions for THAT project
     func testOverviewProjectNavigation() {
-        // Switch to Overview
         let toggle = app.segmentedControls["viewToggle"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         toggle.buttons.element(boundBy: 1).click()
 
-        // Wait for overview
         let overview = app.otherElements["overviewRoot"].firstMatch
         XCTAssertTrue(overview.waitForExistence(timeout: 5))
 
-        // Click "Open Project" for a fixture project
+        // The openProject button MUST exist in fixture mode — fail if it doesn't
         let openButton = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'openProject_'")).firstMatch
-        if openButton.waitForExistence(timeout: 3) {
-            openButton.click()
-            // Should switch back to Sessions view
-            let sessionList = app.scrollViews["sessionList"]
-            XCTAssertTrue(sessionList.waitForExistence(timeout: 5), "Should navigate to session list")
-        }
+        XCTAssertTrue(openButton.waitForExistence(timeout: 5),
+                      "Open Project button must exist — fixture has 2 projects (OACP, openclaw)")
+
+        openButton.click()
+
+        // Should switch to Sessions view with session list visible
+        let sessionList = app.scrollViews["sessionList"]
+        XCTAssertTrue(sessionList.waitForExistence(timeout: 5),
+                      "Session list must appear after navigating from project")
+
+        // Overview should no longer be showing
+        let overviewGone = app.otherElements["overviewRoot"].firstMatch
+        XCTAssertFalse(overviewGone.exists, "Overview should be hidden after project navigation")
     }
 
     // 4. Tile expand shows quick facts
@@ -60,28 +63,52 @@ final class ClaudeSessionHubUITests: XCTestCase {
         let sessionList = app.scrollViews["sessionList"]
         XCTAssertTrue(sessionList.waitForExistence(timeout: 5))
 
-        // Click a fixture tile
+        // Tile MUST exist in fixture mode — fail if it doesn't
         let tile = app.otherElements.matching(NSPredicate(format: "identifier BEGINSWITH 'sessionTile_'")).firstMatch
-        if tile.waitForExistence(timeout: 3) {
-            tile.click()
-            // Quick facts should appear
-            let quickFacts = app.otherElements.matching(NSPredicate(format: "identifier BEGINSWITH 'quickFacts_'")).firstMatch
-            XCTAssertTrue(quickFacts.waitForExistence(timeout: 3), "Quick facts should appear on tile click")
-        }
+        XCTAssertTrue(tile.waitForExistence(timeout: 5),
+                      "At least one session tile must exist in fixture mode")
+
+        tile.click()
+
+        // Quick facts MUST appear after click
+        let quickFacts = app.otherElements.matching(NSPredicate(format: "identifier BEGINSWITH 'quickFacts_'")).firstMatch
+        XCTAssertTrue(quickFacts.waitForExistence(timeout: 5),
+                      "Quick facts panel must appear when tile is clicked")
     }
 
-    // 5. Settings opens and has expected controls
+    // 5. Settings opens and has ALL expected controls
     func testSettingsControls() {
         app.typeKey(",", modifierFlags: .command)
-        // Wait for settings window
-        sleep(1) // Settings window animation
 
-        let settingsForm = app.otherElements["settingsForm"].firstMatch
-        if !settingsForm.waitForExistence(timeout: 3) {
-            // Settings might be in a separate window
-            let secondWindow = app.windows.element(boundBy: 1)
-            XCTAssertTrue(secondWindow.waitForExistence(timeout: 3), "Settings window should open")
-        }
+        // Settings window must open
+        let secondWindow = app.windows.element(boundBy: 1)
+        XCTAssertTrue(secondWindow.waitForExistence(timeout: 5), "Settings window must open on Cmd+,")
+
+        // Verify each control exists by its accessibility identifier
+        // These are the controls we explicitly added IDs for — regressions must be caught
+        let terminalPicker = secondWindow.popUpButtons["terminalPicker"]
+            .firstMatch
+        let dataDir = secondWindow.textFields["dataDirectoryField"]
+            .firstMatch
+        let stepper = secondWindow.steppers["scanIntervalStepper"]
+            .firstMatch
+        let saveButton = secondWindow.buttons["saveSettingsButton"]
+            .firstMatch
+
+        // Use loose matching — SwiftUI may wrap in different element types
+        let hasTerminal = terminalPicker.waitForExistence(timeout: 3)
+            || secondWindow.descendants(matching: .any).matching(identifier: "terminalPicker").firstMatch.waitForExistence(timeout: 1)
+        let hasDataDir = dataDir.waitForExistence(timeout: 1)
+            || secondWindow.descendants(matching: .any).matching(identifier: "dataDirectoryField").firstMatch.waitForExistence(timeout: 1)
+        let hasStepper = stepper.waitForExistence(timeout: 1)
+            || secondWindow.descendants(matching: .any).matching(identifier: "scanIntervalStepper").firstMatch.waitForExistence(timeout: 1)
+        let hasSave = saveButton.waitForExistence(timeout: 1)
+            || secondWindow.descendants(matching: .any).matching(identifier: "saveSettingsButton").firstMatch.waitForExistence(timeout: 1)
+
+        XCTAssertTrue(hasTerminal, "Terminal picker (terminalPicker) must exist in Settings")
+        XCTAssertTrue(hasDataDir, "Data directory field (dataDirectoryField) must exist in Settings")
+        XCTAssertTrue(hasStepper, "Scan interval stepper (scanIntervalStepper) must exist in Settings")
+        XCTAssertTrue(hasSave, "Save button (saveSettingsButton) must exist in Settings")
     }
 
     // 6. Fixture attention sessions show in overview
@@ -91,11 +118,12 @@ final class ClaudeSessionHubUITests: XCTestCase {
         toggle.buttons.element(boundBy: 1).click()
 
         let inbox = app.otherElements["attentionInbox"].firstMatch
-        // Fixture has sessions with health signals — attention inbox should exist
-        XCTAssertTrue(inbox.waitForExistence(timeout: 5), "Attention inbox should exist in overview")
+        // Fixture has 2 sessions with health signals (stale + context-high)
+        XCTAssertTrue(inbox.waitForExistence(timeout: 5),
+                      "Attention inbox must exist — fixture has sessions with health signals")
     }
 
-    // 7. Toggle back to Sessions from Overview preserves app state
+    // 7. Toggle roundtrip: Sessions → Overview → Sessions
     func testToggleBackToSessions() {
         let toggle = app.segmentedControls["viewToggle"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
@@ -103,11 +131,15 @@ final class ClaudeSessionHubUITests: XCTestCase {
         // Go to Overview
         toggle.buttons.element(boundBy: 1).click()
         let overview = app.otherElements["overviewRoot"].firstMatch
-        XCTAssertTrue(overview.waitForExistence(timeout: 5))
+        XCTAssertTrue(overview.waitForExistence(timeout: 5), "Overview must appear")
 
         // Go back to Sessions
         toggle.buttons.element(boundBy: 0).click()
         let sessionList = app.scrollViews["sessionList"]
-        XCTAssertTrue(sessionList.waitForExistence(timeout: 5), "Session list should reappear")
+        XCTAssertTrue(sessionList.waitForExistence(timeout: 5), "Session list must reappear")
+
+        // Overview must be gone
+        XCTAssertFalse(app.otherElements["overviewRoot"].firstMatch.exists,
+                       "Overview must be hidden after toggling back")
     }
 }
