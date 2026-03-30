@@ -56,6 +56,35 @@ public final class SessionStore: @unchecked Sendable {
         Set(sessions.map(\.ref.providerID))
     }
 
+    // MARK: - Lightweight PID refresh (cheap, 10s cadence)
+
+    /// Refresh only runtime state (PID liveness) without re-reading JSONL files.
+    /// This is the cheap path — does NOT update lastScanTime.
+    @MainActor
+    public func refreshRuntimeState() async {
+        let runtimeStates = await coordinator.refreshRuntime(sessions: sessions)
+        // Update runtimeState in place for sessions that changed
+        sessions = sessions.map { session in
+            guard let state = runtimeStates[session.ref] else { return session }
+            let newRuntime: RuntimeState
+            switch state {
+            case .alive: newRuntime = .active
+            case .dead: newRuntime = .stopped
+            }
+            guard newRuntime != session.runtimeState else { return session }
+            return SessionSummary(
+                ref: session.ref, title: session.title,
+                currentTaskSummary: session.currentTaskSummary,
+                runtimeState: newRuntime, taskPhase: session.taskPhase,
+                cwd: session.cwd, branch: session.branch,
+                turnCount: session.turnCount, filesTouched: session.filesTouched,
+                recentErrorCount: session.recentErrorCount,
+                createdAt: session.createdAt, lastActiveAt: session.lastActiveAt,
+                contextUsage: session.contextUsage
+            )
+        }
+    }
+
     // MARK: - Provider-delegated actions
 
     /// Load full session detail via the appropriate provider

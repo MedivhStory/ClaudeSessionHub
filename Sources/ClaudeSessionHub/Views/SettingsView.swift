@@ -14,9 +14,14 @@ public struct SettingsView: View {
                 }
             }
 
-            // Data directory
+            // Data directory — requires app restart to take effect
             TextField("Claude 数据目录", text: dataDirectoryBinding)
-                .help("默认: ~/.claude")
+                .help("默认: ~/.claude — 修改后需重启应用生效")
+            if store.settings.claudeDataDirectory != (NSHomeDirectory() + "/.claude") {
+                Text("数据目录已修改，保存后需重启应用生效")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
 
             // Scan interval
             Stepper("扫描间隔: \(store.settings.scanIntervalSeconds)s",
