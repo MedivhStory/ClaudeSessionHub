@@ -82,21 +82,9 @@ struct QuickFactsView: View {
                     .foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-        } else if let tokens = detail?.cumulativeTokens, let modelInfo = detail?.modelInfo {
-            // No high-confidence usage, but we have cumulative tokens — show estimate with ~
-            VStack(alignment: .leading, spacing: 4) {
-                Label("上下文占用", systemImage: "chart.bar")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                let estimateK = tokens.inputTokens / 1000
-                let limitM = modelInfo.contextLimit / 1_000_000
-                Text("~\(estimateK)k / \(limitM > 0 ? "\(limitM)M" : "?")")
-                    .font(.caption2)
-                    .foregroundStyle(.quaternary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
         } else {
-            // No data at all — empty cell to maintain grid
+            // No high-confidence usage data — hide entirely.
+            // Cumulative tokens ≠ current context window, so no estimation shown.
             Color.clear.frame(maxWidth: .infinity)
         }
     }
