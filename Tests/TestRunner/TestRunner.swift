@@ -58,6 +58,7 @@ struct TestMain {
         HealthEngineTests.run()
         LabelStoreTests.run()
         ScanCoordinatorTests.run()
+        TerminalLauncherTests.run()
         printResults()
     }
 }
