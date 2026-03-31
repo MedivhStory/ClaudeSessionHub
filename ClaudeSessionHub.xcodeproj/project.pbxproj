@@ -38,6 +38,7 @@
 		A1000029 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000029; };
 		A1000030 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000030; };
 		A1000031 /* FixtureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000031; };
+		A1000032 /* ArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000032; };
 		A2000001 /* ClaudeSessionHubUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001; };
 /* End PBXBuildFile section */
 
@@ -86,6 +87,7 @@
 		PRODUCT001 /* ClaudeSessionHub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeSessionHub.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		PRODUCT002 /* ClaudeSessionHubUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudeSessionHubUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1000031 /* FixtureProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureProvider.swift; sourceTree = "<group>"; };
+		B1000032 /* ArchiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -171,6 +173,7 @@
 		GRPSERVS /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				B1000032 /* ArchiveStore.swift */,
 				B1000010 /* HealthEngine.swift */,
 				B1000011 /* LabelStore.swift */,
 				B1000012 /* ScanCoordinator.swift */,
@@ -335,6 +338,7 @@
 				A1000029 /* SidebarView.swift in Sources */,
 				A1000030 /* SettingsView.swift in Sources */,
 				A1000031 /* FixtureProvider.swift in Sources */,
+				A1000032 /* ArchiveStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
