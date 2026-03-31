@@ -37,14 +37,17 @@ public final class SessionStore: @unchecked Sendable {
     }
 
     // MARK: - Derived computed properties
+    // All aggregates use visibleSessions (respects archive filter),
+    // so sidebar counts, Overview cards, heat strip, and project portfolio
+    // are consistent with the session list.
 
     @MainActor
     public var projects: [String: [SessionSummary]] {
-        // Resolve collisions first: two cwds with same basename get disambiguated
-        let allCwds = Array(Set(sessions.compactMap(\.cwd)))
+        let visible = visibleSessions
+        let allCwds = Array(Set(visible.compactMap(\.cwd)))
         let nameMap = ProjectNameResolver.resolveCollisions(allCwds)
 
-        return Dictionary(grouping: sessions) { session in
+        return Dictionary(grouping: visible) { session in
             guard let cwd = session.cwd else { return "Unknown" }
             return nameMap[cwd] ?? ProjectNameResolver.displayName(for: cwd)
         }
@@ -52,17 +55,17 @@ public final class SessionStore: @unchecked Sendable {
 
     @MainActor
     public var activeSessions: [SessionSummary] {
-        sessions.filter { $0.runtimeState == .active }
+        visibleSessions.filter { $0.runtimeState == .active }
     }
 
     @MainActor
     public var attentionSessions: [SessionSummary] {
-        sessions.filter { !HealthEngine.computeSignals(for: $0).isEmpty }
+        visibleSessions.filter { !HealthEngine.computeSignals(for: $0).isEmpty }
     }
 
     @MainActor
     public var activeProviderIDs: Set<ProviderID> {
-        Set(sessions.map(\.ref.providerID))
+        Set(visibleSessions.map(\.ref.providerID))
     }
 
     // MARK: - Lightweight PID refresh (cheap, 10s cadence)
