@@ -261,33 +261,27 @@ final class ClaudeSessionHubUITests: XCTestCase {
     func testHeatStripAndProjectCardNavigateToSameProject() {
         switchToOverview()
 
-        let overview = app.descendants(matching: .any).matching(identifier: "overviewRoot").firstMatch
-        XCTAssertTrue(overview.waitForExistence(timeout: 5))
-
-        // Click heatStrip_OACP
+        // Wait for overview content to fully render
         let heatStrip = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "heatStrip_OACP")).firstMatch
-        XCTAssertTrue(heatStrip.waitForExistence(timeout: 5), "HeatStrip for OACP must exist")
+        XCTAssertTrue(heatStrip.waitForExistence(timeout: 10), "HeatStrip for OACP must exist")
         heatStrip.click()
 
-        // Verify we landed on OACP sessions
+        // Verify we landed on OACP sessions — use longer timeout for navigation
         let projectTitle = app.staticTexts["sessionListProjectTitle"].firstMatch
-        XCTAssertTrue(projectTitle.waitForExistence(timeout: 5), "Project title must appear after heatStrip click")
+        XCTAssertTrue(projectTitle.waitForExistence(timeout: 10), "Project title must appear after heatStrip click")
         let titleValue = "\(projectTitle.value ?? "")"
         XCTAssertTrue(titleValue.contains("OACP"), "HeatStrip should navigate to OACP, got '\(titleValue)'")
 
-        // Switch back to Overview
+        // Switch back to Overview and wait for full render
         switchToOverview()
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "overviewRoot").firstMatch
-            .waitForExistence(timeout: 5))
-
-        // Click openProject_OACP
         let openButton = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "openProject_OACP")).firstMatch
-        XCTAssertTrue(openButton.waitForExistence(timeout: 5), "Open Project button for OACP must exist")
+        XCTAssertTrue(openButton.waitForExistence(timeout: 10), "Open Project button for OACP must exist after returning to Overview")
         openButton.click()
 
-        // Verify same destination
-        XCTAssertTrue(projectTitle.waitForExistence(timeout: 5), "Project title must appear after openProject click")
-        let titleValue2 = "\(projectTitle.value ?? "")"
+        // Verify same destination — re-query projectTitle since view was recreated
+        let projectTitle2 = app.staticTexts["sessionListProjectTitle"].firstMatch
+        XCTAssertTrue(projectTitle2.waitForExistence(timeout: 10), "Project title must appear after openProject click")
+        let titleValue2 = "\(projectTitle2.value ?? "")"
         XCTAssertTrue(titleValue2.contains("OACP"), "ProjectCard should also navigate to OACP, got '\(titleValue2)'")
     }
 

@@ -140,8 +140,9 @@ struct SidebarView: View {
         let hasActive: Bool
     }
 
+    // All sidebar aggregates use visibleSessions to respect archive filtering
     private var agentRows: [AgentRow] {
-        let grouped = Dictionary(grouping: store.sessions) { $0.ref.providerID }
+        let grouped = Dictionary(grouping: store.visibleSessions) { $0.ref.providerID }
         return grouped.map { id, sessions in
             let color: Color = id == "claude"
                 ? Color(red: 0.48, green: 0.41, blue: 0.93)
@@ -163,6 +164,6 @@ struct SidebarView: View {
     }
 
     private func countForState(_ state: RuntimeState) -> Int {
-        store.sessions.filter { $0.runtimeState == state }.count
+        store.visibleSessions.filter { $0.runtimeState == state }.count
     }
 }

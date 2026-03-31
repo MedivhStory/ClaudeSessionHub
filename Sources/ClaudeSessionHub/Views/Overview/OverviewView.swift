@@ -75,7 +75,7 @@ struct OverviewView: View {
     }
 
     private var recentlyFinished: [SessionSummary] {
-        store.sessions
+        store.visibleSessions
             .filter { $0.taskPhase == .done }
             .filter(matchesFilter)
             .sorted { $0.lastActiveAt > $1.lastActiveAt }
