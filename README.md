@@ -1,3 +1,5 @@
+[English](./README.md) | [简体中文](./README.zh-CN.md)
+
 <div align="center">
 
 <img src="Resources/AppIcon.png" width="128" height="128" alt="Claude Session Hub Icon">
@@ -7,6 +9,8 @@
 **A native macOS task manager for Claude Code sessions.**
 
 Discover, organize, and surface session health across all your projects — at a glance.
+
+*Enjoy AI, but don't forget to govern it.*
 
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue?logo=apple&logoColor=white)](https://www.apple.com/macos/sonoma/)
 [![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange?logo=swift&logoColor=white)](https://swift.org)
@@ -32,7 +36,7 @@ Claude Session Hub reads your local Claude Code data (`~/.claude/`) and gives yo
 
 ## Features
 
-- **Project -> Session hierarchy** with sectioned sidebar (Agents / Projects / Status)
+- **Project → Session hierarchy** with sectioned sidebar (Agents / Projects / Status)
 - **3-layer session tiles** with conditional health signals (max 2 per tile)
 - **Overview dashboard** with summary cards, project heat strip, attention inbox, project portfolio
 - **One-click resume** in Ghostty or Terminal.app with silent clipboard fallback
@@ -47,14 +51,14 @@ Claude Session Hub reads your local Claude Code data (`~/.claude/`) and gives yo
 
 ### Download
 
-Grab the latest `.zip` from [Releases](https://github.com/MedivhStoey/ClaudeSessionHub/releases), unzip, and double-click `ClaudeSessionHub.app`.
+Grab the latest `.zip` from [Releases](https://github.com/MedivhStory/ClaudeSessionHub/releases), unzip, and double-click `ClaudeSessionHub.app`.
 
 > First launch: macOS may show a Gatekeeper warning. Right-click the app and select "Open" to bypass.
 
 ### Run from Source
 
 ```bash
-git clone https://github.com/MedivhStoey/ClaudeSessionHub.git
+git clone https://github.com/MedivhStory/ClaudeSessionHub.git
 cd ClaudeSessionHub
 swift run ClaudeSessionHub
 ```
@@ -144,5 +148,9 @@ MIT
 ---
 
 <div align="center">
+
+*Enjoy AI, but don't forget to govern it.*
+
 Built with SwiftUI. Designed for Claude Code power users.
+
 </div>
