@@ -39,6 +39,7 @@
 		A1000030 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000030; };
 		A1000031 /* FixtureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000031; };
 		A1000032 /* ArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000032; };
+		A1000033 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000033; };
 		A2000001 /* ClaudeSessionHubUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001; };
 /* End PBXBuildFile section */
 
@@ -88,6 +89,7 @@
 		PRODUCT002 /* ClaudeSessionHubUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudeSessionHubUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1000031 /* FixtureProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureProvider.swift; sourceTree = "<group>"; };
 		B1000032 /* ArchiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveStore.swift; sourceTree = "<group>"; };
+		B1000033 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,6 +108,17 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		RESBLD01 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000033 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXGroup section */
 		MAINGRP0 = {
@@ -134,6 +147,7 @@
 				GRPPROVD /* Providers */,
 				GRPSERVS /* Services */,
 				GRPVIEWS /* Views */,
+				B1000033 /* Assets.xcassets */,
 			);
 			name = Sources;
 			path = Sources/ClaudeSessionHub;
@@ -247,6 +261,7 @@
 			buildPhases = (
 				SRCBLD01 /* Sources */,
 				FRMWRK01 /* Frameworks */,
+				RESBLD01 /* Resources */,
 			);
 			buildRules = (
 			);
