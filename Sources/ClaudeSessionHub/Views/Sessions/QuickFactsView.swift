@@ -83,6 +83,7 @@ struct QuickFactsView: View {
                     .foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("quickFactsContext_\(session.ref.sessionID)")
         } else {
             // No high-confidence usage data — hide entirely.
             // Cumulative tokens ≠ current context window, so no estimation shown.
@@ -104,6 +105,7 @@ struct QuickFactsView: View {
                     .lineLimit(3)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("quickFactsNextStep_\(session.ref.sessionID)")
         } else {
             // Empty cell to maintain grid layout, but no visible content
             Color.clear.frame(maxWidth: .infinity)
@@ -137,6 +139,7 @@ struct QuickFactsView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier("quickFactsStats_\(session.ref.sessionID)")
     }
 
     // MARK: - Actions Row

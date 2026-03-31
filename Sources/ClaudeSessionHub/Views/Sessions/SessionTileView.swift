@@ -66,6 +66,7 @@ struct SessionTileView: View {
             Text(session.title)
                 .font(.headline)
                 .lineLimit(1)
+                .accessibilityIdentifier("tileTitle_\(session.ref.sessionID)")
 
             BadgeView.agent(session.ref.providerID)
             BadgeView.runtimeState(session.runtimeState)
@@ -97,6 +98,7 @@ struct SessionTileView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
+                        .accessibilityIdentifier("tileSummary_\(session.ref.sessionID)")
                 }
             }
 
@@ -151,6 +153,7 @@ struct SessionTileView: View {
         .font(.caption)
         .foregroundStyle(.tertiary)
         .padding(.top, 4)
+        .accessibilityIdentifier("tileMeta_\(session.ref.sessionID)")
     }
 
     // MARK: - Helpers

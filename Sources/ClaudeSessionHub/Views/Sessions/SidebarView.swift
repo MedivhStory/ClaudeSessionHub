@@ -65,6 +65,7 @@ struct SidebarView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("sidebarProject_\(row.name)")
                     .listRowBackground(
                         selectedProject == row.name
                             ? Color.accentColor.opacity(0.15)

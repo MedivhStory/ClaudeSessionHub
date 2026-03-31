@@ -23,6 +23,7 @@ public struct SettingsView: View {
                 Text("数据目录已修改，保存后需重启应用生效")
                     .font(.caption)
                     .foregroundStyle(.orange)
+                    .accessibilityIdentifier("restartHint")
             }
 
             // Scan interval
