@@ -33,6 +33,7 @@ struct QuickFactsView: View {
             }
         }
         .padding(.top, 4)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("quickFacts_\(session.ref.sessionID)")
         .task {
             detail = await store.loadDetail(for: session.ref)
@@ -83,6 +84,7 @@ struct QuickFactsView: View {
                     .foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("quickFactsContext_\(session.ref.sessionID)")
         } else {
             // No high-confidence usage data — hide entirely.
@@ -139,6 +141,7 @@ struct QuickFactsView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("quickFactsStats_\(session.ref.sessionID)")
     }
 

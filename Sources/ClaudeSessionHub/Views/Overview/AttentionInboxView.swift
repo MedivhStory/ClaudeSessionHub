@@ -49,6 +49,7 @@ struct AttentionInboxView: View {
             }
         }
         .padding(12)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("attentionInbox")
     }
 

@@ -133,6 +133,7 @@ struct ProjectPortfolioView: View {
         .padding(10)
         .background(Color(.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("projectCard_\(name)")
     }
 

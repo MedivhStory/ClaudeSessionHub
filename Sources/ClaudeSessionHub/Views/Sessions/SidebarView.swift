@@ -42,29 +42,28 @@ struct SidebarView: View {
             // MARK: - Projects Section
             Section(isExpanded: $projectsExpanded) {
                 ForEach(projectRows, id: \.name) { row in
-                    Button {
+                    HStack {
+                        if row.hasActive {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+                        }
+                        Text(row.name)
+                            .fontWeight(selectedProject == row.name ? .semibold : .regular)
+                        Spacer()
+                        Text("\(row.count)")
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
                         if selectedProject == row.name {
                             selectedProject = nil
                         } else {
                             selectedProject = row.name
                             statusFilter = nil
                         }
-                    } label: {
-                        HStack {
-                            if row.hasActive {
-                                Circle()
-                                    .fill(Color.green)
-                                    .frame(width: 6, height: 6)
-                            }
-                            Text(row.name)
-                                .fontWeight(selectedProject == row.name ? .semibold : .regular)
-                            Spacer()
-                            Text("\(row.count)")
-                                .foregroundStyle(.secondary)
-                                .font(.caption)
-                        }
                     }
-                    .buttonStyle(.plain)
                     .accessibilityIdentifier("sidebarProject_\(row.name)")
                     .listRowBackground(
                         selectedProject == row.name
@@ -77,7 +76,6 @@ struct SidebarView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .accessibilityIdentifier("projectsSection")
 
             // MARK: - Status Section
             Section(isExpanded: $statusExpanded) {

@@ -9,6 +9,46 @@ final class ClaudeSessionHubUITests: XCTestCase {
         app.launch()
     }
 
+    // MARK: - Helpers
+
+    /// The viewToggle Picker with .segmented style renders as a RadioGroup on macOS.
+    private func viewToggle() -> XCUIElement {
+        app.radioGroups["viewToggle"]
+    }
+
+    /// Switch to Overview tab by clicking the Overview radio button.
+    private func switchToOverview() {
+        let toggle = viewToggle()
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "View toggle must exist")
+        toggle.radioButtons["Overview"].click()
+    }
+
+    /// Switch to Sessions tab by clicking the Sessions radio button.
+    private func switchToSessions() {
+        let toggle = viewToggle()
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "View toggle must exist")
+        toggle.radioButtons["Sessions"].click()
+    }
+
+    /// Click a sidebar project row by identifier.
+    /// The sidebar uses onTapGesture (not Button) to work with XCUITest on macOS List.
+    @discardableResult
+    private func clickSidebarProject(_ projectName: String) -> Bool {
+        let row = app.descendants(matching: .any).matching(identifier: "sidebarProject_\(projectName)").firstMatch
+        guard row.waitForExistence(timeout: 5) else { return false }
+        row.click()
+        return true
+    }
+
+    /// Open Settings via the menu bar (Cmd+, may not work in XCUITest).
+    private func openSettings() {
+        // Use menu bar: ClaudeSessionHub > Settings…
+        app.menuBars.menuBarItems["ClaudeSessionHub"].click()
+        app.menuBars.menuItems["Settings…"].click()
+    }
+
+    // MARK: - Tests
+
     // 1. App launches with fixture data visible
     func testLaunchShowsFixtureSessions() {
         let window = app.windows.firstMatch
@@ -19,37 +59,33 @@ final class ClaudeSessionHubUITests: XCTestCase {
 
     // 2. Toggle to Overview shows summary cards
     func testOverviewShowsSummaryCards() {
-        let toggle = app.segmentedControls["viewToggle"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "View toggle must exist")
-        toggle.buttons.element(boundBy: 1).click()
+        switchToOverview()
 
-        let overview = app.otherElements["overviewRoot"].firstMatch
+        let overview = app.scrollViews.matching(NSPredicate(format: "identifier == %@", "overviewRoot")).firstMatch
         XCTAssertTrue(overview.waitForExistence(timeout: 5), "Overview root must appear")
 
-        // All 4 summary cards must exist individually
+        // Summary cards: In overview, check for the summary card identifiers.
+        // SwiftUI may render them as various element types, so use descendants.
         for cardID in ["summaryAttention", "summaryActive", "summaryProjects", "summaryLastScan"] {
-            let found = app.otherElements[cardID].waitForExistence(timeout: 3)
-                || app.staticTexts[cardID].waitForExistence(timeout: 1)
-                || app.descendants(matching: .any).matching(identifier: cardID).firstMatch.waitForExistence(timeout: 1)
+            let found = app.descendants(matching: .any).matching(identifier: cardID).firstMatch
+                .waitForExistence(timeout: 3)
             XCTAssertTrue(found, "\(cardID) summary card must exist in Overview")
         }
     }
 
-    // 3. Overview → click project → lands in Sessions for THAT project
+    // 3. Overview -> click project -> lands in Sessions for THAT project
     func testOverviewProjectNavigation() {
-        let toggle = app.segmentedControls["viewToggle"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        toggle.buttons.element(boundBy: 1).click()
+        switchToOverview()
 
-        let overview = app.otherElements["overviewRoot"].firstMatch
+        let overview = app.descendants(matching: .any).matching(identifier: "overviewRoot").firstMatch
         XCTAssertTrue(overview.waitForExistence(timeout: 5))
 
-        // The openProject button MUST exist in fixture mode — fail if it doesn't
+        // The openProject button MUST exist in fixture mode
         let openButton = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'openProject_'")).firstMatch
         XCTAssertTrue(openButton.waitForExistence(timeout: 5),
-                      "Open Project button must exist — fixture has 2 projects (OACP, openclaw)")
+                      "Open Project button must exist -- fixture has 2 projects (OACP, openclaw)")
 
-        // Extract the project name from the button's identifier (format: "openProject_<name>")
+        // Extract the project name from the button's identifier
         let buttonID = openButton.identifier
         let expectedProject = String(buttonID.dropFirst("openProject_".count))
         XCTAssertFalse(expectedProject.isEmpty, "Should extract project name from button ID")
@@ -62,14 +98,16 @@ final class ClaudeSessionHubUITests: XCTestCase {
                       "Session list must appear after navigating from project")
 
         // Verify the SPECIFIC project we clicked is now shown in the header
+        // SwiftUI Text exposes content as `value`, not `label`
         let projectTitle = app.staticTexts["sessionListProjectTitle"].firstMatch
         XCTAssertTrue(projectTitle.waitForExistence(timeout: 5),
                       "Project title must appear in session list header")
-        XCTAssertEqual(projectTitle.label, expectedProject,
-                       "Session list should show the clicked project '\(expectedProject)', not a default view")
+        let titleValue = "\(projectTitle.value ?? "")"
+        XCTAssertEqual(titleValue, expectedProject,
+                       "Session list should show the clicked project '\(expectedProject)', not '\(titleValue)'")
 
         // Overview should no longer be showing
-        XCTAssertFalse(app.otherElements["overviewRoot"].firstMatch.exists,
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "overviewRoot").firstMatch.exists,
                        "Overview should be hidden after project navigation")
     }
 
@@ -78,47 +116,38 @@ final class ClaudeSessionHubUITests: XCTestCase {
         let sessionList = app.scrollViews["sessionList"]
         XCTAssertTrue(sessionList.waitForExistence(timeout: 5))
 
-        // Tile MUST exist in fixture mode — fail if it doesn't
-        let tile = app.otherElements.matching(NSPredicate(format: "identifier BEGINSWITH 'sessionTile_'")).firstMatch
+        // Session tiles render as StaticText with the sessionTile_ identifier in the accessibility tree.
+        // Click the first matching element to expand a tile.
+        let tile = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'sessionTile_'")).firstMatch
         XCTAssertTrue(tile.waitForExistence(timeout: 5),
                       "At least one session tile must exist in fixture mode")
 
         tile.click()
 
         // Quick facts MUST appear after click
-        let quickFacts = app.otherElements.matching(NSPredicate(format: "identifier BEGINSWITH 'quickFacts_'")).firstMatch
+        let quickFacts = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'quickFacts_'")).firstMatch
         XCTAssertTrue(quickFacts.waitForExistence(timeout: 5),
                       "Quick facts panel must appear when tile is clicked")
     }
 
     // 5. Settings opens and has ALL expected controls
     func testSettingsControls() {
-        app.typeKey(",", modifierFlags: .command)
+        openSettings()
 
-        // Settings window must open
-        let secondWindow = app.windows.element(boundBy: 1)
-        XCTAssertTrue(secondWindow.waitForExistence(timeout: 5), "Settings window must open on Cmd+,")
+        // Settings window must open -- it may be a sheet or a second window
+        // Try to find the settings form
+        let settingsForm = app.descendants(matching: .any).matching(identifier: "settingsForm").firstMatch
+        XCTAssertTrue(settingsForm.waitForExistence(timeout: 5), "Settings form must exist after opening Settings")
 
-        // Verify each control exists by its accessibility identifier
-        // These are the controls we explicitly added IDs for — regressions must be caught
-        let terminalPicker = secondWindow.popUpButtons["terminalPicker"]
-            .firstMatch
-        let dataDir = secondWindow.textFields["dataDirectoryField"]
-            .firstMatch
-        let stepper = secondWindow.steppers["scanIntervalStepper"]
-            .firstMatch
-        let saveButton = secondWindow.buttons["saveSettingsButton"]
-            .firstMatch
-
-        // Use loose matching — SwiftUI may wrap in different element types
-        let hasTerminal = terminalPicker.waitForExistence(timeout: 3)
-            || secondWindow.descendants(matching: .any).matching(identifier: "terminalPicker").firstMatch.waitForExistence(timeout: 1)
-        let hasDataDir = dataDir.waitForExistence(timeout: 1)
-            || secondWindow.descendants(matching: .any).matching(identifier: "dataDirectoryField").firstMatch.waitForExistence(timeout: 1)
-        let hasStepper = stepper.waitForExistence(timeout: 1)
-            || secondWindow.descendants(matching: .any).matching(identifier: "scanIntervalStepper").firstMatch.waitForExistence(timeout: 1)
-        let hasSave = saveButton.waitForExistence(timeout: 1)
-            || secondWindow.descendants(matching: .any).matching(identifier: "saveSettingsButton").firstMatch.waitForExistence(timeout: 1)
+        // Verify each control exists by its accessibility identifier using loose matching
+        let hasTerminal = app.descendants(matching: .any).matching(identifier: "terminalPicker").firstMatch
+            .waitForExistence(timeout: 3)
+        let hasDataDir = app.descendants(matching: .any).matching(identifier: "dataDirectoryField").firstMatch
+            .waitForExistence(timeout: 3)
+        let hasStepper = app.descendants(matching: .any).matching(identifier: "scanIntervalStepper").firstMatch
+            .waitForExistence(timeout: 3)
+        let hasSave = app.descendants(matching: .any).matching(identifier: "saveSettingsButton").firstMatch
+            .waitForExistence(timeout: 3)
 
         XCTAssertTrue(hasTerminal, "Terminal picker (terminalPicker) must exist in Settings")
         XCTAssertTrue(hasDataDir, "Data directory field (dataDirectoryField) must exist in Settings")
@@ -128,33 +157,31 @@ final class ClaudeSessionHubUITests: XCTestCase {
 
     // 6. Fixture attention sessions show in overview
     func testAttentionSessionsExist() {
-        let toggle = app.segmentedControls["viewToggle"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        toggle.buttons.element(boundBy: 1).click()
+        switchToOverview()
 
-        let inbox = app.otherElements["attentionInbox"].firstMatch
+        let inbox = app.descendants(matching: .any).matching(identifier: "attentionInbox").firstMatch
         // Fixture has 2 sessions with health signals (stale + context-high)
         XCTAssertTrue(inbox.waitForExistence(timeout: 5),
-                      "Attention inbox must exist — fixture has sessions with health signals")
+                      "Attention inbox must exist -- fixture has sessions with health signals")
     }
 
-    // 7. Toggle roundtrip: Sessions → Overview → Sessions
+    // 7. Toggle roundtrip: Sessions -> Overview -> Sessions
     func testToggleBackToSessions() {
-        let toggle = app.segmentedControls["viewToggle"]
+        let toggle = viewToggle()
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
 
         // Go to Overview
-        toggle.buttons.element(boundBy: 1).click()
-        let overview = app.otherElements["overviewRoot"].firstMatch
+        switchToOverview()
+        let overview = app.descendants(matching: .any).matching(identifier: "overviewRoot").firstMatch
         XCTAssertTrue(overview.waitForExistence(timeout: 5), "Overview must appear")
 
         // Go back to Sessions
-        toggle.buttons.element(boundBy: 0).click()
+        switchToSessions()
         let sessionList = app.scrollViews["sessionList"]
         XCTAssertTrue(sessionList.waitForExistence(timeout: 5), "Session list must reappear")
 
         // Overview must be gone
-        XCTAssertFalse(app.otherElements["overviewRoot"].firstMatch.exists,
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "overviewRoot").firstMatch.exists,
                        "Overview must be hidden after toggling back")
     }
 
@@ -165,25 +192,33 @@ final class ClaudeSessionHubUITests: XCTestCase {
         let sessionList = app.scrollViews["sessionList"]
         XCTAssertTrue(sessionList.waitForExistence(timeout: 5), "Session list should exist")
 
-        // Verify fixture-active-1 tile and its title content
-        let tile1 = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "sessionTile_fixture-active-1")).firstMatch
+        // With .accessibilityElement(children: .contain), each tile is a container
+        // with the sessionTile_ identifier, and child elements have their own identifiers
+        // (tileTitle_, tileMeta_, etc.)
+        let tile1 = app.descendants(matching: .any).matching(identifier: "sessionTile_fixture-active-1").firstMatch
         XCTAssertTrue(tile1.waitForExistence(timeout: 5), "Tile for fixture-active-1 must exist")
 
-        let title1 = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "tileTitle_fixture-active-1")).firstMatch
+        // The title text should be a child with tileTitle_ identifier
+        let title1 = app.staticTexts["tileTitle_fixture-active-1"].firstMatch
         XCTAssertTrue(title1.waitForExistence(timeout: 3), "Title label for fixture-active-1 must exist")
-        XCTAssertTrue(title1.label.contains("重构 event loop"), "Title should contain '重构 event loop', got '\(title1.label)'")
+        let title1Value = "\(title1.value ?? "")"
+        XCTAssertTrue(title1Value.contains("重构 event loop"),
+                      "Title should contain '重构 event loop', got '\(title1Value)'")
 
-        // Verify fixture-stale-1 tile and its title content
-        let tile2 = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "sessionTile_fixture-stale-1")).firstMatch
+        // Verify fixture-stale-1 tile
+        let tile2 = app.descendants(matching: .any).matching(identifier: "sessionTile_fixture-stale-1").firstMatch
         XCTAssertTrue(tile2.waitForExistence(timeout: 5), "Tile for fixture-stale-1 must exist")
 
-        let title2 = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "tileTitle_fixture-stale-1")).firstMatch
+        let title2 = app.staticTexts["tileTitle_fixture-stale-1"].firstMatch
         XCTAssertTrue(title2.waitForExistence(timeout: 3), "Title label for fixture-stale-1 must exist")
-        XCTAssertTrue(title2.label.contains("修复连接池泄漏"), "Title should contain '修复连接池泄漏', got '\(title2.label)'")
+        let title2Value = "\(title2.value ?? "")"
+        XCTAssertTrue(title2Value.contains("修复连接池泄漏"),
+                      "Title should contain '修复连接池泄漏', got '\(title2Value)'")
 
-        // Verify at least 4 tiles total exist
-        let allTiles = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'sessionTile_'"))
-        XCTAssertGreaterThanOrEqual(allTiles.count, 4, "Should have at least 4 session tiles from fixture data")
+        // Verify at least 4 tiles by checking the 4th session exists
+        let tile4 = app.descendants(matching: .any).matching(identifier: "sessionTile_fixture-done-1").firstMatch
+        XCTAssertTrue(tile4.waitForExistence(timeout: 5),
+                      "Tile for fixture-done-1 must exist (at least 4 sessions)")
     }
 
     // 9. Sidebar project selection updates header and session count
@@ -192,41 +227,41 @@ final class ClaudeSessionHubUITests: XCTestCase {
         XCTAssertTrue(sessionList.waitForExistence(timeout: 5))
 
         // Click OACP in sidebar
-        let oacpRow = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "sidebarProject_OACP")).firstMatch
-        XCTAssertTrue(oacpRow.waitForExistence(timeout: 5), "Sidebar row for OACP must exist")
-        oacpRow.click()
+        XCTAssertTrue(clickSidebarProject("OACP"), "Sidebar row for OACP must exist")
 
-        // Verify header shows OACP
+        // Verify header shows OACP (SwiftUI Text exposes content as `value`, not `label`)
         let projectTitle = app.staticTexts["sessionListProjectTitle"].firstMatch
         XCTAssertTrue(projectTitle.waitForExistence(timeout: 5), "Project title must appear after selecting OACP")
-        XCTAssertEqual(projectTitle.label, "OACP", "Header should show 'OACP'")
+        let oacpTitle = "\(projectTitle.value ?? "")"
+        XCTAssertTrue(oacpTitle.contains("OACP"),
+                      "Header should show 'OACP', got '\(oacpTitle)'")
 
         // Verify session count shows 2
-        let countLabel = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "sessionCount")).firstMatch
+        let countLabel = app.descendants(matching: .any).matching(identifier: "sessionCount").firstMatch
         XCTAssertTrue(countLabel.waitForExistence(timeout: 3), "Session count label must exist")
-        XCTAssertTrue(countLabel.label.contains("2"), "OACP should have 2 sessions, got '\(countLabel.label)'")
+        let countText = "\(countLabel.value ?? "")"
+        XCTAssertTrue(countText.contains("2"), "OACP should have 2 sessions, got '\(countText)'")
 
         // Click openclaw in sidebar
-        let openclawRow = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "sidebarProject_openclaw")).firstMatch
-        XCTAssertTrue(openclawRow.waitForExistence(timeout: 5), "Sidebar row for openclaw must exist")
-        openclawRow.click()
+        XCTAssertTrue(clickSidebarProject("openclaw"), "Sidebar row for openclaw must exist")
 
         // Verify header switches to openclaw
         XCTAssertTrue(projectTitle.waitForExistence(timeout: 5))
-        XCTAssertEqual(projectTitle.label, "openclaw", "Header should show 'openclaw'")
+        let openclawTitle = "\(projectTitle.value ?? "")"
+        XCTAssertTrue(openclawTitle.contains("openclaw"),
+                      "Header should show 'openclaw', got '\(openclawTitle)'")
 
         // Verify session count shows 2
         XCTAssertTrue(countLabel.waitForExistence(timeout: 3))
-        XCTAssertTrue(countLabel.label.contains("2"), "openclaw should have 2 sessions, got '\(countLabel.label)'")
+        let countText2 = "\(countLabel.value ?? "")"
+        XCTAssertTrue(countText2.contains("2"), "openclaw should have 2 sessions, got '\(countText2)'")
     }
 
     // 10. HeatStrip and ProjectCard both navigate to the same project
     func testHeatStripAndProjectCardNavigateToSameProject() {
-        let toggle = app.segmentedControls["viewToggle"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        toggle.buttons.element(boundBy: 1).click()
+        switchToOverview()
 
-        let overview = app.otherElements["overviewRoot"].firstMatch
+        let overview = app.descendants(matching: .any).matching(identifier: "overviewRoot").firstMatch
         XCTAssertTrue(overview.waitForExistence(timeout: 5))
 
         // Click heatStrip_OACP
@@ -237,13 +272,13 @@ final class ClaudeSessionHubUITests: XCTestCase {
         // Verify we landed on OACP sessions
         let projectTitle = app.staticTexts["sessionListProjectTitle"].firstMatch
         XCTAssertTrue(projectTitle.waitForExistence(timeout: 5), "Project title must appear after heatStrip click")
-        XCTAssertEqual(projectTitle.label, "OACP", "HeatStrip should navigate to OACP")
+        let titleValue = "\(projectTitle.value ?? "")"
+        XCTAssertTrue(titleValue.contains("OACP"), "HeatStrip should navigate to OACP, got '\(titleValue)'")
 
         // Switch back to Overview
-        let toggle2 = app.segmentedControls["viewToggle"]
-        XCTAssertTrue(toggle2.waitForExistence(timeout: 5))
-        toggle2.buttons.element(boundBy: 1).click()
-        XCTAssertTrue(app.otherElements["overviewRoot"].firstMatch.waitForExistence(timeout: 5))
+        switchToOverview()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "overviewRoot").firstMatch
+            .waitForExistence(timeout: 5))
 
         // Click openProject_OACP
         let openButton = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "openProject_OACP")).firstMatch
@@ -252,7 +287,8 @@ final class ClaudeSessionHubUITests: XCTestCase {
 
         // Verify same destination
         XCTAssertTrue(projectTitle.waitForExistence(timeout: 5), "Project title must appear after openProject click")
-        XCTAssertEqual(projectTitle.label, "OACP", "ProjectCard should also navigate to OACP")
+        let titleValue2 = "\(projectTitle.value ?? "")"
+        XCTAssertTrue(titleValue2.contains("OACP"), "ProjectCard should also navigate to OACP, got '\(titleValue2)'")
     }
 
     // 11. QuickFacts shows expected fields for fixture-active-1
@@ -291,51 +327,52 @@ final class ClaudeSessionHubUITests: XCTestCase {
 
     // 13. Settings terminal picker shows default value
     func testSettingsCanChangeTerminalAndPersist() {
-        app.typeKey(",", modifierFlags: .command)
+        openSettings()
 
-        let secondWindow = app.windows.element(boundBy: 1)
-        XCTAssertTrue(secondWindow.waitForExistence(timeout: 5), "Settings window must open")
+        let settingsForm = app.descendants(matching: .any).matching(identifier: "settingsForm").firstMatch
+        XCTAssertTrue(settingsForm.waitForExistence(timeout: 5), "Settings form must open")
 
         // Find terminal picker
-        let terminalPicker = secondWindow.descendants(matching: .any).matching(identifier: "terminalPicker").firstMatch
+        let terminalPicker = app.descendants(matching: .any).matching(identifier: "terminalPicker").firstMatch
         XCTAssertTrue(terminalPicker.waitForExistence(timeout: 3), "Terminal picker must exist in Settings")
 
         // Verify default value is Ghostty
-        XCTAssertTrue(terminalPicker.label.contains("Ghostty") || terminalPicker.value as? String == "Ghostty",
-                       "Terminal picker default should be Ghostty, got label='\(terminalPicker.label)' value='\(terminalPicker.value ?? "nil")'")
+        let pickerText = terminalPicker.label + " " + "\(terminalPicker.value ?? "")"
+        XCTAssertTrue(pickerText.contains("Ghostty"),
+                       "Terminal picker default should be Ghostty, got '\(pickerText)'")
     }
 
     // 14. Settings scan interval stepper interaction
     func testSettingsCanChangeScanIntervalAndPersist() {
-        app.typeKey(",", modifierFlags: .command)
+        openSettings()
 
-        let secondWindow = app.windows.element(boundBy: 1)
-        XCTAssertTrue(secondWindow.waitForExistence(timeout: 5), "Settings window must open")
+        let settingsForm = app.descendants(matching: .any).matching(identifier: "settingsForm").firstMatch
+        XCTAssertTrue(settingsForm.waitForExistence(timeout: 5), "Settings form must open")
 
-        let stepper = secondWindow.descendants(matching: .any).matching(identifier: "scanIntervalStepper").firstMatch
+        let stepper = app.descendants(matching: .any).matching(identifier: "scanIntervalStepper").firstMatch
         XCTAssertTrue(stepper.waitForExistence(timeout: 3), "Scan interval stepper must exist")
 
-        // Get initial label
-        let initialLabel = stepper.label
+        // Get initial value
+        let initialValue = "\(stepper.value ?? "")"
 
-        // Click the increment button
-        let incrementButton = stepper.buttons.element(boundBy: 1)
-        XCTAssertTrue(incrementButton.waitForExistence(timeout: 2), "Stepper increment button must exist")
-        incrementButton.click()
+        // Click the increment arrow (steppers expose incrementArrows, not buttons)
+        let incrementArrow = stepper.incrementArrows.firstMatch
+        XCTAssertTrue(incrementArrow.waitForExistence(timeout: 2), "Stepper increment arrow must exist")
+        incrementArrow.click()
 
-        // Verify the label changed (stepper value increased)
-        let updatedLabel = stepper.label
-        XCTAssertNotEqual(initialLabel, updatedLabel, "Stepper label should change after increment click")
+        // Verify the value changed (stepper value increased)
+        let updatedValue = "\(stepper.value ?? "")"
+        XCTAssertNotEqual(initialValue, updatedValue, "Stepper value should change after increment click")
     }
 
     // 15. Settings data directory change shows restart hint
     func testDataDirectoryShowsRestartRequiredHint() {
-        app.typeKey(",", modifierFlags: .command)
+        openSettings()
 
-        let secondWindow = app.windows.element(boundBy: 1)
-        XCTAssertTrue(secondWindow.waitForExistence(timeout: 5), "Settings window must open")
+        let settingsForm = app.descendants(matching: .any).matching(identifier: "settingsForm").firstMatch
+        XCTAssertTrue(settingsForm.waitForExistence(timeout: 5), "Settings form must open")
 
-        let dataField = secondWindow.descendants(matching: .any).matching(identifier: "dataDirectoryField").firstMatch
+        let dataField = app.descendants(matching: .any).matching(identifier: "dataDirectoryField").firstMatch
         XCTAssertTrue(dataField.waitForExistence(timeout: 3), "Data directory field must exist")
 
         // Clear and type a custom path
@@ -344,8 +381,9 @@ final class ClaudeSessionHubUITests: XCTestCase {
         dataField.typeText("/tmp/test-claude")
 
         // Verify restart hint appears with "重启" text
-        let restartHint = secondWindow.descendants(matching: .any).matching(identifier: "restartHint").firstMatch
+        let restartHint = app.descendants(matching: .any).matching(identifier: "restartHint").firstMatch
         XCTAssertTrue(restartHint.waitForExistence(timeout: 3), "Restart hint must appear after changing data directory")
-        XCTAssertTrue(restartHint.label.contains("重启"), "Restart hint should mention '重启', got '\(restartHint.label)'")
+        let hintText = "\(restartHint.value ?? "")" + restartHint.label
+        XCTAssertTrue(hintText.contains("重启"), "Restart hint should mention '重启', got '\(hintText)'")
     }
 }

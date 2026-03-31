@@ -67,6 +67,7 @@ struct HeatStripView: View {
         .background(Color(.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("heatStrip_\(name)")
     }
 
