@@ -31,7 +31,7 @@ struct ClaudeSessionHubApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("Claude Session Hub") {
             ContentView()
                 .environment(store)
                 .frame(minWidth: 800, minHeight: 500)

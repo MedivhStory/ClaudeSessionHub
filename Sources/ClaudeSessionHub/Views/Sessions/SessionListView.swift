@@ -6,6 +6,7 @@ struct SessionListView: View {
     var selectedProject: String?
     var statusFilter: RuntimeState?
     var agentFilter: ProviderID?
+    var searchFocused: FocusState<Bool>.Binding
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,7 +16,7 @@ struct SessionListView: View {
                 .padding(.top, 8)
 
             // Search bar
-            SearchBar(text: $searchText)
+            SearchBar(text: $searchText, isFocused: searchFocused)
                 .padding(.horizontal)
                 .padding(.vertical, 6)
 
@@ -73,16 +74,31 @@ struct SessionListView: View {
 
     // MARK: - Empty State
 
+    private var dataDirExists: Bool {
+        FileManager.default.fileExists(atPath: store.settings.claudeDataDirectory)
+    }
+
     private var emptyState: some View {
         VStack(spacing: 12) {
             Spacer()
-            Image(systemName: "tray")
-                .font(.system(size: 40))
-                .foregroundStyle(.tertiary)
             if !searchText.isEmpty {
+                Image(systemName: "tray")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.tertiary)
                 Text("No sessions match \"\(searchText)\"")
                     .foregroundStyle(.secondary)
+            } else if store.visibleSessions.isEmpty && !dataDirExists {
+                Image(systemName: "folder.badge.questionmark")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.orange)
+                Text("未找到 Claude Code 数据目录，请在设置中配置路径")
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier("missingDataDirNotice")
             } else {
+                Image(systemName: "tray")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.tertiary)
                 Text("No sessions found")
                     .foregroundStyle(.secondary)
                 Text("Run `claude` in a terminal to create a session.")

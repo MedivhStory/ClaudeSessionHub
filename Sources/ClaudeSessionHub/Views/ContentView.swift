@@ -7,6 +7,7 @@ public struct ContentView: View {
     @State private var statusFilter: RuntimeState?
     @State private var agentFilter: ProviderID?
     @State private var searchText = ""
+    @FocusState private var searchFieldFocused: Bool
 
     public init() {}
 
@@ -55,9 +56,19 @@ public struct ContentView: View {
                     searchText: $searchText,
                     selectedProject: selectedProject,
                     statusFilter: statusFilter,
-                    agentFilter: agentFilter
+                    agentFilter: agentFilter,
+                    searchFocused: $searchFieldFocused
                 )
             }
+        }
+        .overlay {
+            Button("") {
+                searchFieldFocused = true
+                showOverview = false
+            }
+            .keyboardShortcut("f", modifiers: .command)
+            .frame(width: 0, height: 0)
+            .opacity(0)
         }
         .withScanTimers()
         .task {

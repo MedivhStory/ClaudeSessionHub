@@ -150,9 +150,12 @@ struct SessionTileView: View {
                 case .exists:
                     metaItem(ProjectNameResolver.displayName(for: cwd))
                 case .missing:
-                    metaItem(ProjectNameResolver.displayName(for: cwd))
-                        .foregroundStyle(.secondary)
-                        .italic()
+                    HStack(spacing: 2) {
+                        metaItem(ProjectNameResolver.displayName(for: cwd))
+                        Text("(目录不存在)")
+                    }
+                    .foregroundStyle(.secondary)
+                    .italic()
                 case .unknown:
                     EmptyView()
                 }
