@@ -21,6 +21,15 @@ Discover, organize, and surface session health across all your projects — at a
 
 ---
 
+## Install
+
+1. Download **`ClaudeSessionHub-v0.1.dmg`** from [Releases](https://github.com/MedivhStory/ClaudeSessionHub/releases)
+2. Open the `.dmg`
+3. Drag **ClaudeSessionHub** to **Applications**
+4. Launch from Applications
+
+> First launch: right-click the app → select **Open** → click **Open** in the dialog.
+
 ## What It Does
 
 Claude Session Hub reads your local Claude Code data (`~/.claude/`) and gives you a unified dashboard to manage all your sessions across projects. No API calls, no network, fully offline.
@@ -47,59 +56,10 @@ Claude Session Hub reads your local Claude Code data (`~/.claude/`) and gives yo
 - **Provider abstraction** — Claude Code first, Codex ready
 - **Keyboard shortcuts** — Cmd+F (search), Cmd+, (settings), Esc (clear)
 
-## Quick Start
+## Requirements
 
-### Download
-
-Grab the latest `.zip` from [Releases](https://github.com/MedivhStory/ClaudeSessionHub/releases), unzip, and double-click `ClaudeSessionHub.app`.
-
-> First launch: macOS may show a Gatekeeper warning. Right-click the app and select "Open" to bypass.
-
-### Run from Source
-
-```bash
-git clone https://github.com/MedivhStory/ClaudeSessionHub.git
-cd ClaudeSessionHub
-swift run ClaudeSessionHub
-```
-
-### Run from Xcode
-
-1. Open `Package.swift` in Xcode
-2. Select the **ClaudeSessionHub** scheme, destination **My Mac**
-3. Cmd+R
-
-### Build Standalone .app
-
-```bash
-xcodebuild -project ClaudeSessionHub.xcodeproj \
-  -target ClaudeSessionHub \
-  -configuration Release \
-  build CONFIGURATION_BUILD_DIR=./dist
-
-# Embed app icon
-mkdir -p dist/ClaudeSessionHub.app/Contents/Resources
-cp Resources/AppIcon.icns dist/ClaudeSessionHub.app/Contents/Resources/
-/usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" \
-  dist/ClaudeSessionHub.app/Contents/Info.plist 2>/dev/null
-
-open dist/ClaudeSessionHub.app
-```
-
-## Testing
-
-```bash
-# Unit tests (55 tests)
-swift test
-
-# UI tests (15 tests, requires Xcode)
-xcodebuild -project ClaudeSessionHub.xcodeproj \
-  -scheme ClaudeSessionHub \
-  -destination 'platform=macOS' \
-  test -only-testing:'ClaudeSessionHubUITests'
-```
-
-UI tests use a deterministic fixture mode (`--ui-test-mode`) with 4 synthetic sessions — no real `~/.claude/` data needed.
+- **macOS 14** (Sonoma) or later
+- Claude Code installed (`~/.claude/` data directory)
 
 ## Architecture
 
@@ -125,21 +85,38 @@ UI tests use a deterministic fixture mode (`--ui-test-mode`) with 4 synthetic se
 | Process metadata | `~/.claude/sessions/<pid>.json` | PID liveness |
 | History index | `~/.claude/history.jsonl` | Fast session lookup |
 
-**App settings** stored in `~/.claude-hub/` (labels, archive state, preferences).
+App settings stored in `~/.claude-hub/`.
 
-## Requirements
+## Development
 
-- **macOS 14** (Sonoma) or later
-- **Swift 5.9+**
-- **Xcode 26+** (for building .app and running UI tests)
-- Claude Code installed (the app reads its local data)
+```bash
+# Run from source
+swift run ClaudeSessionHub
+
+# Run from Xcode
+# Open Package.swift → select ClaudeSessionHub scheme → Cmd+R
+
+# Unit tests (55)
+swift test
+
+# UI tests (15, requires Xcode)
+xcodebuild -project ClaudeSessionHub.xcodeproj \
+  -scheme ClaudeSessionHub \
+  -destination 'platform=macOS' \
+  test -only-testing:'ClaudeSessionHubUITests'
+
+# Build .app
+xcodebuild -project ClaudeSessionHub.xcodeproj \
+  -target ClaudeSessionHub \
+  -configuration Release \
+  build CONFIGURATION_BUILD_DIR=./dist
+```
 
 ## Current Limitations
 
 - Codex provider is a stub (protocol ready, no implementation yet)
 - Data directory changes require app restart
-- No code signing or notarization
-- `recentErrorCount` uses tail-50 approximation, not exact last-20-turns
+- Not code-signed or notarized (first launch requires right-click → Open)
 
 ## License
 

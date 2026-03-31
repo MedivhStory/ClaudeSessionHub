@@ -21,6 +21,15 @@
 
 ---
 
+## 安装
+
+1. 从 [Releases](https://github.com/MedivhStory/ClaudeSessionHub/releases) 下载 **`ClaudeSessionHub-v0.1.dmg`**
+2. 打开 `.dmg` 文件
+3. 将 **ClaudeSessionHub** 拖入 **Applications**
+4. 从启动台或 Applications 打开
+
+> 首次启动：右键点击应用 → 选择「打开」→ 在弹窗中点击「打开」。
+
 ## 它做什么
 
 Claude Session Hub 读取本地 Claude Code 数据（`~/.claude/`），为你提供统一的仪表盘来管理所有项目中的会话。无 API 调用、无网络请求、完全离线。
@@ -47,59 +56,10 @@ Claude Session Hub 读取本地 Claude Code 数据（`~/.claude/`），为你提
 - **Provider 抽象** — 首先支持 Claude Code，Codex 接口已预留
 - **键盘快捷键** — Cmd+F（搜索）、Cmd+,（设置）、Esc（清除）
 
-## 快速开始
+## 系统要求
 
-### 下载
-
-从 [Releases](https://github.com/MedivhStory/ClaudeSessionHub/releases) 获取最新 `.zip`，解压后双击 `ClaudeSessionHub.app` 即可运行。
-
-> 首次启动：macOS 可能会弹出 Gatekeeper 警告。右键点击应用，选择"打开"即可绕过。
-
-### 从源码运行
-
-```bash
-git clone https://github.com/MedivhStory/ClaudeSessionHub.git
-cd ClaudeSessionHub
-swift run ClaudeSessionHub
-```
-
-### 在 Xcode 中运行
-
-1. 用 Xcode 打开 `Package.swift`
-2. 选择 **ClaudeSessionHub** scheme，目标选 **My Mac**
-3. Cmd+R
-
-### 构建独立 .app
-
-```bash
-xcodebuild -project ClaudeSessionHub.xcodeproj \
-  -target ClaudeSessionHub \
-  -configuration Release \
-  build CONFIGURATION_BUILD_DIR=./dist
-
-# 嵌入应用图标
-mkdir -p dist/ClaudeSessionHub.app/Contents/Resources
-cp Resources/AppIcon.icns dist/ClaudeSessionHub.app/Contents/Resources/
-/usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" \
-  dist/ClaudeSessionHub.app/Contents/Info.plist 2>/dev/null
-
-open dist/ClaudeSessionHub.app
-```
-
-## 测试
-
-```bash
-# 单元测试（55 条）
-swift test
-
-# UI 测试（15 条，需要 Xcode）
-xcodebuild -project ClaudeSessionHub.xcodeproj \
-  -scheme ClaudeSessionHub \
-  -destination 'platform=macOS' \
-  test -only-testing:'ClaudeSessionHubUITests'
-```
-
-UI 测试使用确定性 fixture 模式（`--ui-test-mode`），内含 4 条模拟会话 — 无需真实 `~/.claude/` 数据。
+- **macOS 14**（Sonoma）或更高版本
+- 已安装 Claude Code（`~/.claude/` 数据目录）
 
 ## 架构
 
@@ -125,21 +85,38 @@ UI 测试使用确定性 fixture 模式（`--ui-test-mode`），内含 4 条模�
 | 进程元数据 | `~/.claude/sessions/<pid>.json` | PID 存活检测 |
 | 历史索引 | `~/.claude/history.jsonl` | 快速会话查找 |
 
-**应用设置** 存储在 `~/.claude-hub/`（标签、归档状态、偏好）。
+应用设置存储在 `~/.claude-hub/`。
 
-## 系统要求
+## 开发
 
-- **macOS 14**（Sonoma）或更高版本
-- **Swift 5.9+**
-- **Xcode 26+**（用于构建 .app 和运行 UI 测试）
-- 已安装 Claude Code（应用读取其本地数据）
+```bash
+# 从源码运行
+swift run ClaudeSessionHub
+
+# 在 Xcode 中运行
+# 打开 Package.swift → 选择 ClaudeSessionHub scheme → Cmd+R
+
+# 单元测试（55 条）
+swift test
+
+# UI 测试（15 条，需要 Xcode）
+xcodebuild -project ClaudeSessionHub.xcodeproj \
+  -scheme ClaudeSessionHub \
+  -destination 'platform=macOS' \
+  test -only-testing:'ClaudeSessionHubUITests'
+
+# 构建 .app
+xcodebuild -project ClaudeSessionHub.xcodeproj \
+  -target ClaudeSessionHub \
+  -configuration Release \
+  build CONFIGURATION_BUILD_DIR=./dist
+```
 
 ## 当前限制
 
 - Codex provider 仍为 stub（协议已就绪，尚无实现）
 - 修改数据目录需要重启应用
-- 无代码签名或公证
-- `recentErrorCount` 使用尾部 50 条近似，非精确最近 20 轮
+- 未签名和公证（首次启动需右键 → 打开）
 
 ## 许可
 
