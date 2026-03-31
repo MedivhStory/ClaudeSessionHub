@@ -9,11 +9,15 @@ public final class SessionStore: @unchecked Sendable {
 
     private let coordinator: ScanCoordinator
     public let labelStore: LabelStore
+    public let archiveStore: ArchiveStore
     public let settings: SettingsStore
 
-    public init(coordinator: ScanCoordinator, labelStore: LabelStore = LabelStore(), settings: SettingsStore = SettingsStore()) {
+    @MainActor public var showArchived = false
+
+    public init(coordinator: ScanCoordinator, labelStore: LabelStore = LabelStore(), archiveStore: ArchiveStore = ArchiveStore(), settings: SettingsStore = SettingsStore()) {
         self.coordinator = coordinator
         self.labelStore = labelStore
+        self.archiveStore = archiveStore
         self.settings = settings
     }
 
@@ -25,6 +29,11 @@ public final class SessionStore: @unchecked Sendable {
         let results = await coordinator.scan()
         sessions = results.sorted { $0.lastActiveAt > $1.lastActiveAt }
         lastScanTime = await coordinator.lastScanTime
+    }
+
+    @MainActor
+    public var visibleSessions: [SessionSummary] {
+        sessions.filter { !archiveStore.isArchived($0.ref) || showArchived }
     }
 
     // MARK: - Derived computed properties

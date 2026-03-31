@@ -59,6 +59,7 @@ struct TestMain {
         LabelStoreTests.run()
         ScanCoordinatorTests.run()
         TerminalLauncherTests.run()
+        ArchiveStoreTests.run()
         printResults()
     }
 }

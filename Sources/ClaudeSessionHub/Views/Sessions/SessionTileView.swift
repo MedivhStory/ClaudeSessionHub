@@ -4,6 +4,12 @@ struct SessionTileView: View {
     @Environment(SessionStore.self) var store
     let session: SessionSummary
     @State private var isExpanded = false
+    @State private var isEditingLabel = false
+    @State private var editText = ""
+
+    private var displayTitle: String {
+        store.labelStore.label(for: session.ref) ?? session.title
+    }
 
     private var signals: [HealthSignal] {
         HealthEngine.computeSignals(for: session)
@@ -64,10 +70,25 @@ struct SessionTileView: View {
                 .fill(session.runtimeState == .active ? Color.green : Color.gray)
                 .frame(width: 8, height: 8)
 
-            Text(session.title)
+            if isEditingLabel {
+                TextField("Label", text: $editText, onCommit: {
+                    let trimmed = editText.trimmingCharacters(in: .whitespaces)
+                    store.labelStore.setLabel(for: session.ref, label: trimmed.isEmpty ? nil : trimmed)
+                    isEditingLabel = false
+                })
                 .font(.headline)
-                .lineLimit(1)
-                .accessibilityIdentifier("tileTitle_\(session.ref.sessionID)")
+                .textFieldStyle(.plain)
+                .accessibilityIdentifier("tileLabel_\(session.ref.sessionID)")
+            } else {
+                Text(displayTitle)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .accessibilityIdentifier("tileTitle_\(session.ref.sessionID)")
+                    .onTapGesture(count: 2) {
+                        editText = displayTitle
+                        isEditingLabel = true
+                    }
+            }
 
             BadgeView.agent(session.ref.providerID)
             BadgeView.runtimeState(session.runtimeState)

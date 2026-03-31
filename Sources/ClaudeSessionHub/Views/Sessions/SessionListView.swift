@@ -97,7 +97,7 @@ struct SessionListView: View {
     // MARK: - Filtering
 
     private var filteredSessions: [SessionSummary] {
-        var result = store.sessions
+        var result = store.visibleSessions
 
         // Filter by project
         if let project = selectedProject {

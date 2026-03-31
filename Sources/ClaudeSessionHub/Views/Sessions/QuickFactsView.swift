@@ -174,6 +174,18 @@ struct QuickFactsView: View {
                 }
             }
 
+            let isArchived = store.archiveStore.isArchived(session.ref)
+            actionButton(isArchived ? "Unarchive" : "Archive",
+                         icon: isArchived ? "tray.and.arrow.up" : "archivebox",
+                         color: .secondary) {
+                if isArchived {
+                    store.archiveStore.unarchive(session.ref)
+                } else {
+                    store.archiveStore.archive(session.ref)
+                }
+            }
+            .accessibilityIdentifier("archiveButton_\(session.ref.sessionID)")
+
             Spacer()
         }
     }

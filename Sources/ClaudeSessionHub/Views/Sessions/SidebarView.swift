@@ -112,6 +112,15 @@ struct SidebarView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            // MARK: - Archive Toggle
+            Section {
+                Toggle("显示已归档", isOn: Binding(
+                    get: { store.showArchived },
+                    set: { store.showArchived = $0 }
+                ))
+                .accessibilityIdentifier("showArchivedToggle")
+            }
         }
         .listStyle(.sidebar)
     }
