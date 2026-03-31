@@ -9,8 +9,6 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
     public let capabilities: ProviderCapabilities = [.resume, .contextUsage, .errorTracking, .branchInfo]
 
     private let baseDirectory: String
-    /// Cache of discovered sessions for cwd lookup
-    private var discoveredCwds: [String: String] = [:]
 
     public init(baseDirectory: String? = nil) {
         self.baseDirectory = baseDirectory ?? (NSHomeDirectory() + "/.claude")
@@ -18,17 +16,13 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     // MARK: - discoverSessions
 
-    /// Cached session metadata (pid.json files) — loaded once per scan
-    private var sessionMetadata: [String: (pid: Int32, startedAt: Date?)] = [:]
-
     public func discoverSessions() async throws -> [SessionSummary] {
+        // All mutable state is local — no shared instance vars to race on.
+        let metadata = loadSessionMetadata()
         let fm = FileManager.default
         let projectsDir = baseDirectory + "/projects"
 
         guard fm.fileExists(atPath: projectsDir) else { return [] }
-
-        // Load session metadata (sessions/<pid>.json) for createdAt preference
-        sessionMetadata = loadSessionMetadata()
 
         var jsonlFiles: [String] = []
         // Scan projects/*/  for *.jsonl files (top-level only, no recursion into subdirectories)
@@ -56,7 +50,7 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
         var summaries: [SessionSummary] = []
         for path in jsonlFiles {
-            if let summary = try? buildSummary(from: path) {
+            if let summary = try? buildSummary(from: path, metadata: metadata) {
                 summaries.append(summary)
             }
         }
@@ -65,7 +59,8 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     // MARK: - Build Summary
 
-    private func buildSummary(from path: String) throws -> SessionSummary {
+    /// All state is passed in or local — no shared mutable instance vars.
+    private func buildSummary(from path: String, metadata: [String: (pid: Int32, startedAt: Date?)]) throws -> SessionSummary {
         let firstEntries = try JSONLParser.readFirstEntries(at: path, count: 10)
         // Read more tail entries (50) so recentErrorCount has enough turns to sample from.
         // 20 user turns can easily span 40-60 entries (interleaved assistant/system/progress).
@@ -80,9 +75,6 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
         // Extract cwd from entries
         let cwd = extractCwd(from: allEntries)
-        if let cwd = cwd {
-            discoveredCwds[sessionID] = cwd
-        }
 
         // Extract branch
         let branch = extractBranch(from: allEntries)
@@ -109,7 +101,7 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         let turnCount = countUserTurns(from: allEntries)
 
         // timestamps — prefer metadata startedAt for createdAt (spec: startedAt > JSONL first > birthtime)
-        let createdAt = sessionMetadata[sessionID]?.startedAt
+        let createdAt = metadata[sessionID]?.startedAt
             ?? extractTimestamp(from: firstEntries.first)
             ?? Date()
         let lastActiveAt = extractTimestamp(from: lastEntries.last) ?? Date()
@@ -449,11 +441,9 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         // Read ALL entries for full scan
         let allEntries = try JSONLParser.readAllEntries(at: jsonlPath)
 
-        // Build summary via discoverSessions (reuses existing logic)
-        let sessions = try await discoverSessions()
-        guard let summary = sessions.first(where: { $0.ref == ref }) else {
-            throw CocoaError(.fileReadNoSuchFile)
-        }
+        // Build summary directly from this file's data (no redundant full scan)
+        let metadata = loadSessionMetadata()
+        let summary = try buildSummary(from: jsonlPath, metadata: metadata)
 
         // 1. totalErrorCount — count ALL tool_result with is_error:true
         let totalErrorCount = countTotalErrors(from: allEntries)
@@ -665,7 +655,12 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
     // MARK: - makeResumeTarget
 
     public func makeResumeTarget(for ref: SessionRef) throws -> ResumeTarget {
-        let cwd = discoveredCwds[ref.sessionID]
+        // Extract cwd on demand from JSONL (no shared mutable cache)
+        var cwd: String? = nil
+        if let path = try? findJSONLPath(for: ref.sessionID) {
+            let entries = (try? JSONLParser.readFirstEntries(at: path, count: 3)) ?? []
+            cwd = extractCwd(from: entries)
+        }
         return ResumeTarget(
             executable: "claude",
             arguments: ["-r", ref.sessionID],

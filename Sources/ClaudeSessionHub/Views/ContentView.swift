@@ -71,8 +71,6 @@ public struct ContentView: View {
             .opacity(0)
         }
         .withScanTimers()
-        .task {
-            await store.performScan()
-        }
+        // Initial scan is now handled by ScanTimerModifier.task to avoid double-scan
     }
 }

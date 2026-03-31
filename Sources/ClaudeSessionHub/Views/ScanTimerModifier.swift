@@ -7,14 +7,21 @@ struct ScanTimerModifier: ViewModifier {
     @State private var pidTimer: Timer?
     @State private var scanTimer: Timer?
     @State private var lastScanInterval: Int = 0
+    @State private var hasCompletedInitialScan = false
 
     func body(content: Content) -> some View {
         content
             .onAppear { startTimers() }
             .onDisappear { stopTimers() }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                // Full rescan when window becomes active (spec: "or on window focus")
+                // Skip if initial scan hasn't finished yet (avoids startup double-scan)
+                guard hasCompletedInitialScan else { return }
                 Task { await store.performScan() }
+            }
+            .task {
+                // Single initial scan — replaces ContentView.task
+                await store.performScan()
+                hasCompletedInitialScan = true
             }
             .onChange(of: store.settings.scanIntervalSeconds) { _, newValue in
                 // P2 fix: restart scan timer when settings change

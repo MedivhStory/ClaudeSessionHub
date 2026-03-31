@@ -23,6 +23,9 @@ public final class SessionStore: @unchecked Sendable {
 
     @MainActor
     public func performScan() async {
+        // Re-entry guard: skip if already scanning (prevents overlapping full scans
+        // from .task + didBecomeActive + timer firing simultaneously at startup)
+        guard !isScanning else { return }
         isScanning = true
         defer { isScanning = false }
 
