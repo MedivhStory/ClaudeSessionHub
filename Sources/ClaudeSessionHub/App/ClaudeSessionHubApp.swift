@@ -9,9 +9,10 @@ struct ClaudeSessionHubApp: App {
     @State private var store: SessionStore
 
     init() {
-        // Ensure the app runs as a regular macOS app with dock icon and menu bar,
-        // even when launched as a bare executable (swift run or Xcode Run on SwiftPM target).
-        NSApp.setActivationPolicy(.regular)
+        // NOTE: Do NOT call NSApp / NSApplication.shared here.
+        // In SwiftUI's @main lifecycle, NSApplication may not be initialized yet
+        // during App.init(). This causes a nil crash under XCUITest launch paths.
+        // All NSApp calls are deferred to .onAppear where NSApplication is guaranteed ready.
 
         let isUITestMode = CommandLine.arguments.contains("--ui-test-mode")
         let settings = SettingsStore()
@@ -35,9 +36,16 @@ struct ClaudeSessionHubApp: App {
                 .environment(store)
                 .frame(minWidth: 800, minHeight: 500)
                 .onAppear {
+                    // Safe here: NSApplication is fully initialized by the time
+                    // the first view appears. Works for all three launch paths:
+                    // 1. swift run ClaudeSessionHub (bare executable)
+                    // 2. Xcode Run (SwiftPM or xcodeproj)
+                    // 3. XCUITest app launch
+                    let app = NSApplication.shared
+                    app.setActivationPolicy(.regular)
                     DispatchQueue.main.async {
-                        NSApp.activate(ignoringOtherApps: true)
-                        NSApp.windows.first?.makeKeyAndOrderFront(nil)
+                        app.activate(ignoringOtherApps: true)
+                        app.windows.first?.makeKeyAndOrderFront(nil)
                     }
                 }
         }
