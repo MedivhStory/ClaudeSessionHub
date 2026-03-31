@@ -23,12 +23,28 @@ Discover, organize, and surface session health across all your projects — at a
 
 ## Install
 
-1. Download **`ClaudeSessionHub-v0.1.dmg`** from [Releases](https://github.com/MedivhStory/ClaudeSessionHub/releases)
-2. Open the `.dmg`
+1. Download **[ClaudeSessionHub-v0.1.dmg](https://github.com/MedivhStory/ClaudeSessionHub/releases/latest)** from Releases
+2. Open the DMG
 3. Drag **ClaudeSessionHub** to **Applications**
 4. Launch from Applications
 
-> First launch: right-click the app → select **Open** → click **Open** in the dialog.
+### First launch
+
+macOS may block the app because it isn't signed with a Developer ID. Here's how to get past it:
+
+- **Right-click** the app → select **Open** → click **Open** in the dialog.
+
+If that doesn't work, remove the quarantine flag in Terminal:
+
+```bash
+# If the DMG itself is quarantined:
+xattr -d com.apple.quarantine ~/Downloads/ClaudeSessionHub-v0.1.dmg
+
+# If the installed app is still blocked:
+xattr -dr com.apple.quarantine /Applications/ClaudeSessionHub.app
+```
+
+---
 
 ## What It Does
 
@@ -87,7 +103,16 @@ Claude Session Hub reads your local Claude Code data (`~/.claude/`) and gives yo
 
 App settings stored in `~/.claude-hub/`.
 
+## Current Limitations
+
+- Codex provider is a stub (protocol ready, no implementation yet)
+- Data directory changes require app restart
+- Not code-signed or notarized (first launch requires right-click → Open)
+
 ## Development
+
+<details>
+<summary>For contributors and developers</summary>
 
 ```bash
 # Run from source
@@ -112,15 +137,15 @@ xcodebuild -project ClaudeSessionHub.xcodeproj \
   build CONFIGURATION_BUILD_DIR=./dist
 ```
 
-## Current Limitations
-
-- Codex provider is a stub (protocol ready, no implementation yet)
-- Data directory changes require app restart
-- Not code-signed or notarized (first launch requires right-click → Open)
+</details>
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for the full text.
+
+**MIT, in human words:** use it, ship it, remix it, break it, fix it — just keep the copyright notice and don't blame the author if it catches fire.
+
+> *Friendly summary only. See [LICENSE](LICENSE) for the actual terms.*
 
 ---
 

@@ -23,12 +23,28 @@
 
 ## 安装
 
-1. 从 [Releases](https://github.com/MedivhStory/ClaudeSessionHub/releases) 下载 **`ClaudeSessionHub-v0.1.dmg`**
-2. 打开 `.dmg` 文件
+1. 从 [Releases](https://github.com/MedivhStory/ClaudeSessionHub/releases/latest) 下载 **ClaudeSessionHub-v0.1.dmg**
+2. 打开 DMG 文件
 3. 将 **ClaudeSessionHub** 拖入 **Applications**
 4. 从启动台或 Applications 打开
 
-> 首次启动：右键点击应用 → 选择「打开」→ 在弹窗中点击「打开」。
+### 首次启动
+
+macOS 可能会阻止打开，因为应用没有经过 Apple 签名。处理方式：
+
+- **右键点击**应用 → 选择「打开」→ 在弹窗中点击「打开」。
+
+如果仍然无法打开，在终端中移除隔离标记：
+
+```bash
+# 如果 DMG 本身被隔离：
+xattr -d com.apple.quarantine ~/Downloads/ClaudeSessionHub-v0.1.dmg
+
+# 如果已安装的应用仍被阻止：
+xattr -dr com.apple.quarantine /Applications/ClaudeSessionHub.app
+```
+
+---
 
 ## 它做什么
 
@@ -87,7 +103,16 @@ Claude Session Hub 读取本地 Claude Code 数据（`~/.claude/`），为你提
 
 应用设置存储在 `~/.claude-hub/`。
 
+## 当前限制
+
+- Codex provider 仍为 stub（协议已就绪，尚无实现）
+- 修改数据目录需要重启应用
+- 未签名和公证（首次启动需右键 → 打开）
+
 ## 开发
+
+<details>
+<summary>给贡献者和开发者</summary>
 
 ```bash
 # 从源码运行
@@ -112,15 +137,15 @@ xcodebuild -project ClaudeSessionHub.xcodeproj \
   build CONFIGURATION_BUILD_DIR=./dist
 ```
 
-## 当前限制
-
-- Codex provider 仍为 stub（协议已就绪，尚无实现）
-- 修改数据目录需要重启应用
-- 未签名和公证（首次启动需右键 → 打开）
+</details>
 
 ## 许可
 
-MIT
+MIT — 完整条款见 [LICENSE](LICENSE)。
+
+**MIT，人话版：** 拿去用，拿去改，拿去发，拿去折腾都行；只要保留版权声明，并且如果它哪天冒烟了，别来找作者背锅。
+
+> *以上仅为友好说明，具体条款请以 [LICENSE](LICENSE) 文件为准。*
 
 ---
 
