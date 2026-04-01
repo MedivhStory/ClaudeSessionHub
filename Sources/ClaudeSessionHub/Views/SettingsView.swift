@@ -2,6 +2,8 @@ import SwiftUI
 
 public struct SettingsView: View {
     @Environment(SessionStore.self) var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var showSavedFeedback = false
 
     public init() {}
 
@@ -33,12 +35,18 @@ public struct SettingsView: View {
                     step: 10)
             .accessibilityIdentifier("scanIntervalStepper")
 
-            // Save button
-            Button("保存设置") {
+            // Save button with feedback
+            Button(showSavedFeedback ? "已保存 ✓" : "保存设置") {
                 store.settings.save()
+                showSavedFeedback = true
+                // Auto-close after brief feedback
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    dismiss()
+                }
             }
             .keyboardShortcut(.defaultAction)
             .accessibilityIdentifier("saveSettingsButton")
+            .disabled(showSavedFeedback)
         }
         .formStyle(.grouped)
         .accessibilityIdentifier("settingsForm")
