@@ -30,7 +30,13 @@ public final class SessionStore: @unchecked Sendable {
         defer { isScanning = false }
 
         let results = await coordinator.scan()
-        sessions = results.sorted { $0.lastActiveAt > $1.lastActiveAt }
+        // Stable sort: primary by lastActiveAt desc, secondary by sessionID for deterministic order
+        sessions = results.sorted {
+            if $0.lastActiveAt != $1.lastActiveAt {
+                return $0.lastActiveAt > $1.lastActiveAt
+            }
+            return $0.ref.sessionID < $1.ref.sessionID
+        }
         lastScanTime = await coordinator.lastScanTime
     }
 

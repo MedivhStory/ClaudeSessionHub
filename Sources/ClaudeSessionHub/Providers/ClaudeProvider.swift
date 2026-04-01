@@ -51,6 +51,11 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         var summaries: [SessionSummary] = []
         for path in jsonlFiles {
             if let summary = try? buildSummary(from: path, metadata: metadata) {
+                // Skip empty sessions — files with only snapshots/system entries
+                // and zero user turns are not real conversations
+                if summary.turnCount == 0 && summary.currentTaskSummary == nil {
+                    continue
+                }
                 summaries.append(summary)
             }
         }
