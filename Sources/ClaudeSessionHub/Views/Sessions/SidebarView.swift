@@ -149,7 +149,10 @@ struct SidebarView: View {
                 : .teal
             return AgentRow(id: id, name: id == "claude" ? "Claude" : id.capitalized, color: color, count: sessions.count)
         }
-        .sorted { $0.count > $1.count }
+        .sorted {
+            if $0.count != $1.count { return $0.count > $1.count }
+            return $0.name < $1.name
+        }
     }
 
     private var projectRows: [ProjectRow] {
@@ -160,7 +163,10 @@ struct SidebarView: View {
                 hasActive: sessions.contains { $0.runtimeState == .active }
             )
         }
-        .sorted { $0.count > $1.count }
+        .sorted {
+            if $0.count != $1.count { return $0.count > $1.count }
+            return $0.name < $1.name  // stable tiebreaker
+        }
     }
 
     private func countForState(_ state: RuntimeState) -> Int {

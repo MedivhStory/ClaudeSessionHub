@@ -59,7 +59,10 @@ struct ProjectPortfolioView: View {
             let lAttn = projects[lhs]?.filter { !HealthEngine.computeSignals(for: $0).isEmpty }.count ?? 0
             let rAttn = projects[rhs]?.filter { !HealthEngine.computeSignals(for: $0).isEmpty }.count ?? 0
             if lAttn != rAttn { return lAttn > rAttn }
-            return (projects[lhs]?.count ?? 0) > (projects[rhs]?.count ?? 0)
+            let lCount = projects[lhs]?.count ?? 0
+            let rCount = projects[rhs]?.count ?? 0
+            if lCount != rCount { return lCount > rCount }
+            return lhs < rhs  // stable tiebreaker
         }
     }
 
