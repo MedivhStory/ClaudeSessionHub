@@ -1,8 +1,10 @@
 import SwiftUI
+#if canImport(AppKit)
+import AppKit
+#endif
 
 public struct SettingsView: View {
     @Environment(SessionStore.self) var store
-    @Environment(\.dismiss) private var dismiss
     @State private var showSavedFeedback = false
 
     public init() {}
@@ -39,9 +41,18 @@ public struct SettingsView: View {
             Button(showSavedFeedback ? "已保存 ✓" : "保存设置") {
                 store.settings.save()
                 showSavedFeedback = true
-                // Auto-close after brief feedback
+                // Auto-close Settings window after brief feedback.
+                // @Environment(\.dismiss) doesn't work in macOS Settings scene,
+                // so we close via NSApp.keyWindow directly.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                    dismiss()
+                    #if canImport(AppKit)
+                    // Find and close the Settings window (not the main window)
+                    for window in NSApp.windows where window.isKeyWindow && window != NSApp.windows.first {
+                        window.close()
+                        break
+                    }
+                    #endif
+                    showSavedFeedback = false
                 }
             }
             .keyboardShortcut(.defaultAction)
