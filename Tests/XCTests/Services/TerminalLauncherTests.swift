@@ -62,4 +62,18 @@ final class TerminalLauncherXCTests: XCTestCase {
     func testTerminalAvailability() {
         XCTAssertTrue(TerminalLauncher.isTerminalAvailable(.terminalApp), "Terminal.app should be available")
     }
+
+    func testGhosttyLaunchUsesShellWrapper() {
+        let command = "cd /tmp && claude -r abc-123"
+        let launch = TerminalLauncher.ghosttyLaunchArguments(for: command)
+
+        XCTAssertTrue(launch.arguments.contains("/bin/zsh"), "Must use /bin/zsh")
+        XCTAssertTrue(launch.arguments.contains("-lc"), "Must use -lc for shell")
+        XCTAssertTrue(launch.arguments.contains(command), "Must include shell command")
+
+        if let eIndex = launch.arguments.firstIndex(of: "-e") {
+            XCTAssertEqual(launch.arguments[eIndex + 1], "/bin/zsh",
+                          "After -e must be /bin/zsh, not raw shell command")
+        }
+    }
 }

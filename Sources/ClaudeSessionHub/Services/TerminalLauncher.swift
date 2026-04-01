@@ -11,9 +11,9 @@ public enum TerminalLauncher {
 
     /// Tri-state for cwd availability — lets UI distinguish "never had cwd" from "cwd deleted"
     public enum CwdStatus: Sendable {
-        case exists           // directory is there
-        case missing          // was set but no longer exists on disk
-        case unknown          // workingDirectory was nil (no cwd metadata)
+        case exists
+        case missing
+        case unknown
     }
 
     /// Check the cwd status for a ResumeTarget
@@ -45,33 +45,25 @@ public enum TerminalLauncher {
     /// If the selected terminal is unavailable, falls back to the other.
     /// If both unavailable, falls back to clipboard copy + notification.
     public static func launch(target: ResumeTarget, in terminal: Terminal) {
-        let command = copyCommand(for: target)
+        let shellCommand = copyCommand(for: target)
 
-        // Try selected terminal first (preflight check)
         if isTerminalAvailable(terminal) {
             do {
-                try launchInTerminal(command: command, terminal: terminal)
+                try launchInTerminal(shellCommand: shellCommand, terminal: terminal)
                 return
-            } catch {
-                // Launch failed despite preflight — fall through
-            }
+            } catch {}
         }
 
-        // Fallback to the other terminal
         let fallback: Terminal = (terminal == .ghostty) ? .terminalApp : .ghostty
         if isTerminalAvailable(fallback) {
             do {
-                try launchInTerminal(command: command, terminal: fallback)
+                try launchInTerminal(shellCommand: shellCommand, terminal: fallback)
                 return
-            } catch {
-                // Fall through to clipboard
-            }
+            } catch {}
         }
 
-        // Both unavailable or failed — clipboard fallback
-        copyToClipboard(command)
-        let status = cwdStatus(for: target)
-        switch status {
+        copyToClipboard(shellCommand)
+        switch cwdStatus(for: target) {
         case .missing:
             sendNotification(message: "原目录不存在，已复制命令，请在终端粘贴执行")
         case .exists, .unknown:
@@ -81,12 +73,9 @@ public enum TerminalLauncher {
 
     // MARK: - Preflight availability checks
 
-    /// Check if a terminal is actually installed before trying to launch it.
-    /// This avoids spawning processes that will exit with error codes.
     public static func isTerminalAvailable(_ terminal: Terminal) -> Bool {
         switch terminal {
         case .ghostty:
-            // Check app bundle first, then CLI in PATH
             if FileManager.default.fileExists(atPath: "/Applications/Ghostty.app") { return true }
             return isCommandInPath("ghostty")
         case .terminalApp:
@@ -95,7 +84,6 @@ public enum TerminalLauncher {
         }
     }
 
-    /// Check if a command exists in PATH using `which`
     private static func isCommandInPath(_ command: String) -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
@@ -111,35 +99,47 @@ public enum TerminalLauncher {
         }
     }
 
+    // MARK: - Launch argument builders (pure, testable)
+
+    /// Build the argv for Ghostty launch.
+    /// Ghostty -e expects a program + args, NOT a shell expression.
+    /// We wrap in /bin/zsh -lc "..." so shell syntax (cd && ...) works.
+    public static func ghosttyLaunchArguments(for shellCommand: String) -> (executable: String, arguments: [String]) {
+        if FileManager.default.fileExists(atPath: "/Applications/Ghostty.app") {
+            return (
+                executable: "/usr/bin/open",
+                arguments: ["-na", "Ghostty.app", "--args", "-e", "/bin/zsh", "-lc", shellCommand]
+            )
+        } else {
+            return (
+                executable: "/usr/bin/env",
+                arguments: ["ghostty", "-e", "/bin/zsh", "-lc", shellCommand]
+            )
+        }
+    }
+
     // MARK: - Launch helpers
 
-    private static func launchInTerminal(command: String, terminal: Terminal) throws {
+    private static func launchInTerminal(shellCommand: String, terminal: Terminal) throws {
         switch terminal {
         case .ghostty:
-            try launchGhostty(command: command)
+            try launchGhostty(shellCommand: shellCommand)
         case .terminalApp:
-            try launchTerminalApp(command: command)
+            try launchTerminalApp(shellCommand: shellCommand)
         }
     }
 
-    private static func launchGhostty(command: String) throws {
-        if FileManager.default.fileExists(atPath: "/Applications/Ghostty.app") {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            process.arguments = ["-na", "Ghostty.app", "--args", "-e", command]
-            try process.run()
-        } else {
-            // CLI in PATH (already verified by preflight)
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["ghostty", "-e", command]
-            try process.run()
-        }
+    private static func launchGhostty(shellCommand: String) throws {
+        let launch = ghosttyLaunchArguments(for: shellCommand)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: launch.executable)
+        process.arguments = launch.arguments
+        try process.run()
     }
 
-    private static func launchTerminalApp(command: String) throws {
+    private static func launchTerminalApp(shellCommand: String) throws {
         let tmpFile = NSTemporaryDirectory() + "claude-hub-resume-\(UUID().uuidString).command"
-        let script = "#!/bin/bash\n\(command)\nrm -f \"\(tmpFile)\"\n"
+        let script = "#!/bin/zsh -l\n\(shellCommand)\nrm -f \"\(tmpFile)\"\n"
         try script.write(toFile: tmpFile, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tmpFile)
 

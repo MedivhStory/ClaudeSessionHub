@@ -10,6 +10,7 @@ enum TerminalLauncherTests {
         testCopyCommandEscapesSpaces()
         testCwdStatusTriState()
         testTerminalAvailability()
+        testGhosttyLaunchUsesShellWrapper()
     }
 
     static func testCopyCommandWithExistingCwd() {
@@ -74,8 +75,30 @@ enum TerminalLauncherTests {
     }
 
     static func testTerminalAvailability() {
-        // Terminal.app should always be available on macOS
         check(TerminalLauncher.isTerminalAvailable(.terminalApp), "Terminal.app should be available on macOS")
-        // We don't assert Ghostty availability — it may or may not be installed
+    }
+
+    static func testGhosttyLaunchUsesShellWrapper() {
+        // Ghostty -e expects argv, not shell expressions.
+        // We must wrap in /bin/zsh -lc so "cd ... && claude -r ..." works.
+        let command = "cd /tmp && claude -r abc-123"
+        let launch = TerminalLauncher.ghosttyLaunchArguments(for: command)
+
+        // Must contain /bin/zsh and -lc to interpret shell syntax
+        check(launch.arguments.contains("/bin/zsh"),
+              "Ghostty args must include /bin/zsh, got: \(launch.arguments)")
+        check(launch.arguments.contains("-lc"),
+              "Ghostty args must include -lc for shell interpretation, got: \(launch.arguments)")
+        check(launch.arguments.contains(command),
+              "Ghostty args must include the shell command, got: \(launch.arguments)")
+
+        // Must NOT pass the raw shell command directly to -e without shell wrapper
+        // (this was the bug: -e "cd /path && claude -r id" fails because Ghostty
+        // treats it as a program name, not a shell expression)
+        if let eIndex = launch.arguments.firstIndex(of: "-e") {
+            let afterE = launch.arguments[eIndex + 1]
+            check(afterE == "/bin/zsh",
+                  "After -e must be /bin/zsh, not the raw command. Got: \(afterE)")
+        }
     }
 }
