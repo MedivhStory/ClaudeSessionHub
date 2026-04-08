@@ -39,24 +39,41 @@ public enum LLMPrompts {
         }
 
         if !signals.historyDisplayTexts.isEmpty {
-            // Head (earliest intents) + tail (most recent intents) for full picture
-            let head = signals.historyDisplayTexts.prefix(3)
-                .map { String($0.prefix(100)) }
-            let tail = signals.historyDisplayTexts.count > 6
-                ? signals.historyDisplayTexts.suffix(3).map { String($0.prefix(100)) }
+            let all = signals.historyDisplayTexts
+
+            // Extract milestone entries first (version numbers, key decisions)
+            let milestoneKeywords = ["v0.", "v1.", "v2.", "版本", "封版", "brainstorm", "plan",
+                                     "tag", "release", "开始", "完成", "准备"]
+            let milestones = all.enumerated().filter { (_, text) in
+                let lower = text.lowercased()
+                return milestoneKeywords.contains(where: { lower.contains($0) })
+            }.prefix(5).map { (i, text) in "[\(i+1)/\(all.count)] \(String(text.prefix(100)))" }
+
+            // Head + tail for context
+            let head = all.prefix(2).map { String($0.prefix(100)) }
+            let tail = all.count > 4
+                ? all.suffix(2).map { String($0.prefix(100)) }
                 : []
-            var historyLines = head
+
+            var historyLines: [String] = []
+            historyLines.append(contentsOf: head)
+            if !milestones.isEmpty {
+                historyLines.append("--- 关键里程碑 ---")
+                historyLines.append(contentsOf: milestones)
+            }
             if !tail.isEmpty {
-                historyLines.append("... （中间省略 \(signals.historyDisplayTexts.count - 6) 条）...")
+                historyLines.append("--- 最近 ---")
                 historyLines.append(contentsOf: tail)
             }
-            parts.append("用户输入历史（从早到晚）:\n\(historyLines.joined(separator: "\n"))")
+            parts.append("用户输入历史（\(all.count) 条，从早到晚）:\n\(historyLines.joined(separator: "\n"))")
         }
 
         if !rawTurns.isEmpty {
-            let turnsSnippet = rawTurns.prefix(3)
+            // Pass all rawTurns provided by caller (already sampled upstream).
+            // Do NOT re-truncate here — the caller controls the count.
+            let turnsSnippet = rawTurns
                 .map { String($0.prefix(300)) }.joined(separator: "\n---\n")
-            parts.append("关键对话片段:\n\(turnsSnippet)")
+            parts.append("关键对话片段（\(rawTurns.count) 条）:\n\(turnsSnippet)")
         }
 
         return parts.joined(separator: "\n")
@@ -69,7 +86,9 @@ public enum LLMPrompts {
     - 最多 30 个字
     - 描述这个 session 的核心任务或主题，不是最近的某个小操作
     - 如果 session 很长（总条目数很大），标题要概括整体方向，不要只反映最后一步
-    - 用任务描述的口吻，如"重构认证中间件"、"修复登录超时问题"、"OACP 管理器故障排查"
+    - 如果用户输入中出现软件版本号（如 v0.2.0、v0.2.5、v1.0），标题必须包含该版本号
+    - 如果 session 跨越多个版本（如从 v0.2.0 到 v0.2.5），标题应体现版本范围
+    - 用任务描述的口吻，如"Claude Session Hub v0.2.0-v0.2.5 开发"、"修复登录超时问题"
     - 不要加引号、标点、编号
     - 如果信息不足，返回最合理的概括
 
@@ -93,10 +112,11 @@ public enum LLMPrompts {
 
     要求：
     - 最多 150 个字
-    - 第一句：这个 session 的整体目标是什么
+    - 第一句：这个 session 的整体目标是什么（如果涉及版本开发，需提到版本号）
     - 第二句：目前进展到哪了
     - 第三句（可选）：有什么遗留或下一步
-    - 如果 session 很长，要概括整体脉络，不要只描述最后一步
+    - 如果 session 很长，要概括整体脉络，特别关注"关键里程碑"中的版本转折点
+    - 不要只描述最后一步
     - 用客观描述口吻
 
     只返回摘要文本，不要解释。
