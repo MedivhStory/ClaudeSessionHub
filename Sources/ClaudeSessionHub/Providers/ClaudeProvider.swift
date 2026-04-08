@@ -3,15 +3,27 @@ import Foundation
 import Darwin
 #endif
 
+/// @unchecked Sendable safety: ClaudeProvider has no mutable instance state.
+/// All state in discoverSessions/buildSummary is local.
+/// baseDirectoryProvider is a closure that returns the current path (supports hot-switch).
 public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
     public let id: ProviderID = "claude"
     public let displayName = "Claude Code"
     public let capabilities: ProviderCapabilities = [.resume, .contextUsage, .errorTracking, .branchInfo]
 
-    private let baseDirectory: String
+    private let baseDirectoryProvider: @Sendable () -> String
+
+    /// Read-only accessor for the current base directory (evaluated each call).
+    private var baseDirectory: String { baseDirectoryProvider() }
 
     public init(baseDirectory: String? = nil) {
-        self.baseDirectory = baseDirectory ?? (NSHomeDirectory() + "/.claude")
+        let dir = baseDirectory ?? (NSHomeDirectory() + "/.claude")
+        self.baseDirectoryProvider = { dir }
+    }
+
+    /// Initialize with a dynamic directory provider (for hot-switch support).
+    public init(baseDirectoryProvider: @escaping @Sendable () -> String) {
+        self.baseDirectoryProvider = baseDirectoryProvider
     }
 
     // MARK: - discoverSessions
@@ -109,7 +121,13 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         let createdAt = metadata[sessionID]?.startedAt
             ?? extractTimestamp(from: firstEntries.first)
             ?? Date()
-        let lastActiveAt = extractTimestamp(from: lastEntries.last) ?? Date()
+        // Find last entry with a valid timestamp (some entries like last-prompt have no timestamp)
+        let lastActiveAt = lastEntries.reversed().compactMap({ extractTimestamp(from: $0) }).first
+            ?? extractTimestamp(from: firstEntries.last)
+            ?? Date()
+
+        // entrypoint
+        let entrypoint = extractEntrypoint(from: allEntries)
 
         return SessionSummary(
             ref: ref,
@@ -124,7 +142,8 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
             recentErrorCount: recentErrorCount,
             createdAt: createdAt,
             lastActiveAt: lastActiveAt,
-            contextUsage: contextUsage
+            contextUsage: contextUsage,
+            entrypoint: entrypoint
         )
     }
 
@@ -432,9 +451,225 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     // MARK: - Helpers
 
+    /// Count lines in a file without parsing JSON — O(n) on bytes, not objects.
+    private static func countLines(at path: String) -> Int {
+        guard let data = FileManager.default.contents(atPath: path) else { return 0 }
+        return data.reduce(0) { count, byte in count + (byte == UInt8(ascii: "\n") ? 1 : 0) }
+    }
+
     private func truncate(_ s: String, to maxLen: Int) -> String {
         if s.count <= maxLen { return s }
         return String(s.prefix(maxLen - 1)) + "…"
+    }
+
+    // MARK: - Signal Extraction
+
+    /// Extract structured signals from a session's JSONL for title/summary generation.
+    public func extractSignals(for ref: SessionRef) async throws -> SessionSignals {
+        let path = try findJSONLPath(for: ref.sessionID)
+        let firstEntries = try JSONLParser.readFirstEntries(at: path, count: 10)
+        let lastEntries = try JSONLParser.readLastEntries(at: path, count: 50)
+        let allEntries = mergeEntries(first: firstEntries, last: lastEntries)
+
+        var signals = SessionSignals(sessionID: ref.sessionID)
+        signals.entrypoint = extractEntrypoint(from: allEntries)
+        signals.branch = extractBranch(from: allEntries)
+        signals.slug = extractSlug(from: allEntries)
+        signals.firstUserIntent = extractFirstUserIntent(from: allEntries)
+        signals.lastUserIntent = extractCurrentTaskSummary(from: allEntries)
+        signals.lastAssistantProgress = extractLastCompletedProgress(from: allEntries)
+        let (tools, files) = extractToolsAndFiles(from: allEntries)
+        signals.toolsUsed = tools
+        signals.filesModified = files
+        signals.isSidechain = allEntries.contains { $0["isSidechain"] as? Bool == true }
+        signals.turnCount = countUserTurns(from: allEntries)
+        signals.hasAssistantReply = allEntries.contains { $0["type"] as? String == "assistant" }
+
+        // Extract slash commands and error output for placeholder title generation
+        let (cmds, errors) = extractCommandInfo(from: allEntries)
+        signals.slashCommands = cmds
+        signals.commandErrors = errors
+
+        // Session scale: count lines in file (cheap, no JSON parsing)
+        signals.totalEntryCount = Self.countLines(at: path)
+
+        return signals
+    }
+
+    /// Extract key user + assistant text turns for LLM context.
+    /// Uses head (10) + middle sample + tail (50) to avoid full file parse.
+    public func extractKeyTurns(for ref: SessionRef, maxTurns: Int = 5) async throws -> [String] {
+        let path = try findJSONLPath(for: ref.sessionID)
+        let firstEntries = try JSONLParser.readFirstEntries(at: path, count: 10)
+        let lastEntries = try JSONLParser.readLastEntries(at: path, count: 50)
+        // Also grab middle samples if file is large enough
+        let middleSamples = (try? JSONLParser.readSampledUserTurns(at: path, count: 5)) ?? []
+        let allEntries = mergeEntries(first: firstEntries, last: lastEntries) + middleSamples
+
+        var turns: [String] = []
+        for entry in allEntries {
+            guard let type = entry["type"] as? String else { continue }
+            guard let message = entry["message"] as? [String: Any] else { continue }
+
+            if type == "user" && entry["isMeta"] as? Bool != true {
+                if let content = message["content"] as? String {
+                    let cleaned = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !cleaned.isEmpty && !isInternalCommandNoise(cleaned) {
+                        turns.append("用户: \(String(cleaned.prefix(300)))")
+                    }
+                }
+            } else if type == "assistant" {
+                if let content = message["content"] as? String {
+                    turns.append("助手: \(String(content.prefix(300)))")
+                } else if let contentArray = message["content"] as? [[String: Any]] {
+                    for block in contentArray {
+                        if block["type"] as? String == "text", let text = block["text"] as? String {
+                            turns.append("助手: \(String(text.prefix(300)))")
+                            break
+                        }
+                    }
+                }
+            }
+        }
+
+        // Take evenly spaced turns if more than maxTurns
+        if turns.count <= maxTurns { return turns }
+        var sampled: [String] = []
+        let step = Double(turns.count) / Double(maxTurns)
+        for i in 0..<maxTurns {
+            sampled.append(turns[min(Int(Double(i) * step), turns.count - 1)])
+        }
+        return sampled
+    }
+
+    // MARK: - Signal Extraction Helpers
+
+    private func extractCommandInfo(from entries: [[String: Any]]) -> (commands: [String], errors: [String]) {
+        var commands: [String] = []
+        var errors: [String] = []
+        for entry in entries {
+            guard entry["type"] as? String == "user" else { continue }
+            guard let message = entry["message"] as? [String: Any] else { continue }
+            if let content = message["content"] as? String {
+                // Extract <command-name>X</command-name>
+                if content.contains("<command-name>"),
+                   let regex = try? NSRegularExpression(pattern: "<command-name>(.*?)</command-name>"),
+                   let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+                   let range = Range(match.range(at: 1), in: content) {
+                    commands.append(String(content[range]))
+                }
+                // Extract <local-command-stdout>X</local-command-stdout>
+                if content.contains("<local-command-stdout>"),
+                   let regex = try? NSRegularExpression(pattern: "<local-command-stdout>(.*?)</local-command-stdout>", options: .dotMatchesLineSeparators),
+                   let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+                   let range = Range(match.range(at: 1), in: content) {
+                    let output = String(content[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !output.isEmpty { errors.append(output) }
+                }
+            }
+        }
+        return (commands, errors)
+    }
+
+    private func extractEntrypoint(from entries: [[String: Any]]) -> String? {
+        for entry in entries {
+            if let ep = entry["entrypoint"] as? String { return ep }
+        }
+        return nil
+    }
+
+    private func extractSlug(from entries: [[String: Any]]) -> String? {
+        for entry in entries {
+            if let slug = entry["slug"] as? String, !slug.isEmpty { return slug }
+        }
+        return nil
+    }
+
+    private func extractFirstUserIntent(from entries: [[String: Any]]) -> String? {
+        for entry in entries {
+            guard entry["type"] as? String == "user" else { continue }
+            guard entry["isMeta"] as? Bool != true else { continue }
+            guard let content = extractStringContent(from: entry) else { continue }
+            if isInternalCommandNoise(content) { continue }
+            return content
+        }
+        return nil
+    }
+
+    private func extractToolsAndFiles(from entries: [[String: Any]]) -> (tools: Set<String>, files: Set<String>) {
+        var tools = Set<String>()
+        var files = Set<String>()
+        let fileTools: Set<String> = ["Edit", "Write", "MultiEdit"]
+
+        for entry in entries {
+            guard entry["type"] as? String == "assistant" else { continue }
+            guard let message = entry["message"] as? [String: Any] else { continue }
+            guard let contentArray = message["content"] as? [[String: Any]] else { continue }
+            for item in contentArray {
+                guard item["type"] as? String == "tool_use" else { continue }
+                guard let name = item["name"] as? String else { continue }
+                tools.insert(name)
+                if fileTools.contains(name),
+                   let input = item["input"] as? [String: Any],
+                   let filePath = input["file_path"] as? String {
+                    files.insert(filePath)
+                }
+            }
+        }
+        return (tools, files)
+    }
+
+    /// Extract the last completed progress from assistant messages.
+    /// Looks for completion-oriented language ("完成", "done", "fixed", "已", "成功")
+    /// rather than forward-looking language ("接下来", "next", "should").
+    private func extractLastCompletedProgress(from entries: [[String: Any]]) -> String? {
+        let completionPattern = "完成|已完成|已修改|已重构|已添加|已创建|已修复|已更新|已实现|成功|done|fixed|completed|implemented|created|updated|added|refactored|resolved"
+
+        guard let regex = try? NSRegularExpression(pattern: completionPattern, options: .caseInsensitive) else {
+            return nil
+        }
+
+        // Reverse scan assistant messages for completion statements
+        for entry in entries.reversed() {
+            guard entry["type"] as? String == "assistant" else { continue }
+            guard let message = entry["message"] as? [String: Any] else { continue }
+
+            if let contentArray = message["content"] as? [[String: Any]] {
+                for block in contentArray.reversed() {
+                    guard block["type"] as? String == "text" else { continue }
+                    guard let text = block["text"] as? String else { continue }
+                    if let sentence = findCompletionSentence(in: text, regex: regex) {
+                        return sentence
+                    }
+                }
+            } else if let content = message["content"] as? String {
+                if let sentence = findCompletionSentence(in: content, regex: regex) {
+                    return sentence
+                }
+            }
+        }
+        return nil
+    }
+
+    private func findCompletionSentence(in text: String, regex: NSRegularExpression) -> String? {
+        let strippedText = stripCodeBlocks(text)
+        let sentenceDelimiters = CharacterSet(charactersIn: "。！？.!?\n")
+        let sentences = strippedText.components(separatedBy: sentenceDelimiters)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        // Find last matching sentence (most recent completion)
+        var lastMatch: String? = nil
+        for sentence in sentences {
+            let range = NSRange(sentence.startIndex..., in: sentence)
+            if regex.firstMatch(in: sentence, range: range) != nil {
+                lastMatch = sentence
+            }
+        }
+
+        guard let match = lastMatch else { return nil }
+        if match.count <= 120 { return match }
+        return String(match.prefix(119)) + "…"
     }
 
     // MARK: - loadSessionDetail (full JSONL scan)

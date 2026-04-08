@@ -1,0 +1,83 @@
+# Changelog
+
+## [v0.2.5] - 2026-04-08
+
+### Added — LLM Enhancement Layer
+- **Optional AI-powered understanding**: Connect any OpenAI-compatible API for AI titles, progress summaries, and session overviews
+- **LLMUnderstandingSnapshot**: Complete AI understanding result per session (title + progress + summary + metadata)
+- **UnderstandingStore**: Independent persistence (`~/.claude-hub/understanding.json`), fully separated from rule-based TitleStore
+- **LLMEnhancer**: Standalone service consuming structured SessionSignals, not raw JSONL
+- **LLMClient**: Pure URLSession HTTP client for OpenAI-compatible chat completions
+- **LLMPrompts**: Prompt templates with session scale awareness for long sessions
+- **LLMConfig**: API endpoint, key, model configuration in Settings
+- **Stale detection**: `basedOnLastActiveAt` field tracks when AI understanding was generated relative to session activity
+- **Settings UI**: AI Enhancement section with endpoint/key/model fields, test connection button
+
+### Added — UI Redesign
+- **Elastic collapsed tiles**: 2 lines for healthy sessions, 3 lines with health signals
+- **Two-column expanded view**: Left (rule/facts/operations) + Right (AI understanding panel)
+- **LLMPanelView**: 4-state right panel (fresh snapshot, stale, configured-no-snapshot, unconfigured)
+- **Session stats in collapsed tile**: Created date, turn count, context usage bar moved from expanded to collapsed right side
+- **Source badge**: "AI" (purple) or "规则" (gray) after title
+- **Batch AI enhance**: Button in list header, scoped to visible sessions
+- **Per-session regenerate**: Always available in expanded AI panel
+
+### Changed
+- **Font sizes increased**: Title 16pt, summary 13pt, metadata 12pt, labels 11pt
+- **Context progress bar**: Constrained to 50pt width, inline with stats
+- **Action buttons**: Refresh and resume moved to title row right end
+
+### Fixed
+- `extractSignals` performance: Line counting instead of full JSON parse for `totalEntryCount`
+- `extractKeyTurns` performance: Head+middle+tail sampling instead of full file read
+- `batchEnhanceLLM` now refreshes stale snapshots, not just missing ones
+- `LLMConfig.isConfigured` requires `modelName` (prevents silent 400 errors)
+- Dead code removed from QuickFactsView (75 lines)
+- Test button disabled when model name is empty
+
+---
+
+## [v0.2.0] - 2026-04-07
+
+### Added — Understanding Layer
+- **Smart session naming**: Rule-based title generation from history.jsonl, tasks/, and JSONL signals
+- **Title normalization pipeline**: Strips pasted wrappers, URLs, file paths, terminal prompt chars, XML tags, shell commands
+- **Last progress extraction**: Completion-oriented language matching ("完成/done/fixed/implemented")
+- **Placeholder titles**: Descriptive placeholders for command-only sessions (e.g. "恢复会话失败", "登录中断")
+- **Title evolution**: Manually triggerable refresh, history preserved, dedup on same content
+- **SessionSignals model**: Structured signal extraction from all data sources
+- **SignalExtractor**: Reads history.jsonl + tasks/ as enrichment sources
+- **SessionTitleStrategy protocol**: Rule-based implementation with LLM slot reserved
+- **TitleStore**: Persists titles, progress, user notes to `~/.claude-hub/titles.json`
+- **User notes**: Right-click context menu to add manual annotations
+
+### Added — Search & Relations
+- **Weighted content-first search**: Scores across smart title, notes, history, tasks, branch, progress
+- **Search evidence**: Purple inline snippets showing why a session matched
+- **Session relationships**: Same-branch and time-continuation detection
+
+### Added — Data & Infrastructure
+- **Data directory hot-switch**: Changes take effect without restart
+- **Path normalization**: `~/.claude` expansion, whitespace trimming
+- **UI test isolation**: `--ui-test-mode` uses temp directory for all stores
+- **HeatStrip accessibility**: Replaced onTapGesture with Button for reliable XCUITest
+
+### Fixed
+- SettingsStore auto-save via explicit setter methods (works with @Observable)
+- ScanTimerModifier: Timer.scheduledTimer replaced with .task (no leak)
+- @unchecked Sendable safety comments on ClaudeProvider, LabelStore, ArchiveStore
+- lastActiveAt: Scans backward for first entry with valid timestamp (fixes false-stale)
+
+---
+
+## [v0.1.1] - 2026-04-01
+
+### Initial Release
+- Native macOS SwiftUI application for Claude Code session management
+- Project → Session hierarchy with sectioned sidebar
+- 3-layer session tiles with health signals
+- Overview dashboard with summary cards, heat strip, attention inbox
+- One-click resume in Ghostty or Terminal.app
+- Session archiving and manual labels
+- 56 unit tests + 16 UI tests
+- Provider abstraction (Claude Code + Codex stub)

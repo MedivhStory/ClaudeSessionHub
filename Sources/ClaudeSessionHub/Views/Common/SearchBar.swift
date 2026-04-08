@@ -35,17 +35,21 @@ struct SearchBar: View {
 // MARK: - Search Filtering
 
 extension SearchBar {
-    /// Returns true if the session matches the search query (case-insensitive).
-    static func matches(_ session: SessionSummary, query: String) -> Bool {
+    /// Returns true if the session matches the search query using weighted scoring.
+    static func matches(_ session: SessionSummary, query: String, store: SessionStore) -> Bool {
         guard !query.isEmpty else { return true }
-        let q = query.lowercased()
-        let fields: [String?] = [
-            session.title,
-            session.currentTaskSummary,
-            session.cwd,
-            session.ref.sessionID,
-            session.branch
-        ]
-        return fields.contains { $0?.lowercased().contains(q) == true }
+        let sid = session.ref.sessionID
+        return SearchScorer.score(
+            query: query,
+            title: session.title,
+            smartTitle: store.titleStore.currentTitle(for: sid)?.text,
+            taskSummary: session.currentTaskSummary,
+            progress: store.titleStore.lastProgress(for: sid),
+            userNote: store.titleStore.userNote(for: sid),
+            branch: session.branch,
+            cwd: session.cwd,
+            sessionID: sid,
+            historyTexts: store.cachedHistoryTexts(for: sid)
+        ) > 0
     }
 }

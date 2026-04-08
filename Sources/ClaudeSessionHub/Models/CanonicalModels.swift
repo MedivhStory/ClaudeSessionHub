@@ -63,15 +63,19 @@ public struct SessionSummary: Identifiable, Sendable {
     public let createdAt: Date
     public let lastActiveAt: Date
     public let contextUsage: ContextUsage?
+    public let smartTitle: GeneratedTitle?
+    public let lastProgress: String?
+    public let entrypoint: String?
 
     public var id: SessionRef { ref }
 
-    public init(ref: SessionRef, title: String, currentTaskSummary: String?, runtimeState: RuntimeState, taskPhase: TaskPhase, cwd: String?, branch: String?, turnCount: Int, filesTouched: Int, recentErrorCount: Int, createdAt: Date, lastActiveAt: Date, contextUsage: ContextUsage?) {
+    public init(ref: SessionRef, title: String, currentTaskSummary: String?, runtimeState: RuntimeState, taskPhase: TaskPhase, cwd: String?, branch: String?, turnCount: Int, filesTouched: Int, recentErrorCount: Int, createdAt: Date, lastActiveAt: Date, contextUsage: ContextUsage?, smartTitle: GeneratedTitle? = nil, lastProgress: String? = nil, entrypoint: String? = nil) {
         self.ref = ref; self.title = title; self.currentTaskSummary = currentTaskSummary
         self.runtimeState = runtimeState; self.taskPhase = taskPhase; self.cwd = cwd
         self.branch = branch; self.turnCount = turnCount; self.filesTouched = filesTouched
         self.recentErrorCount = recentErrorCount; self.createdAt = createdAt
         self.lastActiveAt = lastActiveAt; self.contextUsage = contextUsage
+        self.smartTitle = smartTitle; self.lastProgress = lastProgress; self.entrypoint = entrypoint
     }
 }
 

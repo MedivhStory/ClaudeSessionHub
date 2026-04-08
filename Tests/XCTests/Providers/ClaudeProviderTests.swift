@@ -1,5 +1,9 @@
 import XCTest
+#if canImport(ClaudeSessionHubLib)
 @testable import ClaudeSessionHubLib
+#else
+@testable import ClaudeSessionHub
+#endif
 
 final class ClaudeProviderXCTests: XCTestCase {
 
@@ -283,6 +287,49 @@ final class ClaudeProviderXCTests: XCTestCase {
         XCTAssertNotNil(detail.modelInfo)
         XCTAssertEqual(detail.modelInfo?.modelName, "claude-sonnet-4-20250514")
         XCTAssertEqual(detail.modelInfo?.contextLimit, 200_000)
+    }
+
+    // MARK: - v0.2 Signal Extraction Tests
+
+    func testEntrypointExtracted() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+
+        let jsonl = [
+            #"{"type":"system","timestamp":"2026-03-01T10:00:00Z","entrypoint":"resume"}"#,
+            #"{"type":"user","message":{"role":"user","content":"继续之前的工作"},"timestamp":"2026-03-01T10:00:01Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"好的，继续。"}],"usage":{"input_tokens":100,"output_tokens":50}},"timestamp":"2026-03-01T10:00:02Z"}"#
+        ].joined(separator: "\n")
+        try jsonl.write(toFile: projectDir + "/ep-test.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let sessions = try await provider.discoverSessions()
+        XCTAssertEqual(sessions.first?.entrypoint, "resume")
+    }
+
+    func testExtractSessionSignals() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        // Reuse existing buildTestJSONL() helper
+        try buildTestJSONL().write(toFile: projectDir + "/sig-test.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "sig-test")
+        let signals = try await provider.extractSignals(for: ref)
+
+        XCTAssertEqual(signals.sessionID, "sig-test")
+        XCTAssertNotNil(signals.firstUserIntent)
+        XCTAssertTrue(signals.firstUserIntent?.contains("帮我重构") ?? false)
+        XCTAssertNotNil(signals.lastUserIntent)
+        XCTAssertTrue(signals.toolsUsed.contains("Edit"))
+        XCTAssertTrue(signals.toolsUsed.contains("Write"))
+        XCTAssertFalse(signals.filesModified.isEmpty)
     }
 
     func testLoadSessionDetailNextStep() async throws {

@@ -8,10 +8,13 @@ struct HeatStripView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(sortedProjectNames, id: \.self) { name in
-                    projectBlock(name: name, sessions: projects[name] ?? [])
-                        .onTapGesture {
-                            onSelectProject?(name)
-                        }
+                    Button {
+                        onSelectProject?(name)
+                    } label: {
+                        projectBlock(name: name, sessions: projects[name] ?? [])
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("heatStrip_\(name)")
                 }
             }
             .padding(.horizontal, 12)
@@ -67,8 +70,6 @@ struct HeatStripView: View {
         .background(Color(.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("heatStrip_\(name)")
     }
 
     private func relativeTime(_ date: Date) -> String {

@@ -58,32 +58,34 @@ public struct SettingsView: View {
             .keyboardShortcut(.defaultAction)
             .accessibilityIdentifier("saveSettingsButton")
             .disabled(showSavedFeedback)
+
+            LLMSettingsSection()
         }
         .formStyle(.grouped)
         .accessibilityIdentifier("settingsForm")
-        .frame(width: 400, height: 250)
+        .frame(width: 400, height: 500)
         .padding()
     }
 
-    // Bindings that write through to settings
+    // Bindings that write through to settings via auto-save setters
     private var terminalBinding: Binding<String> {
         Binding(
             get: { store.settings.selectedTerminal },
-            set: { store.settings.selectedTerminal = $0 }
+            set: { store.settings.setSelectedTerminal($0) }
         )
     }
 
     private var dataDirectoryBinding: Binding<String> {
         Binding(
             get: { store.settings.claudeDataDirectory },
-            set: { store.settings.claudeDataDirectory = $0 }
+            set: { store.settings.setClaudeDataDirectory($0) }
         )
     }
 
     private var scanIntervalBinding: Binding<Int> {
         Binding(
             get: { store.settings.scanIntervalSeconds },
-            set: { store.settings.scanIntervalSeconds = $0 }
+            set: { store.settings.setScanIntervalSeconds($0) }
         )
     }
 }

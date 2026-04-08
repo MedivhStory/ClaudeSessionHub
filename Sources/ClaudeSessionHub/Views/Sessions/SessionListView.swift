@@ -27,7 +27,7 @@ struct SessionListView: View {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(filteredSessions) { session in
-                            SessionTileView(session: session)
+                            SessionTileView(session: session, searchQuery: searchText)
                         }
                     }
                     .padding(.horizontal)
@@ -69,6 +69,23 @@ struct SessionListView: View {
             if store.isScanning {
                 ProgressView()
                     .controlSize(.small)
+            }
+
+            if store.settings.llmConfig.isConfigured {
+                Button {
+                    Task {
+                        let refs = filteredSessions.map(\.ref)
+                        let _ = await store.batchEnhanceLLM(sessions: refs)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                        Text("批量 AI 增强")
+                    }
+                    .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("batchEnhanceButton")
             }
         }
     }
@@ -135,7 +152,7 @@ struct SessionListView: View {
 
         // Filter by search
         if !searchText.isEmpty {
-            result = result.filter { SearchBar.matches($0, query: searchText) }
+            result = result.filter { SearchBar.matches($0, query: searchText, store: store) }
         }
 
         return result

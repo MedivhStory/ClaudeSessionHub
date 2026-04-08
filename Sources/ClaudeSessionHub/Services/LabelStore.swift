@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 
+/// Not Sendable — accessed only from @MainActor context via SessionStore.
+/// Swift 6 migration: annotate with @MainActor or convert to actor.
 @Observable
 public final class LabelStore {
     private var labels: [String: String] = [:]

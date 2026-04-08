@@ -121,6 +121,30 @@ public enum JSONLParser {
         return entries
     }
 
+    /// Read user-type entries sampled evenly from the middle of the file.
+    public static func readSampledUserTurns(at path: String, count: Int, skipHead: Int = 10, skipTail: Int = 50) throws -> [[String: Any]] {
+        let allEntries = try readAllEntries(at: path)
+        let total = allEntries.count
+        guard total > skipHead + skipTail else { return [] }
+
+        let middleEntries = Array(allEntries[skipHead..<(total - skipTail)])
+        let userEntries = middleEntries.filter { entry in
+            entry["type"] as? String == "user" &&
+            entry["isMeta"] as? Bool != true
+        }
+
+        guard !userEntries.isEmpty else { return [] }
+        if userEntries.count <= count { return userEntries }
+
+        var sampled: [[String: Any]] = []
+        let step = Double(userEntries.count) / Double(count)
+        for i in 0..<count {
+            let index = min(Int(Double(i) * step), userEntries.count - 1)
+            sampled.append(userEntries[index])
+        }
+        return sampled
+    }
+
     private static func parseLine(_ data: Data) -> [String: Any]? {
         var start = data.startIndex
         var end = data.endIndex
