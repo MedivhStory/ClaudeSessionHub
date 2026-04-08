@@ -29,12 +29,14 @@ public struct LLMClient: Sendable {
     /// Build a URLRequest for chat completions.
     public func buildRequest(systemPrompt: String, userMessage: String, maxTokens: Int) throws -> URLRequest {
         guard config.isConfigured else { throw LLMError.notConfigured }
-        guard let url = URL(string: config.endpoint) else { throw LLMError.invalidEndpoint }
+        guard let url = URL(string: config.resolvedEndpoint) else { throw LLMError.invalidEndpoint }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        if !config.apiKey.isEmpty {
+            request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        }
         request.timeoutInterval = 30
 
         let body: [String: Any] = [
