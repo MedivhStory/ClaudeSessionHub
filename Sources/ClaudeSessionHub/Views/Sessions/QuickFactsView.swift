@@ -16,15 +16,11 @@ struct QuickFactsView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding()
             } else {
-                // 2x2 grid
+                // Files + next step (stats/context moved to collapsed tile)
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
                     GridRow {
                         recentFilesCard
-                        contextUsageCard
-                    }
-                    GridRow {
                         nextStepCard
-                        sessionStatsCard
                     }
                 }
 
@@ -46,54 +42,27 @@ struct QuickFactsView: View {
     private var recentFilesCard: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label("最近改动", systemImage: "doc.text")
-                .font(.caption)
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
             if let files = detail?.recentFiles, !files.isEmpty {
                 ForEach(files.suffix(5), id: \.self) { file in
                     Text((file as NSString).lastPathComponent)
-                        .font(.caption2)
+                        .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                 }
             } else {
                 Text("\(session.filesTouched) files touched")
-                    .font(.caption2)
+                    .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Spec: no high-confidence data → hide from tile signals. In Quick Facts only,
-    /// show estimated value with ~ prefix if cumulativeTokens available, else hide entirely.
-    @ViewBuilder
-    private var contextUsageCard: some View {
-        if let usage = session.contextUsage {
-            // High-confidence: show progress bar + exact value
-            VStack(alignment: .leading, spacing: 4) {
-                Label("上下文占用", systemImage: "chart.bar")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                let usedK = usage.promptContext / 1000
-                let limitM = usage.limit / 1_000_000
-                ProgressView(value: usage.percentage)
-                    .tint(contextBarColor(usage.percentage))
-                Text("\(usedK)k / \(limitM > 0 ? "\(limitM)M" : "\(usage.limit / 1000)k")")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("quickFactsContext_\(session.ref.sessionID)")
-        } else {
-            // No high-confidence usage data — hide entirely.
-            // Cumulative tokens ≠ current context window, so no estimation shown.
-            Color.clear.frame(maxWidth: .infinity)
-        }
-    }
+    // contextUsageCard and sessionStatsCard removed — moved to collapsed tile right side
 
-    /// Only shown when nextStep is non-nil (spec: "nextStep = nil → hide row")
     @ViewBuilder
     private var nextStepCard: some View {
         if let nextStep = detail?.nextStep {
@@ -102,7 +71,7 @@ struct QuickFactsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(nextStep)
-                    .font(.caption2)
+                    .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
                     .lineLimit(3)
             }
@@ -112,37 +81,6 @@ struct QuickFactsView: View {
             // Empty cell to maintain grid layout, but no visible content
             Color.clear.frame(maxWidth: .infinity)
         }
-    }
-
-    private var sessionStatsCard: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label("统计", systemImage: "chart.xyaxis.line")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            let dateStr = session.createdAt.formatted(date: .abbreviated, time: .omitted)
-            Text("创建 \(dateStr) · \(session.turnCount) turns")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-
-            if let tokens = detail?.cumulativeTokens {
-                Text("累计消耗 \(formatTokenCount(tokens.totalTokens)) tokens")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-
-            // Show both recent and total errors so users can distinguish active warnings from history
-            if session.recentErrorCount > 0 || (detail?.totalErrorCount ?? 0) > 0 {
-                let recentStr = "近期 \(session.recentErrorCount) errors"
-                let totalStr = detail.map { "总计 \($0.totalErrorCount)" } ?? ""
-                Text("\(recentStr)\(totalStr.isEmpty ? "" : " · \(totalStr)")")
-                    .font(.caption2)
-                    .foregroundStyle(.red.opacity(0.7))
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("quickFactsStats_\(session.ref.sessionID)")
     }
 
     // MARK: - Actions Row

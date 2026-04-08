@@ -380,4 +380,26 @@ final class ClaudeSessionHubUITests: XCTestCase {
         let hintText = "\(restartHint.value ?? "")" + restartHint.label
         XCTAssertTrue(hintText.contains("重启"), "Restart hint should mention '重启', got '\(hintText)'")
     }
+
+    // 16. Settings save shows feedback and auto-closes
+    func testSettingsSaveShowsFeedbackAndAutoCloses() {
+        openSettings()
+
+        let settingsForm = app.descendants(matching: .any).matching(identifier: "settingsForm").firstMatch
+        XCTAssertTrue(settingsForm.waitForExistence(timeout: 5), "Settings form must open")
+
+        let saveButton = app.descendants(matching: .any).matching(identifier: "saveSettingsButton").firstMatch
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 3), "Save button must exist in Settings")
+
+        let initialText = saveButton.label + " " + "\(saveButton.value ?? "")"
+        XCTAssertTrue(initialText.contains("保存设置"),
+                      "Save button should start with '保存设置', got '\(initialText)'")
+
+        saveButton.click()
+
+        let dismissPredicate = NSPredicate(format: "exists == false")
+        let dismissExpectation = XCTNSPredicateExpectation(predicate: dismissPredicate, object: settingsForm)
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissExpectation], timeout: 3), .completed,
+                       "Settings window should auto-close shortly after clicking Save")
+    }
 }

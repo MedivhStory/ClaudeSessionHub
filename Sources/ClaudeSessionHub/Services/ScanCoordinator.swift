@@ -48,6 +48,10 @@ public actor ScanCoordinator {
         return results
     }
 
+    public func provider(for providerID: ProviderID) -> (any AgentProvider)? {
+        providers.first(where: { $0.id == providerID })
+    }
+
     public var activeProviders: [any AgentProvider] {
         providers
     }

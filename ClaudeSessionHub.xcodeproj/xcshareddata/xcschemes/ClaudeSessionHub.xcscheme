@@ -32,6 +32,16 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "TARGET0003"
+               BuildableName = "ClaudeSessionHubTests.xctest"
+               BlueprintName = "ClaudeSessionHubTests"
+               ReferencedContainer = "container:ClaudeSessionHub.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "TARGET0002"
                BuildableName = "ClaudeSessionHubUITests.xctest"
                BlueprintName = "ClaudeSessionHubUITests"

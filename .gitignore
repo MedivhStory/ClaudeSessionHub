@@ -1,14 +1,4 @@
 .build/
 build/
+*.docx
 dist/
-.swiftpm/
-DerivedData/
-.superpowers/
-# Xcode user data (but keep the project itself)
-*.xcodeproj/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcuserdata/
-xcuserdata/
-*.ips
-*.crash
-*.zip
-*.dmg

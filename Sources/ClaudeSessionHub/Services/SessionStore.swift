@@ -11,14 +11,30 @@ public final class SessionStore: @unchecked Sendable {
     public let labelStore: LabelStore
     public let archiveStore: ArchiveStore
     public let settings: SettingsStore
+    public let titleStore: TitleStore
+    public let understandingStore: UnderstandingStore
+    private let signalExtractor: SignalExtractor
+    private let titleStrategy: any SessionTitleStrategy
+    private var historyTextsCache: [String: [String]] = [:]
 
     @MainActor public var showArchived = false
 
-    public init(coordinator: ScanCoordinator, labelStore: LabelStore = LabelStore(), archiveStore: ArchiveStore = ArchiveStore(), settings: SettingsStore = SettingsStore()) {
+    public init(coordinator: ScanCoordinator,
+                labelStore: LabelStore = LabelStore(),
+                archiveStore: ArchiveStore = ArchiveStore(),
+                settings: SettingsStore = SettingsStore(),
+                titleStore: TitleStore = TitleStore(),
+                signalExtractor: SignalExtractor = SignalExtractor(),
+                titleStrategy: any SessionTitleStrategy = RuleTitleStrategy(),
+                understandingStore: UnderstandingStore = UnderstandingStore()) {
         self.coordinator = coordinator
         self.labelStore = labelStore
         self.archiveStore = archiveStore
         self.settings = settings
+        self.titleStore = titleStore
+        self.signalExtractor = signalExtractor
+        self.titleStrategy = titleStrategy
+        self.understandingStore = understandingStore
     }
 
     @MainActor
@@ -38,11 +54,111 @@ public final class SessionStore: @unchecked Sendable {
             return $0.ref.sessionID < $1.ref.sessionID
         }
         lastScanTime = await coordinator.lastScanTime
+        await generateTitlesForNewSessions(sessions)
+    }
+
+    // MARK: - Title Generation
+
+    @MainActor
+    private func generateTitlesForNewSessions(_ sessions: [SessionSummary]) async {
+        for session in sessions {
+            let sid = session.ref.sessionID
+
+            // Always populate history cache for search (even if title already exists)
+            let historyTexts = signalExtractor.historyDisplayTexts(for: sid)
+            historyTextsCache[sid] = historyTexts
+
+            let currentTitle = titleStore.currentTitle(for: sid)
+            let isPlaceholder = currentTitle?.source == .placeholder
+            let hasRealTitle = currentTitle != nil && !isPlaceholder
+
+            // Skip if already has a real (non-placeholder) title
+            guard !hasRealTitle else { continue }
+
+            // Extract signals — lookup provider via coordinator (actor call)
+            guard let provider = await coordinator.provider(for: session.ref.providerID) as? ClaudeProvider,
+                  var signals = try? await provider.extractSignals(for: session.ref) else { continue }
+
+            // Enrich with history + tasks
+            signals = signalExtractor.enrich(signals)
+
+            // Check gate
+            if titleStrategy.shouldGenerateFirstTitle(for: signals) {
+                // Full title + progress generation (auto-upgrades placeholder)
+                let title = titleStrategy.generateTitle(from: signals)
+                titleStore.setTitle(for: sid, title: title)
+
+                let progress = titleStrategy.extractLastProgress(from: signals)
+                titleStore.setLastProgress(for: sid, progress: progress)
+            } else if currentTitle == nil {
+                // Gate failed and no title yet — try descriptive placeholder
+                if let placeholder = titleStrategy.generatePlaceholderTitle(from: signals) {
+                    titleStore.setTitle(for: sid, title: placeholder)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    public func refreshTitle(for ref: SessionRef) async {
+        guard let provider = await coordinator.provider(for: ref.providerID) as? ClaudeProvider,
+              var signals = try? await provider.extractSignals(for: ref) else { return }
+        signals = signalExtractor.enrich(signals)
+
+        // Gate check
+        let currentSource = titleStore.currentTitle(for: ref.sessionID)?.source
+        guard titleStrategy.shouldGenerateFirstTitle(for: signals) else {
+            // Only write placeholder if no title yet or existing is already placeholder.
+            // Never downgrade a real .rule title to placeholder.
+            if currentSource == nil || currentSource == .placeholder {
+                if let placeholder = titleStrategy.generatePlaceholderTitle(from: signals) {
+                    titleStore.setTitle(for: ref.sessionID, title: placeholder)
+                }
+            }
+            return
+        }
+
+        let title = titleStrategy.generateTitle(from: signals)
+        titleStore.setTitle(for: ref.sessionID, title: title)
+
+        let progress = titleStrategy.extractLastProgress(from: signals)
+        titleStore.setLastProgress(for: ref.sessionID, progress: progress)
+    }
+
+    @MainActor
+    public func cachedHistoryTexts(for sessionID: String) -> [String] {
+        historyTextsCache[sessionID] ?? []
     }
 
     @MainActor
     public var visibleSessions: [SessionSummary] {
         sessions.filter { !archiveStore.isArchived($0.ref) || showArchived }
+    }
+
+    @MainActor
+    public func relations(for ref: SessionRef) -> [SessionRelation] {
+        let session = visibleSessions.first { $0.ref == ref }
+        guard let session else { return [] }
+
+        var relations: [SessionRelation] = []
+
+        for other in visibleSessions where other.ref != ref {
+            // Same project (cwd match)
+            guard session.cwd != nil && session.cwd == other.cwd else { continue }
+
+            // Same branch
+            if let b1 = session.branch, let b2 = other.branch, b1 == b2 {
+                relations.append(SessionRelation(otherSessionID: other.ref.sessionID, type: .sameBranch))
+            }
+
+            // Continuation: other ended within 2 hours before this one started
+            let gap = session.createdAt.timeIntervalSince(other.lastActiveAt)
+            if gap > 0 && gap < 7200 {
+                relations.append(SessionRelation(otherSessionID: other.ref.sessionID, type: .continuation))
+            }
+        }
+
+        return relations
     }
 
     // MARK: - Derived computed properties
@@ -101,7 +217,10 @@ public final class SessionStore: @unchecked Sendable {
                 turnCount: session.turnCount, filesTouched: session.filesTouched,
                 recentErrorCount: session.recentErrorCount,
                 createdAt: session.createdAt, lastActiveAt: session.lastActiveAt,
-                contextUsage: session.contextUsage
+                contextUsage: session.contextUsage,
+                smartTitle: session.smartTitle,
+                lastProgress: session.lastProgress,
+                entrypoint: session.entrypoint
             )
         }
     }
@@ -121,6 +240,57 @@ public final class SessionStore: @unchecked Sendable {
         let providers = await coordinator.activeProviders
         guard let provider = providers.first(where: { $0.id == ref.providerID }) else { return nil }
         return try? provider.makeResumeTarget(for: ref)
+    }
+
+    // MARK: - LLM Enhancement
+
+    /// LLM-enhance a single session. User-triggered only.
+    @MainActor
+    public func enhanceWithLLM(for ref: SessionRef) async throws {
+        guard settings.llmConfig.isConfigured else {
+            throw LLMClient.LLMError.notConfigured
+        }
+        guard let provider = await coordinator.provider(for: ref.providerID) as? ClaudeProvider,
+              var signals = try? await provider.extractSignals(for: ref) else { return }
+        signals = signalExtractor.enrich(signals)
+
+        // Extract key conversation turns for richer LLM context
+        // For long sessions (>100 entries), sample more turns spread across the session
+        let maxTurns = signals.totalEntryCount > 100 ? 8 : 5
+        let rawTurns = (try? await provider.extractKeyTurns(for: ref, maxTurns: maxTurns)) ?? []
+
+        let session = sessions.first { $0.ref == ref }
+        let lastActiveAt = session?.lastActiveAt ?? Date()
+
+        let enhancer = LLMEnhancer(config: settings.llmConfig)
+        guard let snapshot = await enhancer.enhance(signals: signals, rawTurns: rawTurns, basedOnLastActiveAt: lastActiveAt) else { return }
+        understandingStore.setSnapshot(snapshot)
+    }
+
+    /// LLM-enhance a specific list of sessions. User-triggered only.
+    /// Takes explicit [SessionRef] — caller decides scope (visible list, selection, etc.)
+    @MainActor
+    public func batchEnhanceLLM(sessions refs: [SessionRef]) async -> Int {
+        guard settings.llmConfig.isConfigured else { return 0 }
+
+        var enhanced = 0
+        for ref in refs {
+            // Skip sessions that have fresh (non-stale) enhancements
+            let session = sessions.first { $0.ref == ref }
+            let lastActive = session?.lastActiveAt ?? Date()
+            let hasFresh = understandingStore.hasEnhancement(for: ref.sessionID)
+                && !understandingStore.isStale(for: ref.sessionID, lastActiveAt: lastActive)
+            guard !hasFresh else { continue }
+            do {
+                try await enhanceWithLLM(for: ref)
+                enhanced += 1
+                // Rate limit between API calls
+                try? await Task.sleep(for: .milliseconds(500))
+            } catch {
+                continue
+            }
+        }
+        return enhanced
     }
 
     /// Get the user's selected terminal from settings

@@ -1,5 +1,9 @@
 import XCTest
+#if canImport(ClaudeSessionHubLib)
 @testable import ClaudeSessionHubLib
+#else
+@testable import ClaudeSessionHub
+#endif
 
 final class TerminalLauncherXCTests: XCTestCase {
 

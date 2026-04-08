@@ -15,19 +15,51 @@ struct ClaudeSessionHubApp: App {
         // All NSApp calls are deferred to .onAppear where NSApplication is guaranteed ready.
 
         let isUITestMode = CommandLine.arguments.contains("--ui-test-mode")
-        let settings = SettingsStore()
+
+        // UI test mode uses a temp directory for all stores so tests are
+        // isolated from real user settings (e.g. selectedTerminal).
+        let hubDirectory: String
+        if isUITestMode {
+            let tempDir = NSTemporaryDirectory() + "claude-hub-uitest-\(ProcessInfo.processInfo.processIdentifier)"
+            try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
+            hubDirectory = tempDir
+        } else {
+            hubDirectory = NSHomeDirectory() + "/.claude-hub"
+        }
+
+        let settings = SettingsStore(directory: hubDirectory)
 
         let providers: [any AgentProvider]
         if isUITestMode {
             providers = [FixtureProvider()]
         } else {
+            // Dynamic provider: reads settings.claudeDataDirectory on each scan,
+            // so changing the data directory takes effect without restart.
             providers = [
-                ClaudeProvider(baseDirectory: settings.claudeDataDirectory),
+                ClaudeProvider(baseDirectoryProvider: { [settings] in settings.claudeDataDirectory }),
                 CodexProvider()
             ]
         }
         let coordinator = ScanCoordinator(providers: providers)
-        _store = State(initialValue: SessionStore(coordinator: coordinator, settings: settings))
+        let labelStore = LabelStore(directory: hubDirectory)
+        let archiveStore = ArchiveStore(directory: hubDirectory)
+        let titleStore = TitleStore(directory: hubDirectory)
+        let understandingStore = UnderstandingStore(directory: hubDirectory)
+        let signalExtractor: SignalExtractor
+        if isUITestMode {
+            signalExtractor = SignalExtractor()
+        } else {
+            signalExtractor = SignalExtractor(baseDirectoryProvider: { [settings] in settings.claudeDataDirectory })
+        }
+        _store = State(initialValue: SessionStore(
+            coordinator: coordinator,
+            labelStore: labelStore,
+            archiveStore: archiveStore,
+            settings: settings,
+            titleStore: titleStore,
+            signalExtractor: signalExtractor,
+            understandingStore: understandingStore
+        ))
     }
 
     var body: some Scene {

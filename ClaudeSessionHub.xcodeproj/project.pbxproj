@@ -40,11 +40,45 @@
 		A1000031 /* FixtureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000031; };
 		A1000032 /* ArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000032; };
 		A1000033 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000033; };
+		A0200001 /* SessionSignals.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200001; };
+		A0200002 /* GeneratedTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200002; };
+		A0200003 /* SignalExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200003; };
+		A0200004 /* SessionTitleStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200004; };
+		A0200005 /* TitleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200005; };
+		A0200006 /* SearchScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200006; };
+		A0200007 /* SessionSignalsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200007; };
+		A0200008 /* SignalExtractorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200008; };
+		A0200009 /* RuleTitleStrategyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200009; };
+		A0200010 /* TitleStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200010; };
+		A0200011 /* SearchScoringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200011; };
+		A0200012 /* SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200012; };
+		A0200013 /* UnderstandingLayerIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0200013; };
+		A0250001 /* LLMUnderstandingSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250001; };
+		A0250002 /* LLMConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250002; };
+		A0250003 /* LLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250003; };
+		A0250004 /* LLMEnhancer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250004; };
+		A0250005 /* LLMPrompts.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250005; };
+		A0250006 /* UnderstandingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250006; };
+		A0250007 /* LLMSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250007; };
+		A0250008 /* LLMPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250008; };
+		A0250009 /* LLMUnderstandingSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250009; };
+		A0250010 /* LLMConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250010; };
+		A0250011 /* LLMClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250011; };
+		A0250012 /* LLMEnhancerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250012; };
+		A0250013 /* UnderstandingStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250013; };
+		A0250014 /* LLMIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250014; };
 		A2000001 /* ClaudeSessionHubUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		C1000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ROOT00000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = TARGET0001;
+			remoteInfo = ClaudeSessionHub;
+		};
+		C1000002 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = ROOT00000 /* Project object */;
 			proxyType = 1;
@@ -90,6 +124,34 @@
 		B1000031 /* FixtureProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureProvider.swift; sourceTree = "<group>"; };
 		B1000032 /* ArchiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveStore.swift; sourceTree = "<group>"; };
 		B1000033 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B0200001 /* SessionSignals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSignals.swift; sourceTree = "<group>"; };
+		B0200002 /* GeneratedTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedTitle.swift; sourceTree = "<group>"; };
+		B0200003 /* SignalExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalExtractor.swift; sourceTree = "<group>"; };
+		B0200004 /* SessionTitleStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTitleStrategy.swift; sourceTree = "<group>"; };
+		B0200005 /* TitleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleStore.swift; sourceTree = "<group>"; };
+		B0200006 /* SearchScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchScorer.swift; sourceTree = "<group>"; };
+		B0200007 /* SessionSignalsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSignalsTests.swift; sourceTree = "<group>"; };
+		B0200008 /* SignalExtractorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalExtractorTests.swift; sourceTree = "<group>"; };
+		B0200009 /* RuleTitleStrategyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleTitleStrategyTests.swift; sourceTree = "<group>"; };
+		B0200010 /* TitleStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleStoreTests.swift; sourceTree = "<group>"; };
+		B0200011 /* SearchScoringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchScoringTests.swift; sourceTree = "<group>"; };
+		B0200012 /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
+		B0200013 /* UnderstandingLayerIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingLayerIntegrationTests.swift; sourceTree = "<group>"; };
+		B0250001 /* LLMUnderstandingSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMUnderstandingSnapshot.swift; sourceTree = "<group>"; };
+		B0250002 /* LLMConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMConfig.swift; sourceTree = "<group>"; };
+		B0250003 /* LLMClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMClient.swift; sourceTree = "<group>"; };
+		B0250004 /* LLMEnhancer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMEnhancer.swift; sourceTree = "<group>"; };
+		B0250005 /* LLMPrompts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPrompts.swift; sourceTree = "<group>"; };
+		B0250006 /* UnderstandingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingStore.swift; sourceTree = "<group>"; };
+		B0250007 /* LLMSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMSettingsSection.swift; sourceTree = "<group>"; };
+		B0250008 /* LLMPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPanelView.swift; sourceTree = "<group>"; };
+		B0250009 /* LLMUnderstandingSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMUnderstandingSnapshotTests.swift; sourceTree = "<group>"; };
+		B0250010 /* LLMConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMConfigTests.swift; sourceTree = "<group>"; };
+		B0250011 /* LLMClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMClientTests.swift; sourceTree = "<group>"; };
+		B0250012 /* LLMEnhancerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMEnhancerTests.swift; sourceTree = "<group>"; };
+		B0250013 /* UnderstandingStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingStoreTests.swift; sourceTree = "<group>"; };
+		B0250014 /* LLMIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMIntegrationTests.swift; sourceTree = "<group>"; };
+		PRODUCT003 /* ClaudeSessionHubTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudeSessionHubTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +163,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		FRMWRK02 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FRMWRK03 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -125,6 +194,7 @@
 			isa = PBXGroup;
 			children = (
 				SRCGRP00 /* Sources */,
+				XCTGRP00 /* XCTests */,
 				UITSTGRP /* UITests */,
 				PRODGRP0 /* Products */,
 			);
@@ -135,6 +205,7 @@
 			children = (
 				PRODUCT001 /* ClaudeSessionHub.app */,
 				PRODUCT002 /* ClaudeSessionHubUITests.xctest */,
+				PRODUCT003 /* ClaudeSessionHubTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -165,9 +236,12 @@
 			isa = PBXGroup;
 			children = (
 				B1000002 /* CanonicalModels.swift */,
+				B0200002 /* GeneratedTitle.swift */,
 				B1000003 /* HealthSignal.swift */,
+				B0250001 /* LLMUnderstandingSnapshot.swift */,
 				B1000004 /* ProviderTypes.swift */,
 				B1000005 /* ResumeTarget.swift */,
+				B0200001 /* SessionSignals.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -190,10 +264,19 @@
 				B1000032 /* ArchiveStore.swift */,
 				B1000010 /* HealthEngine.swift */,
 				B1000011 /* LabelStore.swift */,
+				B0250003 /* LLMClient.swift */,
+				B0250002 /* LLMConfig.swift */,
+				B0250004 /* LLMEnhancer.swift */,
+				B0250005 /* LLMPrompts.swift */,
 				B1000012 /* ScanCoordinator.swift */,
+				B0200006 /* SearchScorer.swift */,
 				B1000013 /* SessionStore.swift */,
+				B0200004 /* SessionTitleStrategy.swift */,
 				B1000014 /* SettingsStore.swift */,
+				B0200003 /* SignalExtractor.swift */,
 				B1000015 /* TerminalLauncher.swift */,
+				B0200005 /* TitleStore.swift */,
+				B0250006 /* UnderstandingStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -202,6 +285,7 @@
 			isa = PBXGroup;
 			children = (
 				B1000019 /* ContentView.swift */,
+				B0250007 /* LLMSettingsSection.swift */,
 				B1000025 /* ScanTimerModifier.swift */,
 				B1000030 /* SettingsView.swift */,
 				GRPVWCMN /* Common */,
@@ -236,6 +320,7 @@
 		GRPVWSES /* Sessions */ = {
 			isa = PBXGroup;
 			children = (
+				B0250008 /* LLMPanelView.swift */,
 				B1000026 /* QuickFactsView.swift */,
 				B1000027 /* SessionListView.swift */,
 				B1000028 /* SessionTileView.swift */,
@@ -250,6 +335,51 @@
 				B2000001 /* ClaudeSessionHubUITests.swift */,
 			);
 			path = UITests;
+			sourceTree = "<group>";
+		};
+		XCTGRP00 /* XCTests */ = {
+			isa = PBXGroup;
+			children = (
+				XCTINTEG /* Integration */,
+				XCTMODEL /* Models */,
+				XCTSERVS /* Services */,
+			);
+			name = XCTests;
+			path = Tests/XCTests;
+			sourceTree = "<group>";
+		};
+		XCTMODEL /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B0250009 /* LLMUnderstandingSnapshotTests.swift */,
+				B0200007 /* SessionSignalsTests.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		XCTSERVS /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B0250011 /* LLMClientTests.swift */,
+				B0250010 /* LLMConfigTests.swift */,
+				B0250012 /* LLMEnhancerTests.swift */,
+				B0200009 /* RuleTitleStrategyTests.swift */,
+				B0200011 /* SearchScoringTests.swift */,
+				B0200012 /* SettingsStoreTests.swift */,
+				B0200008 /* SignalExtractorTests.swift */,
+				B0200010 /* TitleStoreTests.swift */,
+				B0250013 /* UnderstandingStoreTests.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		XCTINTEG /* Integration */ = {
+			isa = PBXGroup;
+			children = (
+				B0250014 /* LLMIntegrationTests.swift */,
+				B0200013 /* UnderstandingLayerIntegrationTests.swift */,
+			);
+			path = Integration;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -289,6 +419,23 @@
 			productReference = PRODUCT002 /* ClaudeSessionHubUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		TARGET0003 /* ClaudeSessionHubTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BLDCFG03;
+			buildPhases = (
+				SRCBLD03 /* Sources */,
+				FRMWRK03 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DEPDNCY2 /* PBXTargetDependency */,
+			);
+			name = ClaudeSessionHubTests;
+			productName = ClaudeSessionHubTests;
+			productReference = PRODUCT003 /* ClaudeSessionHubTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -313,6 +460,7 @@
 			targets = (
 				TARGET0001 /* ClaudeSessionHub */,
 				TARGET0002 /* ClaudeSessionHubUITests */,
+				TARGET0003 /* ClaudeSessionHubTests */,
 			);
 		};
 /* End PBXProject section */
@@ -354,6 +502,20 @@
 				A1000030 /* SettingsView.swift in Sources */,
 				A1000031 /* FixtureProvider.swift in Sources */,
 				A1000032 /* ArchiveStore.swift in Sources */,
+				A0200001 /* SessionSignals.swift in Sources */,
+				A0200002 /* GeneratedTitle.swift in Sources */,
+				A0200003 /* SignalExtractor.swift in Sources */,
+				A0200004 /* SessionTitleStrategy.swift in Sources */,
+				A0200005 /* TitleStore.swift in Sources */,
+				A0200006 /* SearchScorer.swift in Sources */,
+				A0250001 /* LLMUnderstandingSnapshot.swift in Sources */,
+				A0250002 /* LLMConfig.swift in Sources */,
+				A0250003 /* LLMClient.swift in Sources */,
+				A0250004 /* LLMEnhancer.swift in Sources */,
+				A0250005 /* LLMPrompts.swift in Sources */,
+				A0250006 /* UnderstandingStore.swift in Sources */,
+				A0250007 /* LLMSettingsSection.swift in Sources */,
+				A0250008 /* LLMPanelView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -365,6 +527,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		SRCBLD03 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0200007 /* SessionSignalsTests.swift in Sources */,
+				A0200008 /* SignalExtractorTests.swift in Sources */,
+				A0200009 /* RuleTitleStrategyTests.swift in Sources */,
+				A0200010 /* TitleStoreTests.swift in Sources */,
+				A0200011 /* SearchScoringTests.swift in Sources */,
+				A0200012 /* SettingsStoreTests.swift in Sources */,
+				A0200013 /* UnderstandingLayerIntegrationTests.swift in Sources */,
+				A0250009 /* LLMUnderstandingSnapshotTests.swift in Sources */,
+				A0250010 /* LLMConfigTests.swift in Sources */,
+				A0250011 /* LLMClientTests.swift in Sources */,
+				A0250012 /* LLMEnhancerTests.swift in Sources */,
+				A0250013 /* UnderstandingStoreTests.swift in Sources */,
+				A0250014 /* LLMIntegrationTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -372,6 +554,11 @@
 			isa = PBXTargetDependency;
 			target = TARGET0001 /* ClaudeSessionHub */;
 			targetProxy = C1000001 /* PBXContainerItemProxy */;
+		};
+		DEPDNCY2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = TARGET0001 /* ClaudeSessionHub */;
+			targetProxy = C1000002 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -450,6 +637,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.claudehub.ClaudeSessionHub;
+				/* PRODUCT_MODULE_NAME intentionally not set — defaults to ClaudeSessionHub */
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -469,6 +657,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.claudehub.ClaudeSessionHub;
+				/* PRODUCT_MODULE_NAME intentionally not set — defaults to ClaudeSessionHub */
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -509,6 +698,42 @@
 			};
 			name = Release;
 		};
+		TGTDBG03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claudehub.ClaudeSessionHubTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ClaudeSessionHub.app/Contents/MacOS/ClaudeSessionHub";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+			};
+			name = Debug;
+		};
+		TGTREL03 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claudehub.ClaudeSessionHubTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ClaudeSessionHub.app/Contents/MacOS/ClaudeSessionHub";
+				BUNDLE_LOADER = "$(TEST_HOST)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -535,6 +760,15 @@
 			buildConfigurations = (
 				TGTDBG02 /* Debug */,
 				TGTREL02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BLDCFG03 /* Build configuration list for PBXNativeTarget "ClaudeSessionHubTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				TGTDBG03 /* Debug */,
+				TGTREL03 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
