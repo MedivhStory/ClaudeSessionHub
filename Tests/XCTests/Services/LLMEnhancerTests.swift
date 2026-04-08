@@ -29,6 +29,40 @@ final class LLMEnhancerTests: XCTestCase {
         XCTAssertTrue(input.contains("好的"))
     }
 
+    func testRawTurnsNotRetruncatedByPromptBuilder() {
+        // Regression: rawTurns was being re-truncated to prefix(3) inside titleInput,
+        // which defeated the upstream sampling that provided 8 turns for long sessions.
+        var signals = SessionSignals(sessionID: "s1")
+        signals.firstUserIntent = "test"
+        let turns = (1...8).map { "用户: 第\($0)轮对话内容" }
+
+        let input = LLMPrompts.titleInput(from: signals, rawTurns: turns)
+        // All 8 turns must appear in the output, not just 3
+        for turn in turns {
+            XCTAssertTrue(input.contains(turn), "Missing turn: \(turn)")
+        }
+        XCTAssertTrue(input.contains("8 条"), "Should show turn count")
+    }
+
+    func testMilestoneHistoryPreservesVersionEntries() {
+        var signals = SessionSignals(sessionID: "s1")
+        signals.historyDisplayTexts = [
+            "读交接文档",
+            "brainstorming v0.2.0 方向",
+            "普通对话1", "普通对话2", "普通对话3",
+            "普通对话4", "普通对话5", "普通对话6",
+            "封版 v0.2.0 准备 v0.2.5",
+            "v0.2.5 LLM 增强开发",
+            "最后一条对话"
+        ]
+
+        let input = LLMPrompts.titleInput(from: signals)
+        // Version-related entries must appear in milestones section
+        XCTAssertTrue(input.contains("v0.2.0"), "Must preserve v0.2.0 milestone")
+        XCTAssertTrue(input.contains("v0.2.5"), "Must preserve v0.2.5 milestone")
+        XCTAssertTrue(input.contains("关键里程碑"), "Must have milestone section")
+    }
+
     func testPromptInputBoundsLength() {
         var signals = SessionSignals(sessionID: "s1")
         signals.firstUserIntent = String(repeating: "长文本", count: 500)
