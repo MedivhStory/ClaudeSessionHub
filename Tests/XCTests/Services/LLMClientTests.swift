@@ -74,4 +74,29 @@ final class LLMClientTests: XCTestCase {
             systemPrompt: "test", userMessage: "test", maxTokens: 50
         ))
     }
+
+    func testBaseURLAutoAppendsChatCompletions() throws {
+        var config = LLMConfig()
+        config.endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        config.apiKey = "sk-test"
+        config.modelName = "qwen-plus"
+        let client = LLMClient(config: config)
+
+        let request = try client.buildRequest(
+            systemPrompt: "test", userMessage: "test", maxTokens: 50
+        )
+        XCTAssertEqual(request.url?.absoluteString,
+                       "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")
+    }
+
+    func testOllamaNoAuthHeader() throws {
+        var config = LLMConfig.preset(.ollama)
+        config.modelName = "llama3"
+        let client = LLMClient(config: config)
+
+        let request = try client.buildRequest(
+            systemPrompt: "test", userMessage: "test", maxTokens: 50
+        )
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+    }
 }
