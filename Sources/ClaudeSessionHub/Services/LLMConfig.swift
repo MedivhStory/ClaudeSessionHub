@@ -2,16 +2,30 @@ import Foundation
 
 /// Supported LLM provider presets.
 public enum LLMProvider: String, Codable, Sendable, CaseIterable, Identifiable {
-    case openai = "OpenAI"
-    case dashscope = "阿里云百炼"
-    case dashscopeIntl = "阿里云百炼(国际)"
-    case dashscopeUS = "阿里云百炼(美国)"
-    case deepseek = "DeepSeek"
-    case moonshot = "Moonshot (月之暗面)"
-    case ollama = "Ollama (本地)"
-    case custom = "自定义"
+    case openai
+    case dashscope
+    case dashscopeIntl
+    case dashscopeUS
+    case deepseek
+    case moonshot
+    case ollama
+    case custom
 
     public var id: String { rawValue }
+
+    /// Display name for UI.
+    public var displayName: String {
+        switch self {
+        case .openai: return "OpenAI"
+        case .dashscope: return "阿里云百炼"
+        case .dashscopeIntl: return "阿里云百炼(国际)"
+        case .dashscopeUS: return "阿里云百炼(美国)"
+        case .deepseek: return "DeepSeek"
+        case .moonshot: return "Moonshot (月之暗面)"
+        case .ollama: return "Ollama (本地)"
+        case .custom: return "自定义"
+        }
+    }
 
     /// Base URL for the provider's OpenAI-compatible API.
     /// For custom, returns empty — user fills in manually.
@@ -75,6 +89,19 @@ public struct LLMConfig: Codable, Sendable, Equatable {
     }
 
     public init() {}
+
+    // Custom Codable: handle missing `provider` key from v0.2.5 configs
+    enum CodingKeys: String, CodingKey {
+        case provider, endpoint, apiKey, modelName
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        provider = (try? container.decode(LLMProvider.self, forKey: .provider)) ?? .custom
+        endpoint = (try? container.decode(String.self, forKey: .endpoint)) ?? ""
+        apiKey = (try? container.decode(String.self, forKey: .apiKey)) ?? ""
+        modelName = (try? container.decode(String.self, forKey: .modelName)) ?? ""
+    }
 
     /// Create a config from a provider preset.
     public static func preset(_ provider: LLMProvider) -> LLMConfig {
