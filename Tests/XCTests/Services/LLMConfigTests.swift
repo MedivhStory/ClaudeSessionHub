@@ -100,6 +100,20 @@ final class LLMConfigTests: XCTestCase {
         XCTAssertTrue(config.isConfigured, "Ollama should be configured without API key")
     }
 
+    // MARK: - Backward Compatibility
+
+    func testDecodesV025ConfigWithoutProviderField() throws {
+        // v0.2.5 configs have no "provider" key — must default to .custom
+        let json = """
+        {"endpoint":"https://api.openai.com/v1","apiKey":"sk-test","modelName":"gpt-4o"}
+        """.data(using: .utf8)!
+        let config = try JSONDecoder().decode(LLMConfig.self, from: json)
+        XCTAssertEqual(config.provider, .custom)
+        XCTAssertEqual(config.endpoint, "https://api.openai.com/v1")
+        XCTAssertEqual(config.apiKey, "sk-test")
+        XCTAssertEqual(config.modelName, "gpt-4o")
+    }
+
     // MARK: - Persistence
 
     func testConfigPersistsThroughSettingsStore() {

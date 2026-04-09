@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.2.6] - 2026-04-09
+
+### Added — LLM Provider Presets
+- **Provider picker**: OpenAI, 阿里云百炼 (3 regions), DeepSeek, Moonshot, Ollama, Custom
+- **Auto-fill**: Select provider → endpoint + suggested models auto-populated
+- **Smart endpoint**: Auto-appends `/chat/completions` to base URLs
+- **Ollama support**: No API key required for local models
+- **Model suggestions**: Per-provider recommended model names
+- **Backward compatibility**: v0.2.5 configs without `provider` field auto-default to Custom
+
+### Fixed
+- `rawTurns.prefix(3)` bug: prompt builder no longer re-truncates upstream-sampled turns
+- Milestone-priority history sampling for version-aware prompts
+- LLMProvider raw values changed to stable machine keys (not Chinese display strings)
+
+---
+
 ## [v0.2.5] - 2026-04-08
 
 ### Added — LLM Enhancement Layer

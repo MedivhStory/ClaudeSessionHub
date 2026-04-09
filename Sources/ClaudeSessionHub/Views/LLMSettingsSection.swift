@@ -14,7 +14,7 @@ struct LLMSettingsSection: View {
             // Provider picker
             Picker("服务商", selection: $provider) {
                 ForEach(LLMProvider.allCases) { p in
-                    Text(p.rawValue).tag(p)
+                    Text(p.displayName).tag(p)
                 }
             }
             .accessibilityIdentifier("llmProviderPicker")
@@ -99,7 +99,7 @@ struct LLMSettingsSection: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.system(size: 11))
-                    Text("已配置: \(store.settings.llmConfig.provider.rawValue) / \(store.settings.llmConfig.modelName)")
+                    Text("已配置: \(store.settings.llmConfig.provider.displayName) / \(store.settings.llmConfig.modelName)")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
