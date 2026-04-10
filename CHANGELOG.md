@@ -3,11 +3,12 @@
 ## [v0.2.7] - 2026-04-10
 
 ### Security
-- **API key moved from plaintext JSON to encrypted file** (`~/.claude-hub/.apiKey.secret`, 0600 permissions)
-- SecretStore protocol with FileSecretStore (production) + InMemorySecretStore (tests)
-- Automatic migration: legacy plaintext key → secret file on first use
-- Lazy key loading: secret file only accessed when AI features are used, not at app startup
+- **API key moved out of `settings.json` into a separate secret file** (`~/.claude-hub/.apiKey.secret`, plaintext with `0600` permissions, parent dir `0700`) — protects against accidental sharing of `settings.json`, not against local disk access
+- SecretStore protocol with FileSecretStore (production, atomic write with 0600) + InMemorySecretStore (tests, NSLock)
+- Automatic migration: legacy plaintext key in `settings.json` → secret file on first use
+- Lazy key loading: secret file only accessed when AI features are triggered, not at app startup or when Settings opens
 - TextField replaces SecureField to avoid macOS Passwords autofill trigger on unsigned apps
+- Note: Keychain was evaluated and rejected — it prompts permission dialogs for unsigned dev builds. Keychain migration is deferred to post-signing.
 
 ### Added
 - **Batch enhance progress indicator**: `3/10 增强中...` with ProgressView in list header
