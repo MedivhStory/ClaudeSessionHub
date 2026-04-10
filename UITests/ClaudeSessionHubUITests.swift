@@ -295,13 +295,8 @@ final class ClaudeSessionHubUITests: XCTestCase {
         let quickFacts = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "quickFacts_fixture-active-1")).firstMatch
         XCTAssertTrue(quickFacts.waitForExistence(timeout: 5), "QuickFacts for fixture-active-1 must appear")
 
-        // fixture-active-1 HAS contextUsage, so the context card must exist
-        let contextCard = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "quickFactsContext_fixture-active-1")).firstMatch
-        XCTAssertTrue(contextCard.waitForExistence(timeout: 5), "Context usage card must exist for fixture-active-1 (has contextUsage)")
-
-        // Stats card must exist
-        let statsCard = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "quickFactsStats_fixture-active-1")).firstMatch
-        XCTAssertTrue(statsCard.waitForExistence(timeout: 5), "Stats card must exist for fixture-active-1")
+        // Context and stats cards moved to collapsed tile in v0.2.5+
+        // QuickFacts now shows files + next step only
     }
 
     // 12. QuickFacts hides optional fields when data is absent
@@ -314,9 +309,7 @@ final class ClaudeSessionHubUITests: XCTestCase {
         let quickFacts = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "quickFacts_fixture-stale-1")).firstMatch
         XCTAssertTrue(quickFacts.waitForExistence(timeout: 5), "QuickFacts for fixture-stale-1 must appear")
 
-        // fixture-stale-1 has NO contextUsage, so the context card must NOT exist
-        let contextCard = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "quickFactsContext_fixture-stale-1")).firstMatch
-        XCTAssertFalse(contextCard.waitForExistence(timeout: 2), "Context usage card must NOT exist for fixture-stale-1 (no contextUsage)")
+        // Context card moved to collapsed tile in v0.2.5+ — no longer in QuickFacts
     }
 
     // 13. Settings terminal picker shows default value

@@ -71,7 +71,14 @@ struct SessionListView: View {
                     .controlSize(.small)
             }
 
-            if store.settings.llmConfig.isConfigured {
+            if let progress = store.batchProgress {
+                HStack(spacing: 4) {
+                    ProgressView().controlSize(.small)
+                    Text("\(progress.current)/\(progress.total) 增强中...")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.purple)
+                }
+            } else if store.settings.llmConfig.isConfigured {
                 Button {
                     Task {
                         let refs = filteredSessions.map(\.ref)

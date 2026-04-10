@@ -52,7 +52,7 @@ enum LabelStoreTests {
         try! FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(atPath: dir) }
 
-        let store = SettingsStore(directory: dir)
+        let store = SettingsStore(directory: dir, secretStore: InMemorySecretStore())
         assertEqual(store.selectedTerminal, "Ghostty", "default terminal")
         assertEqual(store.scanIntervalSeconds, 60, "default scan interval")
     }
@@ -61,13 +61,14 @@ enum LabelStoreTests {
         let dir = NSTemporaryDirectory() + "settings-test-\(UUID().uuidString)"
         try! FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(atPath: dir) }
+        let secrets = InMemorySecretStore()
 
-        let store = SettingsStore(directory: dir)
+        let store = SettingsStore(directory: dir, secretStore: secrets)
         store.selectedTerminal = "Terminal"
         store.scanIntervalSeconds = 120
         store.save()
 
-        let store2 = SettingsStore(directory: dir)
+        let store2 = SettingsStore(directory: dir, secretStore: secrets)
         assertEqual(store2.selectedTerminal, "Terminal", "terminal should persist")
         assertEqual(store2.scanIntervalSeconds, 120, "interval should persist")
     }

@@ -6,6 +6,7 @@ public final class SessionStore: @unchecked Sendable {
     @MainActor public private(set) var sessions: [SessionSummary] = []
     @MainActor public private(set) var lastScanTime: Date?
     @MainActor public private(set) var isScanning = false
+    @MainActor public private(set) var batchProgress: (current: Int, total: Int)? = nil
 
     private let coordinator: ScanCoordinator
     public let labelStore: LabelStore
@@ -15,7 +16,7 @@ public final class SessionStore: @unchecked Sendable {
     public let understandingStore: UnderstandingStore
     private let signalExtractor: SignalExtractor
     private let titleStrategy: any SessionTitleStrategy
-    private var historyTextsCache: [String: [String]] = [:]
+    @MainActor private var historyTextsCache: [String: [String]] = [:]
 
     @MainActor public var showArchived = false
 
@@ -273,17 +274,27 @@ public final class SessionStore: @unchecked Sendable {
     public func batchEnhanceLLM(sessions refs: [SessionRef]) async -> Int {
         guard settings.llmConfig.isConfigured else { return 0 }
 
-        var enhanced = 0
-        for ref in refs {
-            // Skip sessions that have fresh (non-stale) enhancements
+        // Filter to candidates (sessions that need enhancement) before starting
+        let candidates = refs.filter { ref in
             let session = sessions.first { $0.ref == ref }
             let lastActive = session?.lastActiveAt ?? Date()
             let hasFresh = understandingStore.hasEnhancement(for: ref.sessionID)
                 && !understandingStore.isStale(for: ref.sessionID, lastActiveAt: lastActive)
-            guard !hasFresh else { continue }
+            return !hasFresh
+        }
+
+        guard !candidates.isEmpty else { return 0 }
+
+        batchProgress = (0, candidates.count)
+        defer { batchProgress = nil }
+
+        var enhanced = 0
+        let total = candidates.count
+        for ref in candidates {
             do {
                 try await enhanceWithLLM(for: ref)
                 enhanced += 1
+                batchProgress = (enhanced, total)
                 // Rate limit between API calls
                 try? await Task.sleep(for: .milliseconds(500))
             } catch {

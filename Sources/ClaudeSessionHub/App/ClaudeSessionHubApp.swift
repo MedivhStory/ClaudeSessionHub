@@ -27,7 +27,8 @@ struct ClaudeSessionHubApp: App {
             hubDirectory = NSHomeDirectory() + "/.claude-hub"
         }
 
-        let settings = SettingsStore(directory: hubDirectory)
+        let settings = SettingsStore(directory: hubDirectory,
+                                     secretStore: isUITestMode ? InMemorySecretStore() : KeychainSecretStore())
 
         let providers: [any AgentProvider]
         if isUITestMode {

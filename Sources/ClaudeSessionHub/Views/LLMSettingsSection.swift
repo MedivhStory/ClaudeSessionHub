@@ -6,8 +6,11 @@ struct LLMSettingsSection: View {
     @State private var endpoint: String = ""
     @State private var apiKey: String = ""
     @State private var modelName: String = ""
+    @State private var isCustomModel: Bool = false
     @State private var testResult: String?
     @State private var isTesting = false
+
+    private static let customModelTag = "其他..."
 
     var body: some View {
         Section("AI 增强（可选）") {
@@ -48,20 +51,30 @@ struct LLMSettingsSection: View {
 
             // Model picker / text field
             if !provider.suggestedModels.isEmpty {
-                Picker("模型", selection: $modelName) {
+                Picker("模型", selection: Binding(
+                    get: { isCustomModel ? Self.customModelTag : modelName },
+                    set: { picked in
+                        if picked == Self.customModelTag {
+                            isCustomModel = true
+                            modelName = ""
+                        } else {
+                            isCustomModel = false
+                            modelName = picked
+                        }
+                    }
+                )) {
                     ForEach(provider.suggestedModels, id: \.self) { model in
                         Text(model).tag(model)
                     }
-                    if !modelName.isEmpty && !provider.suggestedModels.contains(modelName) {
-                        Text(modelName).tag(modelName)
-                    }
+                    Text(Self.customModelTag).tag(Self.customModelTag)
                 }
                 .accessibilityIdentifier("llmModelPicker")
 
-                TextField("或输入自定义模型名", text: $modelName)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("llmModelField")
+                if isCustomModel {
+                    TextField("模型名称", text: $modelName)
+                        .help("如 gpt-4o, qwen-plus")
+                        .accessibilityIdentifier("llmModelField")
+                }
             } else {
                 TextField("模型名称", text: $modelName)
                     .help("如 gpt-4o, qwen-plus")
@@ -122,6 +135,7 @@ struct LLMSettingsSection: View {
             endpoint = p.defaultBaseURL
             if let first = p.suggestedModels.first {
                 modelName = first
+                isCustomModel = false
             }
         }
     }
@@ -132,27 +146,29 @@ struct LLMSettingsSection: View {
         endpoint = config.endpoint
         apiKey = config.apiKey
         modelName = config.modelName
+        // Determine whether the saved model is a suggested one or custom
+        isCustomModel = !config.modelName.isEmpty && !config.provider.suggestedModels.contains(config.modelName)
     }
 
-    private func saveConfig() {
+    private func buildCurrentConfig() -> LLMConfig {
         var config = LLMConfig()
         config.provider = provider
         config.endpoint = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
         config.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         config.modelName = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
-        store.settings.setLLMConfig(config)
+        return config
+    }
+
+    private func saveConfig() {
+        store.settings.setLLMConfig(buildCurrentConfig())
         testResult = "已保存"
     }
 
     private func testConnection() {
         isTesting = true
         testResult = nil
+        let config = buildCurrentConfig()
         Task {
-            var config = LLMConfig()
-            config.provider = provider
-            config.endpoint = endpoint
-            config.apiKey = apiKey
-            config.modelName = modelName
             let client = LLMClient(config: config)
             do {
                 let response = try await client.testConnection()

@@ -9,9 +9,12 @@ public final class SettingsStore {
     public var llmConfig: LLMConfig = LLMConfig()
 
     private let filePath: String
+    private let secretStore: SecretStore
 
-    public init(directory: String = NSHomeDirectory() + "/.claude-hub") {
+    public init(directory: String = NSHomeDirectory() + "/.claude-hub",
+                secretStore: SecretStore = KeychainSecretStore()) {
         self.filePath = (directory as NSString).appendingPathComponent("settings.json")
+        self.secretStore = secretStore
         load()
     }
 
@@ -43,8 +46,14 @@ public final class SettingsStore {
     }
 
     public func setLLMConfig(_ config: LLMConfig) {
+        // Save apiKey to SecretStore, not JSON
+        if !config.apiKey.isEmpty {
+            try? secretStore.save(key: "apiKey", value: config.apiKey)
+        } else {
+            secretStore.delete(key: "apiKey")
+        }
         llmConfig = config
-        save()
+        save()  // This will encode LLMConfig WITHOUT apiKey
     }
 
     private func load() {
@@ -53,10 +62,29 @@ public final class SettingsStore {
         if let t = dict["selectedTerminal"] as? String { selectedTerminal = t }
         if let d = dict["claudeDataDirectory"] as? String { claudeDataDirectory = Self.normalizePath(d) }
         if let s = dict["scanIntervalSeconds"] as? Int { scanIntervalSeconds = s }
-        if let raw = dict["llmConfig"] as? [String: Any],
-           let jsonData = try? JSONSerialization.data(withJSONObject: raw),
-           let decoded = try? JSONDecoder().decode(LLMConfig.self, from: jsonData) {
-            llmConfig = decoded
+
+        // LLM config: decode from JSON, then handle apiKey separately
+        if let raw = dict["llmConfig"] as? [String: Any] {
+            // Step 1: Extract legacy plaintext apiKey from raw JSON BEFORE decoding
+            let legacyApiKey = raw["apiKey"] as? String
+
+            // Step 2: Decode the rest of LLMConfig (apiKey will be empty since encode skips it)
+            if let jsonData = try? JSONSerialization.data(withJSONObject: raw),
+               let decoded = try? JSONDecoder().decode(LLMConfig.self, from: jsonData) {
+                llmConfig = decoded
+            }
+
+            // Step 3: Load apiKey from SecretStore
+            if let keychainKey = secretStore.load(key: "apiKey") {
+                llmConfig.apiKey = keychainKey
+            }
+            // Step 4: Migration — if SecretStore empty but legacy JSON has key, migrate
+            else if let legacyKey = legacyApiKey, !legacyKey.isEmpty {
+                llmConfig.apiKey = legacyKey
+                try? secretStore.save(key: "apiKey", value: legacyKey)
+                // Re-save to remove plaintext key from JSON
+                save()
+            }
         }
     }
 

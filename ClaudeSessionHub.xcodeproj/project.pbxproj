@@ -68,6 +68,9 @@
 		A0250013 /* UnderstandingStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250013; };
 		A0250014 /* LLMIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0250014; };
 		A2000001 /* ClaudeSessionHubUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001; };
+		A0270001 /* SecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0270001; };
+		A0270002 /* DateFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0270002; };
+		A0270003 /* SecretStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0270003; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -152,6 +155,9 @@
 		B0250013 /* UnderstandingStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingStoreTests.swift; sourceTree = "<group>"; };
 		B0250014 /* LLMIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMIntegrationTests.swift; sourceTree = "<group>"; };
 		PRODUCT003 /* ClaudeSessionHubTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudeSessionHubTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0270001 /* SecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretStore.swift; sourceTree = "<group>"; };
+		B0270002 /* DateFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFormatting.swift; sourceTree = "<group>"; };
+		B0270003 /* SecretStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -270,6 +276,7 @@
 				B0250005 /* LLMPrompts.swift */,
 				B1000012 /* ScanCoordinator.swift */,
 				B0200006 /* SearchScorer.swift */,
+				B0270001 /* SecretStore.swift */,
 				B1000013 /* SessionStore.swift */,
 				B0200004 /* SessionTitleStrategy.swift */,
 				B1000014 /* SettingsStore.swift */,
@@ -299,6 +306,7 @@
 			isa = PBXGroup;
 			children = (
 				B1000016 /* BadgeView.swift */,
+				B0270002 /* DateFormatting.swift */,
 				B1000017 /* FilterChips.swift */,
 				B1000018 /* SearchBar.swift */,
 			);
@@ -365,6 +373,7 @@
 				B0250012 /* LLMEnhancerTests.swift */,
 				B0200009 /* RuleTitleStrategyTests.swift */,
 				B0200011 /* SearchScoringTests.swift */,
+				B0270003 /* SecretStoreTests.swift */,
 				B0200012 /* SettingsStoreTests.swift */,
 				B0200008 /* SignalExtractorTests.swift */,
 				B0200010 /* TitleStoreTests.swift */,
@@ -516,6 +525,8 @@
 				A0250006 /* UnderstandingStore.swift in Sources */,
 				A0250007 /* LLMSettingsSection.swift in Sources */,
 				A0250008 /* LLMPanelView.swift in Sources */,
+				A0270001 /* SecretStore.swift in Sources */,
+				A0270002 /* DateFormatting.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -544,6 +555,7 @@
 				A0250012 /* LLMEnhancerTests.swift in Sources */,
 				A0250013 /* UnderstandingStoreTests.swift in Sources */,
 				A0250014 /* LLMIntegrationTests.swift in Sources */,
+				A0270003 /* SecretStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

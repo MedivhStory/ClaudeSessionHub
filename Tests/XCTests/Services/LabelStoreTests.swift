@@ -50,7 +50,7 @@ final class LabelStoreXCTests: XCTestCase {
         let dir = makeTempDir()
         defer { try? FileManager.default.removeItem(atPath: dir) }
 
-        let store = SettingsStore(directory: dir)
+        let store = SettingsStore(directory: dir, secretStore: InMemorySecretStore())
         XCTAssertEqual(store.selectedTerminal, "Ghostty", "default terminal")
         XCTAssertEqual(store.scanIntervalSeconds, 60, "default scan interval")
     }
@@ -58,13 +58,14 @@ final class LabelStoreXCTests: XCTestCase {
     func testSettingsStorePersistence() {
         let dir = makeTempDir()
         defer { try? FileManager.default.removeItem(atPath: dir) }
+        let secrets = InMemorySecretStore()
 
-        let store = SettingsStore(directory: dir)
+        let store = SettingsStore(directory: dir, secretStore: secrets)
         store.selectedTerminal = "Terminal"
         store.scanIntervalSeconds = 120
         store.save()
 
-        let store2 = SettingsStore(directory: dir)
+        let store2 = SettingsStore(directory: dir, secretStore: secrets)
         XCTAssertEqual(store2.selectedTerminal, "Terminal", "terminal should persist")
         XCTAssertEqual(store2.scanIntervalSeconds, 120, "interval should persist")
     }

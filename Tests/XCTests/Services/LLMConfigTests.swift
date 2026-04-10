@@ -119,8 +119,9 @@ final class LLMConfigTests: XCTestCase {
     func testConfigPersistsThroughSettingsStore() {
         let dir = createTempDir()
         defer { try? FileManager.default.removeItem(atPath: dir) }
+        let secrets = InMemorySecretStore()
 
-        let store = SettingsStore(directory: dir)
+        let store = SettingsStore(directory: dir, secretStore: secrets)
         var config = LLMConfig()
         config.provider = .dashscope
         config.endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -128,7 +129,7 @@ final class LLMConfigTests: XCTestCase {
         config.modelName = "qwen-plus"
         store.setLLMConfig(config)
 
-        let store2 = SettingsStore(directory: dir)
+        let store2 = SettingsStore(directory: dir, secretStore: secrets)
         XCTAssertEqual(store2.llmConfig.provider, .dashscope)
         XCTAssertEqual(store2.llmConfig.endpoint, "https://dashscope.aliyuncs.com/compatible-mode/v1")
         XCTAssertEqual(store2.llmConfig.apiKey, "test-key")
