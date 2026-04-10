@@ -43,12 +43,14 @@ struct LLMSettingsSection: View {
                 }
             }
 
-            // API Key (stored in Keychain, not loaded until needed)
+            // API Key — plain TextField to avoid macOS Passwords autofill trigger.
+            // SecureField causes system "Passwords Is Locked" dialog on unsigned apps.
             if provider.requiresApiKey {
-                SecureField(store.settings.llmConfig.isConfigured && apiKey.isEmpty
-                            ? "API Key（已保存在钥匙串中，留空则不修改）"
-                            : "API Key",
-                            text: $apiKey)
+                TextField(apiKey.isEmpty
+                          ? "API Key（已安全存储，留空则不修改）"
+                          : "API Key",
+                          text: $apiKey)
+                    .textContentType(.none)
                     .accessibilityIdentifier("llmApiKeyField")
             }
 
