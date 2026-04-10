@@ -130,6 +130,7 @@ final class LLMConfigTests: XCTestCase {
         store.setLLMConfig(config)
 
         let store2 = SettingsStore(directory: dir, secretStore: secrets)
+        store2.ensureApiKeyLoaded()
         XCTAssertEqual(store2.llmConfig.provider, .dashscope)
         XCTAssertEqual(store2.llmConfig.endpoint, "https://dashscope.aliyuncs.com/compatible-mode/v1")
         XCTAssertEqual(store2.llmConfig.apiKey, "test-key")

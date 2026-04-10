@@ -57,8 +57,14 @@ final class SecretStoreTests: XCTestCase {
         let data = try! JSONSerialization.data(withJSONObject: oldConfig, options: .prettyPrinted)
         try! data.write(to: URL(fileURLWithPath: path))
 
-        // Load with SecretStore — should migrate
+        // Load — migration is deferred until ensureApiKeyLoaded
         let store = SettingsStore(directory: dir, secretStore: secretStore)
+
+        // Before ensure: apiKey not yet loaded
+        XCTAssertTrue(store.llmConfig.apiKey.isEmpty, "apiKey should not be loaded at init")
+
+        // Trigger lazy load
+        store.ensureApiKeyLoaded()
 
         // API key should now be in SecretStore
         XCTAssertEqual(secretStore.load(key: "apiKey"), "sk-plaintext-secret")
@@ -93,6 +99,7 @@ final class SecretStoreTests: XCTestCase {
         try! data.write(to: URL(fileURLWithPath: path))
 
         let store = SettingsStore(directory: dir, secretStore: secretStore)
+        store.ensureApiKeyLoaded()
 
         // Should use Keychain key, not the plaintext one
         XCTAssertEqual(store.llmConfig.apiKey, "sk-already-in-keychain")

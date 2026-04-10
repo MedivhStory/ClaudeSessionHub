@@ -10,12 +10,33 @@ public final class SettingsStore {
 
     private let filePath: String
     private let secretStore: SecretStore
+    private var apiKeyLoaded = false
+    private var legacyApiKey: String?  // from plaintext JSON, pending migration
 
     public init(directory: String = NSHomeDirectory() + "/.claude-hub",
                 secretStore: SecretStore = KeychainSecretStore()) {
         self.filePath = (directory as NSString).appendingPathComponent("settings.json")
         self.secretStore = secretStore
         load()
+    }
+
+    /// Lazily load API key from Keychain. Called only when AI features are actually used.
+    /// This avoids triggering Keychain permission prompts at app startup.
+    public func ensureApiKeyLoaded() {
+        guard !apiKeyLoaded else { return }
+        apiKeyLoaded = true
+
+        // Try Keychain first
+        if let keychainKey = secretStore.load(key: "apiKey") {
+            llmConfig.apiKey = keychainKey
+        }
+        // Migration: legacy plaintext key from JSON → Keychain
+        else if let legacyKey = legacyApiKey, !legacyKey.isEmpty {
+            llmConfig.apiKey = legacyKey
+            try? secretStore.save(key: "apiKey", value: legacyKey)
+            save()  // re-save to remove plaintext from JSON
+        }
+        legacyApiKey = nil
     }
 
     public func setSelectedTerminal(_ value: String) {
@@ -28,7 +49,6 @@ public final class SettingsStore {
         save()
     }
 
-    /// Trim whitespace and expand ~ to home directory.
     static func normalizePath(_ path: String) -> String {
         let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasPrefix("~/") {
@@ -46,14 +66,14 @@ public final class SettingsStore {
     }
 
     public func setLLMConfig(_ config: LLMConfig) {
-        // Save apiKey to SecretStore, not JSON
         if !config.apiKey.isEmpty {
             try? secretStore.save(key: "apiKey", value: config.apiKey)
         } else {
             secretStore.delete(key: "apiKey")
         }
+        apiKeyLoaded = true
         llmConfig = config
-        save()  // This will encode LLMConfig WITHOUT apiKey
+        save()
     }
 
     private func load() {
@@ -63,28 +83,18 @@ public final class SettingsStore {
         if let d = dict["claudeDataDirectory"] as? String { claudeDataDirectory = Self.normalizePath(d) }
         if let s = dict["scanIntervalSeconds"] as? Int { scanIntervalSeconds = s }
 
-        // LLM config: decode from JSON, then handle apiKey separately
         if let raw = dict["llmConfig"] as? [String: Any] {
-            // Step 1: Extract legacy plaintext apiKey from raw JSON BEFORE decoding
-            let legacyApiKey = raw["apiKey"] as? String
+            // Extract legacy plaintext apiKey — will be migrated lazily
+            legacyApiKey = raw["apiKey"] as? String
 
-            // Step 2: Decode the rest of LLMConfig (apiKey will be empty since encode skips it)
+            // Decode config — init(from:) may pick up legacy apiKey from raw JSON,
+            // but we clear it here. apiKey is loaded lazily from SecretStore.
             if let jsonData = try? JSONSerialization.data(withJSONObject: raw),
                let decoded = try? JSONDecoder().decode(LLMConfig.self, from: jsonData) {
                 llmConfig = decoded
+                llmConfig.apiKey = ""  // Clear — will be loaded from SecretStore on demand
             }
-
-            // Step 3: Load apiKey from SecretStore
-            if let keychainKey = secretStore.load(key: "apiKey") {
-                llmConfig.apiKey = keychainKey
-            }
-            // Step 4: Migration — if SecretStore empty but legacy JSON has key, migrate
-            else if let legacyKey = legacyApiKey, !legacyKey.isEmpty {
-                llmConfig.apiKey = legacyKey
-                try? secretStore.save(key: "apiKey", value: legacyKey)
-                // Re-save to remove plaintext key from JSON
-                save()
-            }
+            // Do NOT touch Keychain here — deferred to ensureApiKeyLoaded()
         }
     }
 
