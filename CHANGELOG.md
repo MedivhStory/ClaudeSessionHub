@@ -1,5 +1,34 @@
 # Changelog
 
+## [v0.2.7] - 2026-04-10
+
+### Security
+- **API key moved from plaintext JSON to encrypted file** (`~/.claude-hub/.apiKey.secret`, 0600 permissions)
+- SecretStore protocol with FileSecretStore (production) + InMemorySecretStore (tests)
+- Automatic migration: legacy plaintext key → secret file on first use
+- Lazy key loading: secret file only accessed when AI features are used, not at app startup
+- TextField replaces SecureField to avoid macOS Passwords autofill trigger on unsigned apps
+
+### Added
+- **Batch enhance progress indicator**: `3/10 增强中...` with ProgressView in list header
+- `@MainActor` on `historyTextsCache` (Sendable safety)
+- `Date.relativeFormatted` extension (replaces duplicated helper in 2 views)
+
+### Fixed
+- Settings UI: "已保存" text clears on provider switch
+- Settings UI: API Key placeholder only shows "留空则保留" for matching provider
+- Settings UI: shared config builder for save + test (consistent trimming)
+- Settings UI: model picker "其他..." option hides TextField when standard model selected
+- Test connection loads saved key when user didn't type a new one
+- Batch enhance calls `ensureApiKeyLoaded` before `isConfigured` check
+- FileSecretStore: atomic file creation with 0600 (no race window)
+- InMemorySecretStore: thread-safe via NSLock
+- Directory permissions set to 0700
+- Cached `RelativeDateTimeFormatter` (static let)
+- UI test: updated assertions for QuickFacts changes (context/stats moved to collapsed tile)
+
+---
+
 ## [v0.2.6] - 2026-04-09
 
 ### Added — LLM Provider Presets
