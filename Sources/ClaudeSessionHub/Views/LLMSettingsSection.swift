@@ -43,9 +43,12 @@ struct LLMSettingsSection: View {
                 }
             }
 
-            // API Key
+            // API Key (stored in Keychain, not loaded until needed)
             if provider.requiresApiKey {
-                SecureField("API Key", text: $apiKey)
+                SecureField(store.settings.llmConfig.isConfigured && apiKey.isEmpty
+                            ? "API Key（已保存在钥匙串中，留空则不修改）"
+                            : "API Key",
+                            text: $apiKey)
                     .accessibilityIdentifier("llmApiKeyField")
             }
 
@@ -141,14 +144,13 @@ struct LLMSettingsSection: View {
     }
 
     private func loadConfig() {
-        // Trigger Keychain load only when user opens Settings — not at app startup
-        store.settings.ensureApiKeyLoaded()
+        // Do NOT read Keychain here — only load non-secret fields from config.
+        // apiKey stays empty in the UI. User re-enters or it's loaded on save/test.
         let config = store.settings.llmConfig
         provider = config.provider
         endpoint = config.endpoint
-        apiKey = config.apiKey
+        apiKey = ""  // Don't read from Keychain just to display
         modelName = config.modelName
-        // Determine whether the saved model is a suggested one or custom
         isCustomModel = !config.modelName.isEmpty && !config.provider.suggestedModels.contains(config.modelName)
     }
 
@@ -162,7 +164,13 @@ struct LLMSettingsSection: View {
     }
 
     private func saveConfig() {
-        store.settings.setLLMConfig(buildCurrentConfig())
+        var config = buildCurrentConfig()
+        // If user left apiKey empty and we already have one in Keychain, keep it
+        if config.apiKey.isEmpty {
+            store.settings.ensureApiKeyLoaded()
+            config.apiKey = store.settings.llmConfig.apiKey
+        }
+        store.settings.setLLMConfig(config)
         testResult = "已保存"
     }
 
