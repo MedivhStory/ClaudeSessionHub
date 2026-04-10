@@ -20,17 +20,17 @@ public final class SettingsStore {
         load()
     }
 
-    /// Lazily load API key from Keychain. Called only when AI features are actually used.
-    /// This avoids triggering Keychain permission prompts at app startup.
+    /// Lazily load API key from secret storage. Called only when AI features are actually used.
+    /// This avoids triggering file/permission access at app startup.
     public func ensureApiKeyLoaded() {
         guard !apiKeyLoaded else { return }
         apiKeyLoaded = true
 
-        // Try Keychain first
-        if let keychainKey = secretStore.load(key: "apiKey") {
-            llmConfig.apiKey = keychainKey
+        // Try secret store first
+        if let storedKey = secretStore.load(key: "apiKey") {
+            llmConfig.apiKey = storedKey
         }
-        // Migration: legacy plaintext key from JSON → Keychain
+        // Migration: legacy plaintext key from JSON → secret store
         else if let legacyKey = legacyApiKey, !legacyKey.isEmpty {
             llmConfig.apiKey = legacyKey
             try? secretStore.save(key: "apiKey", value: legacyKey)
@@ -94,7 +94,7 @@ public final class SettingsStore {
                 llmConfig = decoded
                 llmConfig.apiKey = ""  // Clear — will be loaded from SecretStore on demand
             }
-            // Do NOT touch Keychain here — deferred to ensureApiKeyLoaded()
+            // Do NOT touch secret store here — deferred to ensureApiKeyLoaded()
         }
     }
 
