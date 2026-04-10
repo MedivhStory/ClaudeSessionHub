@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spm-test:
+    name: SPM Unit Tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16.2 (Swift 6 SDK)
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: Show toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Swift build
+        run: swift build -v
+
+      - name: Swift test
+        run: swift test -v
+
+  xcode-test:
+    name: Xcode Unit + UI Tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16.2 (Swift 6 SDK)
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+
+      - name: xcodebuild ClaudeSessionHubTests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ClaudeSessionHub.xcodeproj \
+            -scheme ClaudeSessionHub \
+            -destination 'platform=macOS' \
+            -only-testing:ClaudeSessionHubTests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: xcodebuild ClaudeSessionHubUITests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ClaudeSessionHub.xcodeproj \
+            -scheme ClaudeSessionHub \
+            -destination 'platform=macOS' \
+            -only-testing:ClaudeSessionHubUITests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
