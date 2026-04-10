@@ -83,7 +83,7 @@ struct LLMPanelView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
             Text("·").foregroundStyle(.quaternary)
-            Text(relativeTime(snap.generatedAt))
+            Text(snap.generatedAt.relativeFormatted)
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
 
@@ -142,9 +142,5 @@ struct LLMPanelView: View {
 
     // MARK: - Helpers
 
-    private func relativeTime(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
-    }
+    // relativeTime moved to Date.relativeFormatted extension
 }

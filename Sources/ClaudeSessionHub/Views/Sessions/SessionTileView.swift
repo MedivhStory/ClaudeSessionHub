@@ -185,7 +185,7 @@ struct SessionTileView: View {
                     }
 
                     Text("·").foregroundStyle(.quaternary)
-                    Text(relativeTime(session.lastActiveAt))
+                    Text(session.lastActiveAt.relativeFormatted)
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 }
@@ -410,9 +410,5 @@ struct SessionTileView: View {
         }
     }
 
-    private func relativeTime(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
-    }
+    // relativeTime moved to Date.relativeFormatted extension
 }
