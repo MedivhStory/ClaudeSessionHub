@@ -14,7 +14,7 @@ public final class SettingsStore {
     private var legacyApiKey: String?  // from plaintext JSON, pending migration
 
     public init(directory: String = NSHomeDirectory() + "/.claude-hub",
-                secretStore: SecretStore = KeychainSecretStore()) {
+                secretStore: SecretStore = FileSecretStore()) {
         self.filePath = (directory as NSString).appendingPathComponent("settings.json")
         self.secretStore = secretStore
         load()

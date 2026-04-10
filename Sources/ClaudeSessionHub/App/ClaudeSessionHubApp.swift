@@ -28,7 +28,7 @@ struct ClaudeSessionHubApp: App {
         }
 
         let settings = SettingsStore(directory: hubDirectory,
-                                     secretStore: isUITestMode ? InMemorySecretStore() : KeychainSecretStore())
+                                     secretStore: isUITestMode ? InMemorySecretStore() : FileSecretStore(directory: hubDirectory))
 
         let providers: [any AgentProvider]
         if isUITestMode {
