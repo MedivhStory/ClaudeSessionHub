@@ -141,6 +141,8 @@ struct LLMSettingsSection: View {
     }
 
     private func loadConfig() {
+        // Trigger Keychain load only when user opens Settings — not at app startup
+        store.settings.ensureApiKeyLoaded()
         let config = store.settings.llmConfig
         provider = config.provider
         endpoint = config.endpoint

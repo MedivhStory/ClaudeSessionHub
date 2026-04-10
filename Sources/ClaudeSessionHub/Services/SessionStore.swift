@@ -248,6 +248,7 @@ public final class SessionStore: @unchecked Sendable {
     /// LLM-enhance a single session. User-triggered only.
     @MainActor
     public func enhanceWithLLM(for ref: SessionRef) async throws {
+        settings.ensureApiKeyLoaded()
         guard settings.llmConfig.isConfigured else {
             throw LLMClient.LLMError.notConfigured
         }
