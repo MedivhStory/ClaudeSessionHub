@@ -15,7 +15,7 @@ public final class SessionStore: @unchecked Sendable {
     public let understandingStore: UnderstandingStore
     private let signalExtractor: SignalExtractor
     private let titleStrategy: any SessionTitleStrategy
-    private var historyTextsCache: [String: [String]] = [:]
+    @MainActor private var historyTextsCache: [String: [String]] = [:]
 
     @MainActor public var showArchived = false
 
