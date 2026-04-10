@@ -16,33 +16,36 @@ final class SettingsStoreTests: XCTestCase {
     func testAutoSaveOnPropertyChange() {
         let dir = createTempDir()
         defer { try? FileManager.default.removeItem(atPath: dir) }
+        let secrets = InMemorySecretStore()
 
-        let store = SettingsStore(directory: dir)
+        let store = SettingsStore(directory: dir, secretStore: secrets)
         store.setSelectedTerminal("iTerm")
 
-        let store2 = SettingsStore(directory: dir)
+        let store2 = SettingsStore(directory: dir, secretStore: secrets)
         XCTAssertEqual(store2.selectedTerminal, "iTerm")
     }
 
     func testAutoSaveOnDirectoryChange() {
         let dir = createTempDir()
         defer { try? FileManager.default.removeItem(atPath: dir) }
+        let secrets = InMemorySecretStore()
 
-        let store = SettingsStore(directory: dir)
+        let store = SettingsStore(directory: dir, secretStore: secrets)
         store.setClaudeDataDirectory("/custom/path")
 
-        let store2 = SettingsStore(directory: dir)
+        let store2 = SettingsStore(directory: dir, secretStore: secrets)
         XCTAssertEqual(store2.claudeDataDirectory, "/custom/path")
     }
 
     func testAutoSaveOnIntervalChange() {
         let dir = createTempDir()
         defer { try? FileManager.default.removeItem(atPath: dir) }
+        let secrets = InMemorySecretStore()
 
-        let store = SettingsStore(directory: dir)
+        let store = SettingsStore(directory: dir, secretStore: secrets)
         store.setScanIntervalSeconds(30)
 
-        let store2 = SettingsStore(directory: dir)
+        let store2 = SettingsStore(directory: dir, secretStore: secrets)
         XCTAssertEqual(store2.scanIntervalSeconds, 30)
     }
 }

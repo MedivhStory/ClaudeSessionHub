@@ -103,6 +103,14 @@ public struct LLMConfig: Codable, Sendable, Equatable {
         modelName = (try? container.decode(String.self, forKey: .modelName)) ?? ""
     }
 
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(provider, forKey: .provider)
+        try container.encode(endpoint, forKey: .endpoint)
+        // apiKey intentionally NOT encoded — stored in SecretStore
+        try container.encode(modelName, forKey: .modelName)
+    }
+
     /// Create a config from a provider preset.
     public static func preset(_ provider: LLMProvider) -> LLMConfig {
         var config = LLMConfig()
