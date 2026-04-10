@@ -273,6 +273,7 @@ public final class SessionStore: @unchecked Sendable {
     /// Takes explicit [SessionRef] — caller decides scope (visible list, selection, etc.)
     @MainActor
     public func batchEnhanceLLM(sessions refs: [SessionRef]) async -> Int {
+        settings.ensureApiKeyLoaded()
         guard settings.llmConfig.isConfigured else { return 0 }
 
         // Filter to candidates (sessions that need enhancement) before starting
