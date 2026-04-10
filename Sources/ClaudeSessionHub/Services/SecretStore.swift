@@ -1,62 +1,48 @@
 import Foundation
-import Security
 
-/// Abstraction for secret storage. Keychain in production, in-memory for tests.
+/// Abstraction for secret storage.
 public protocol SecretStore: Sendable {
     func save(key: String, value: String) throws
     func load(key: String) -> String?
     func delete(key: String)
 }
 
-/// Real macOS Keychain implementation.
-public struct KeychainSecretStore: SecretStore {
-    private let service: String
+/// File-based secret storage with restricted permissions (0600).
+/// Stores secrets in a dedicated file outside settings.json.
+/// Avoids macOS Keychain issues with unsigned apps (permission dialogs, frozen UI).
+public struct FileSecretStore: SecretStore {
+    private let directory: String
 
-    public init(service: String = "com.claudehub.llm") {
-        self.service = service
+    public init(directory: String = NSHomeDirectory() + "/.claude-hub") {
+        self.directory = directory
+    }
+
+    private func filePath(for key: String) -> String {
+        (directory as NSString).appendingPathComponent(".\(key).secret")
     }
 
     public func save(key: String, value: String) throws {
+        let fm = FileManager.default
+        try fm.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        let path = filePath(for: key)
         let data = Data(value.utf8)
-        // Delete existing first
-        delete(key: key)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecValueData as String: data
-        ]
-        let status = SecItemAdd(query as CFDictionary, nil)
-        guard status == errSecSuccess else {
-            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
-        }
+        try data.write(to: URL(fileURLWithPath: path))
+        // Set file permissions to owner-only read/write (0600)
+        try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path)
     }
 
     public func load(key: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        let path = filePath(for: key)
+        guard let data = FileManager.default.contents(atPath: path) else { return nil }
+        return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     public func delete(key: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key
-        ]
-        SecItemDelete(query as CFDictionary)
+        try? FileManager.default.removeItem(atPath: filePath(for: key))
     }
 }
 
-/// In-memory implementation for tests and UI-test mode. Never touches real Keychain.
+/// In-memory implementation for tests and UI-test mode.
 public final class InMemorySecretStore: SecretStore, @unchecked Sendable {
     private var store: [String: String] = [:]
 
