@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release (e.g. v0.2.8). Must already be pushed.'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build & Publish Release
+    runs-on: macos-14
+    steps:
+      - name: Resolve ref
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ref=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${GITHUB_REF}" >> "$GITHUB_OUTPUT"
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Select Xcode 15.4
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Archive Release build
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project ClaudeSessionHub.xcodeproj \
+            -scheme ClaudeSessionHub \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -archivePath build/ClaudeSessionHub.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export .app
+        run: |
+          mkdir -p dist
+          ditto \
+            build/ClaudeSessionHub.xcarchive/Products/Applications/ClaudeSessionHub.app \
+            dist/ClaudeSessionHub.app
+
+      - name: Package .zip
+        run: |
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent \
+            ClaudeSessionHub.app \
+            "ClaudeSessionHub-${{ steps.resolve.outputs.tag }}.zip"
+
+      - name: Package .dmg
+        run: |
+          cd dist
+          hdiutil create \
+            -volname "ClaudeSessionHub" \
+            -srcfolder ClaudeSessionHub.app \
+            -ov -format UDZO \
+            "ClaudeSessionHub-${{ steps.resolve.outputs.tag }}.dmg"
+
+      - name: List artifacts
+        run: ls -la dist/
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.resolve.outputs.tag }}
+          name: ClaudeSessionHub ${{ steps.resolve.outputs.tag }}
+          files: |
+            dist/ClaudeSessionHub-${{ steps.resolve.outputs.tag }}.zip
+            dist/ClaudeSessionHub-${{ steps.resolve.outputs.tag }}.dmg
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            Download `.dmg` (recommended) or `.zip` below.
+
+            ### First launch — unsigned build
+
+            This release is **not code-signed**. macOS Gatekeeper will block it on first launch. Use one of:
+
+            - **Right-click the app → Open**, then click *Open* in the dialog, **or**
+            - Run once in Terminal:
+              ```bash
+              xattr -dr com.apple.quarantine /Applications/ClaudeSessionHub.app
+              ```
+
+            Signing + notarization will be added after Apple Developer Program enrollment.
