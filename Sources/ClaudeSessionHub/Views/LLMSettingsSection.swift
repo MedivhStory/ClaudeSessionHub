@@ -44,11 +44,12 @@ struct LLMSettingsSection: View {
             }
 
             // API Key — plain TextField to avoid macOS Passwords autofill trigger.
-            // SecureField causes system "Passwords Is Locked" dialog on unsigned apps.
             if provider.requiresApiKey {
-                TextField(apiKey.isEmpty
-                          ? "API Key（已安全存储，留空则不修改）"
-                          : "API Key",
+                let savedConfig = store.settings.llmConfig
+                let hasSavedKey = savedConfig.provider == provider && !savedConfig.endpoint.isEmpty
+                TextField(apiKey.isEmpty && hasSavedKey
+                          ? "留空则保留已存储的 Key"
+                          : "输入 API Key",
                           text: $apiKey)
                     .textContentType(.none)
                     .accessibilityIdentifier("llmApiKeyField")
@@ -131,8 +132,10 @@ struct LLMSettingsSection: View {
     }
 
     private var canTest: Bool {
-        !endpoint.isEmpty && !modelName.isEmpty &&
-        (!provider.requiresApiKey || !apiKey.isEmpty)
+        let savedConfig = store.settings.llmConfig
+        let hasSavedKey = savedConfig.provider == provider && !savedConfig.endpoint.isEmpty
+        return !endpoint.isEmpty && !modelName.isEmpty &&
+            (!provider.requiresApiKey || !apiKey.isEmpty || hasSavedKey)
     }
 
     private func applyPreset(_ p: LLMProvider) {
@@ -143,6 +146,9 @@ struct LLMSettingsSection: View {
                 isCustomModel = false
             }
         }
+        // Clear stale feedback + api key field when switching provider
+        testResult = nil
+        apiKey = ""
     }
 
     private func loadConfig() {
@@ -179,7 +185,12 @@ struct LLMSettingsSection: View {
     private func testConnection() {
         isTesting = true
         testResult = nil
-        let config = buildCurrentConfig()
+        var config = buildCurrentConfig()
+        // If user didn't type a key, load saved one for testing
+        if config.apiKey.isEmpty {
+            store.settings.ensureApiKeyLoaded()
+            config.apiKey = store.settings.llmConfig.apiKey
+        }
         Task {
             let client = LLMClient(config: config)
             do {
