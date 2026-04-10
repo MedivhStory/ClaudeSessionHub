@@ -77,11 +77,13 @@ jobs:
       - name: List artifacts
         run: ls -la dist/
 
-      - name: Publish GitHub Release
+      - name: Publish GitHub Release (draft)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.resolve.outputs.tag }}
           name: ClaudeSessionHub ${{ steps.resolve.outputs.tag }}
+          draft: true
+          fail_on_unmatched_files: true
           files: |
             dist/ClaudeSessionHub-${{ steps.resolve.outputs.tag }}.zip
             dist/ClaudeSessionHub-${{ steps.resolve.outputs.tag }}.dmg
