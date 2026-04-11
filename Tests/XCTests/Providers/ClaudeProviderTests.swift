@@ -348,4 +348,99 @@ final class ClaudeProviderXCTests: XCTestCase {
         XCTAssertTrue(detail.nextStep?.contains("接下来") ?? false)
         XCTAssertTrue((detail.nextStep?.count ?? 999) <= 120)
     }
+
+    // MARK: - v0.2.8 VersionMentions Integration Tests
+
+    func test_extractSignals_populatesVersionMentions_fromFirstUserIntent() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+
+        let jsonl = [
+            #"{"type":"system","timestamp":"2026-04-01T10:00:00Z","cwd":"/Users/test/project","gitBranch":"main"}"#,
+            #"{"type":"user","message":{"role":"user","content":"I am working on v0.2.5 release features"},"timestamp":"2026-04-01T10:00:01Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Got it, I will help with the v0.2.5 work."}],"usage":{"input_tokens":100,"output_tokens":50}},"timestamp":"2026-04-01T10:00:02Z"}"#
+        ].joined(separator: "\n")
+        try jsonl.write(toFile: projectDir + "/vm-intent.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "vm-intent")
+        let signals = try await provider.extractSignals(for: ref)
+
+        XCTAssertTrue(signals.versionMentions.contains { $0.normalized == "0.2.5" })
+        let v025 = signals.versionMentions.first(where: { $0.normalized == "0.2.5" })!
+        XCTAssertEqual(v025.selectedSource.kind, .firstUserIntent)
+        XCTAssertNil(v025.selectedSource.index)
+    }
+
+    func test_extractSignals_populatesVersionMentions_fromLastUserIntent() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+
+        let jsonl = [
+            #"{"type":"system","timestamp":"2026-04-01T10:00:00Z","cwd":"/Users/test/project","gitBranch":"main"}"#,
+            #"{"type":"user","message":{"role":"user","content":"let us start with the basics"},"timestamp":"2026-04-01T10:00:01Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Sure."}],"usage":{"input_tokens":100,"output_tokens":10}},"timestamp":"2026-04-01T10:00:02Z"}"#,
+            #"{"type":"user","message":{"role":"user","content":"now please implement the v0.3.0 upgrade path"},"timestamp":"2026-04-01T10:00:03Z"}"#
+        ].joined(separator: "\n")
+        try jsonl.write(toFile: projectDir + "/vm-lastintent.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "vm-lastintent")
+        let signals = try await provider.extractSignals(for: ref)
+
+        XCTAssertFalse(signals.versionMentions.isEmpty)
+        XCTAssertTrue(signals.versionMentions.contains { $0.normalized == "0.3.0" })
+        XCTAssertTrue(signals.versionMentions.first(where: { $0.normalized == "0.3.0" })!.occurrenceCount >= 1)
+    }
+
+    func test_extractSignals_emptySession_emptyVersionMentions() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+
+        let jsonl = [
+            #"{"type":"system","timestamp":"2026-04-01T10:00:00Z","cwd":"/Users/test/project","gitBranch":"main"}"#,
+            #"{"type":"user","message":{"role":"user","content":"请帮我修复这个bug"},"timestamp":"2026-04-01T10:00:01Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"好的，我来修复。"}],"usage":{"input_tokens":50,"output_tokens":20}},"timestamp":"2026-04-01T10:00:02Z"}"#
+        ].joined(separator: "\n")
+        try jsonl.write(toFile: projectDir + "/vm-empty.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "vm-empty")
+        let signals = try await provider.extractSignals(for: ref)
+
+        XCTAssertTrue(signals.versionMentions.isEmpty)
+    }
+
+    func test_extractSignals_versionMentionsOrderingDeterministic() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+
+        let jsonl = [
+            #"{"type":"system","timestamp":"2026-04-01T10:00:00Z","cwd":"/Users/test/project","gitBranch":"main"}"#,
+            #"{"type":"user","message":{"role":"user","content":"I need v0.2.5 and v0.3.0 both working"},"timestamp":"2026-04-01T10:00:01Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I will handle v0.2.5 first then v0.3.0."}],"usage":{"input_tokens":100,"output_tokens":30}},"timestamp":"2026-04-01T10:00:02Z"}"#
+        ].joined(separator: "\n")
+        try jsonl.write(toFile: projectDir + "/vm-deterministic.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "vm-deterministic")
+
+        let signalsA = try await provider.extractSignals(for: ref)
+        let signalsB = try await provider.extractSignals(for: ref)
+
+        XCTAssertEqual(signalsA.versionMentions, signalsB.versionMentions)
+        XCTAssertFalse(signalsA.versionMentions.isEmpty)
+    }
 }
