@@ -15,6 +15,7 @@ public struct SessionSignals: Sendable {
 
     // From history.jsonl
     public var historyDisplayTexts: [String] = []
+    public var versionMentions: [VersionMention] = []   // v0.2.8
 
     // From tasks/
     public var taskSubject: String?
