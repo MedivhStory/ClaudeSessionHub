@@ -54,6 +54,11 @@ let package = Package(
             dependencies: ["EvalHarnessCore"],
             path: "Sources/EvalHarnessCLI"
         ),
+        .executableTarget(
+            name: "DesensitizeSession",
+            dependencies: ["ClaudeSessionHubLib", "EvalHarnessCore"],
+            path: "Sources/DesensitizeSession"
+        ),
         .plugin(
             name: "ExtractPromptSourcePlugin",
             capability: .buildTool(),
