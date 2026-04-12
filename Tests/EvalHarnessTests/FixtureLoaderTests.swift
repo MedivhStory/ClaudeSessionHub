@@ -20,14 +20,30 @@ final class FixtureLoaderTests: XCTestCase {
 
     /// Minimal valid input file.
     private func makeInput(id: String, kind: FixtureInputFile.Kind = .synthetic) -> FixtureInputFile {
-        FixtureInputFile(
+        let meta: FixtureInputFile.Meta
+        if kind == .realSnapshot {
+            meta = FixtureInputFile.Meta(
+                failureMode: nil,
+                description: "Real snapshot fixture for \(id)",
+                desensitizedAt: "2026-01-01T00:00:00Z",
+                desensitizationScriptVersion: "1.0.0"
+            )
+        } else {
+            meta = FixtureInputFile.Meta(
+                failureMode: nil,
+                description: "Synthetic fixture for \(id)"
+            )
+        }
+        return FixtureInputFile(
             schemaVersion: CanonicalGate.dslSchemaVersion,
             id: id,
             kind: kind,
-            meta: kind == .realSnapshot
-                ? FixtureInputFile.Meta(sessionID: "sess-\(id)", capturedAt: "2026-01-01")
-                : nil,
-            signals: FixtureInputFile.SignalsPayload(sessionID: "sess-\(id)")
+            meta: meta,
+            input: FixtureInputFile.Input(
+                signals: FixtureInputFile.SignalsPayload(sessionID: "sess-\(id)"),
+                rawTurns: [],
+                basedOnLastActiveAt: "2026-01-01T00:00:00Z"
+            )
         )
     }
 
@@ -83,20 +99,30 @@ final class FixtureLoaderTests: XCTestCase {
             "schemaVersion": "",
             "id": "empty-schema",
             "kind": "synthetic",
-            "signals": {
-                "sessionID": "s1",
-                "sampledUserIntents": [],
-                "historyDisplayTexts": [],
-                "versionMentions": [],
-                "toolsUsed": [],
-                "filesModified": [],
-                "isSidechain": false,
-                "turnCount": 0,
-                "slashCommands": [],
-                "commandErrors": [],
-                "hasAssistantReply": false,
-                "totalEntryCount": 0,
-                "historyCount": 0
+            "meta": {
+                "failureMode": null,
+                "description": "Fixture with empty schema version",
+                "desensitizedAt": null,
+                "desensitizationScriptVersion": null
+            },
+            "input": {
+                "signals": {
+                    "sessionID": "s1",
+                    "sampledUserIntents": [],
+                    "historyDisplayTexts": [],
+                    "versionMentions": [],
+                    "toolsUsed": [],
+                    "filesModified": [],
+                    "isSidechain": false,
+                    "turnCount": 0,
+                    "slashCommands": [],
+                    "commandErrors": [],
+                    "hasAssistantReply": false,
+                    "totalEntryCount": 0,
+                    "historyCount": 0
+                },
+                "rawTurns": [],
+                "basedOnLastActiveAt": "2026-01-01T00:00:00Z"
             }
         }
         """
@@ -123,20 +149,30 @@ final class FixtureLoaderTests: XCTestCase {
             "schemaVersion": "999",
             "id": "future-schema",
             "kind": "synthetic",
-            "signals": {
-                "sessionID": "s1",
-                "sampledUserIntents": [],
-                "historyDisplayTexts": [],
-                "versionMentions": [],
-                "toolsUsed": [],
-                "filesModified": [],
-                "isSidechain": false,
-                "turnCount": 0,
-                "slashCommands": [],
-                "commandErrors": [],
-                "hasAssistantReply": false,
-                "totalEntryCount": 0,
-                "historyCount": 0
+            "meta": {
+                "failureMode": null,
+                "description": "Fixture with future schema version",
+                "desensitizedAt": null,
+                "desensitizationScriptVersion": null
+            },
+            "input": {
+                "signals": {
+                    "sessionID": "s1",
+                    "sampledUserIntents": [],
+                    "historyDisplayTexts": [],
+                    "versionMentions": [],
+                    "toolsUsed": [],
+                    "filesModified": [],
+                    "isSidechain": false,
+                    "turnCount": 0,
+                    "slashCommands": [],
+                    "commandErrors": [],
+                    "hasAssistantReply": false,
+                    "totalEntryCount": 0,
+                    "historyCount": 0
+                },
+                "rawTurns": [],
+                "basedOnLastActiveAt": "2026-01-01T00:00:00Z"
             }
         }
         """
@@ -162,8 +198,12 @@ final class FixtureLoaderTests: XCTestCase {
             schemaVersion: CanonicalGate.dslSchemaVersion,
             id: "wrong-id",
             kind: .synthetic,
-            meta: nil,
-            signals: FixtureInputFile.SignalsPayload(sessionID: "s1")
+            meta: FixtureInputFile.Meta(description: "Mismatch test fixture"),
+            input: FixtureInputFile.Input(
+                signals: FixtureInputFile.SignalsPayload(sessionID: "s1"),
+                rawTurns: [],
+                basedOnLastActiveAt: "2026-01-01T00:00:00Z"
+            )
         )
         try writeJSON(input, to: dir, name: "mismatch-fix.input.json")
         try writeJSON(makeExpected(id: "mismatch-fix"), to: dir, name: "mismatch-fix.expected.json")
@@ -222,8 +262,12 @@ final class FixtureLoaderTests: XCTestCase {
             schemaVersion: CanonicalGate.dslSchemaVersion,
             id: "c-wrong",
             kind: .synthetic,
-            meta: nil,
-            signals: FixtureInputFile.SignalsPayload(sessionID: "s3")
+            meta: FixtureInputFile.Meta(description: "Aggregate error test fixture C"),
+            input: FixtureInputFile.Input(
+                signals: FixtureInputFile.SignalsPayload(sessionID: "s3"),
+                rawTurns: [],
+                basedOnLastActiveAt: "2026-01-01T00:00:00Z"
+            )
         )
         try writeJSON(inputC, to: dir, name: "c.input.json")
         try writeJSON(makeExpected(id: "c"), to: dir, name: "c.expected.json")

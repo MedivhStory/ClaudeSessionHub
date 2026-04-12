@@ -60,10 +60,10 @@ public enum PreCheck {
 
     // MARK: - Private
 
-    /// Concatenate all text fields from the input signals into a single
+    /// Concatenate all text fields from the input signals and rawTurns into a single
     /// searchable string.
     private static func buildHaystack(from input: FixtureInputFile) -> String {
-        let signals = input.signals
+        let signals = input.input.signals
         var parts: [String] = []
 
         if let v = signals.firstUserIntent      { parts.append(v) }
@@ -81,6 +81,7 @@ public enum PreCheck {
         parts.append(contentsOf: signals.filesModified)
         parts.append(contentsOf: signals.slashCommands)
         parts.append(contentsOf: signals.commandErrors)
+        parts.append(contentsOf: input.input.rawTurns)
 
         return parts.joined(separator: "\n")
     }

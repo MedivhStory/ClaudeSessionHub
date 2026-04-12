@@ -137,22 +137,16 @@ public enum FixtureLoader {
             // ── Stage 5: Kind / Meta ─────────────────────────────────────
             switch input.kind {
             case .synthetic:
-                if let meta = input.meta {
-                    if meta.sessionID != nil || meta.capturedAt != nil {
-                        fixtureErrors.append(.invalidKindMetaCombination(
-                            id: prefix,
-                            reason: "synthetic fixture must not have desensitized meta fields (sessionID, capturedAt)"))
-                    }
+                if input.meta.desensitizedAt != nil || input.meta.desensitizationScriptVersion != nil {
+                    fixtureErrors.append(.invalidKindMetaCombination(
+                        id: prefix,
+                        reason: "synthetic fixture must not have desensitizedAt or desensitizationScriptVersion"))
                 }
             case .realSnapshot:
-                if input.meta == nil {
+                if input.meta.desensitizedAt == nil || input.meta.desensitizationScriptVersion == nil {
                     fixtureErrors.append(.invalidKindMetaCombination(
                         id: prefix,
-                        reason: "real-snapshot fixture must supply a non-nil meta block"))
-                } else if let meta = input.meta, meta.sessionID == nil && meta.capturedAt == nil {
-                    fixtureErrors.append(.invalidKindMetaCombination(
-                        id: prefix,
-                        reason: "real-snapshot fixture must have at least one non-null meta field"))
+                        reason: "real-snapshot fixture must supply both desensitizedAt and desensitizationScriptVersion in meta"))
                 }
             }
 

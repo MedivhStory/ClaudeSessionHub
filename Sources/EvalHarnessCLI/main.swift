@@ -188,12 +188,14 @@ func runLive(args: [String]) async -> Int32 {
         print("  → \(pair.id) …", terminator: "")
         fflush(stdout)
 
-        let signals = signalsFromPayload(pair.input.signals)
+        let signals = signalsFromPayload(pair.input.input.signals)
+        let rawTurns = pair.input.input.rawTurns
+        let lastActiveAt = ISO8601DateFormatter().date(from: pair.input.input.basedOnLastActiveAt) ?? Date()
         let startTime = Date()
         let snapshot = await enhancer.enhance(
             signals: signals,
-            rawTurns: [],
-            basedOnLastActiveAt: startTime
+            rawTurns: rawTurns,
+            basedOnLastActiveAt: lastActiveAt
         )
         let latency = Date().timeIntervalSince(startTime)
 
@@ -242,8 +244,8 @@ func runLive(args: [String]) async -> Int32 {
         let snapshotPayload: RunArtifact.SnapshotPayload?
         if pair.input.kind == .realSnapshot {
             snapshotPayload = RunArtifact.SnapshotPayload(
-                capturedAt: pair.input.meta?.capturedAt,
-                sourceSessionID: pair.input.meta?.sessionID
+                capturedAt: pair.input.meta.desensitizedAt,
+                sourceSessionID: pair.input.input.signals.sessionID
             )
         } else {
             snapshotPayload = nil

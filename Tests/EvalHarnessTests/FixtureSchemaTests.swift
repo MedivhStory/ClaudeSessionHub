@@ -35,8 +35,15 @@ final class FixtureSchemaTests: XCTestCase {
             schemaVersion: "1",
             id: "test-fixture-001",
             kind: .synthetic,
-            meta: nil,
-            signals: signals
+            meta: FixtureInputFile.Meta(
+                failureMode: "test-failure",
+                description: "A test fixture for round-trip verification"
+            ),
+            input: FixtureInputFile.Input(
+                signals: signals,
+                rawTurns: ["user: Fix the parser bug", "assistant: Sure, let me look"],
+                basedOnLastActiveAt: "2026-04-09T12:00:00Z"
+            )
         )
 
         let encoder = JSONEncoder()
@@ -49,12 +56,17 @@ final class FixtureSchemaTests: XCTestCase {
         XCTAssertEqual(decoded.schemaVersion, fixture.schemaVersion)
         XCTAssertEqual(decoded.id, fixture.id)
         XCTAssertEqual(decoded.kind, .synthetic)
-        XCTAssertNil(decoded.meta)
-        XCTAssertEqual(decoded.signals.sessionID, "test-session-001")
-        XCTAssertEqual(decoded.signals.firstUserIntent, "Fix the parser bug")
-        XCTAssertEqual(decoded.signals.sampledUserIntents, ["add logging", "refactor signals"])
-        XCTAssertEqual(decoded.signals.turnCount, 12)
-        XCTAssertTrue(decoded.signals.hasAssistantReply)
+        XCTAssertEqual(decoded.meta.description, "A test fixture for round-trip verification")
+        XCTAssertEqual(decoded.meta.failureMode, "test-failure")
+        XCTAssertNil(decoded.meta.desensitizedAt)
+        XCTAssertNil(decoded.meta.desensitizationScriptVersion)
+        XCTAssertEqual(decoded.input.signals.sessionID, "test-session-001")
+        XCTAssertEqual(decoded.input.signals.firstUserIntent, "Fix the parser bug")
+        XCTAssertEqual(decoded.input.signals.sampledUserIntents, ["add logging", "refactor signals"])
+        XCTAssertEqual(decoded.input.signals.turnCount, 12)
+        XCTAssertTrue(decoded.input.signals.hasAssistantReply)
+        XCTAssertEqual(decoded.input.rawTurns, ["user: Fix the parser bug", "assistant: Sure, let me look"])
+        XCTAssertEqual(decoded.input.basedOnLastActiveAt, "2026-04-09T12:00:00Z")
     }
 
     func test_fixtureInputFile_realSnapshot_withMeta() throws {
@@ -62,16 +74,27 @@ final class FixtureSchemaTests: XCTestCase {
             schemaVersion: "1",
             id: "snap-001",
             kind: .realSnapshot,
-            meta: FixtureInputFile.Meta(sessionID: "sess-abc", capturedAt: "2026-04-10T00:00:00Z"),
-            signals: FixtureInputFile.SignalsPayload(sessionID: "sess-abc")
+            meta: FixtureInputFile.Meta(
+                failureMode: nil,
+                description: "Real snapshot from production session",
+                desensitizedAt: "2026-04-10T00:00:00Z",
+                desensitizationScriptVersion: "1.0.0"
+            ),
+            input: FixtureInputFile.Input(
+                signals: FixtureInputFile.SignalsPayload(sessionID: "sess-abc"),
+                rawTurns: [],
+                basedOnLastActiveAt: "2026-04-09T10:00:00Z"
+            )
         )
 
         let data = try JSONEncoder().encode(fixture)
         let decoded = try JSONDecoder().decode(FixtureInputFile.self, from: data)
 
         XCTAssertEqual(decoded.kind, .realSnapshot)
-        XCTAssertEqual(decoded.meta?.sessionID, "sess-abc")
-        XCTAssertEqual(decoded.meta?.capturedAt, "2026-04-10T00:00:00Z")
+        XCTAssertEqual(decoded.meta.desensitizedAt, "2026-04-10T00:00:00Z")
+        XCTAssertEqual(decoded.meta.desensitizationScriptVersion, "1.0.0")
+        XCTAssertEqual(decoded.meta.description, "Real snapshot from production session")
+        XCTAssertEqual(decoded.input.signals.sessionID, "sess-abc")
     }
 
     // MARK: - ExpectedConstraintsFile round-trip

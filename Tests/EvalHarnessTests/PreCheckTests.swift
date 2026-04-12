@@ -11,10 +11,14 @@ final class PreCheckTests: XCTestCase {
             schemaVersion: CanonicalGate.dslSchemaVersion,
             id: "precheck-test",
             kind: .synthetic,
-            meta: nil,
-            signals: FixtureInputFile.SignalsPayload(
-                sessionID: "s1",
-                firstUserIntent: firstUserIntent
+            meta: FixtureInputFile.Meta(description: "PreCheck test fixture"),
+            input: FixtureInputFile.Input(
+                signals: FixtureInputFile.SignalsPayload(
+                    sessionID: "s1",
+                    firstUserIntent: firstUserIntent
+                ),
+                rawTurns: [],
+                basedOnLastActiveAt: "2026-01-01T00:00:00Z"
             )
         )
     }

@@ -9,21 +9,21 @@ public struct FixtureInputFile: Codable, Sendable, Equatable {
     public let schemaVersion: String
     public let id: String
     public let kind: Kind
-    public let meta: Meta?
-    public let signals: SignalsPayload
+    public let meta: Meta
+    public let input: Input
 
     public init(
         schemaVersion: String,
         id: String,
         kind: Kind,
-        meta: Meta?,
-        signals: SignalsPayload
+        meta: Meta,
+        input: Input
     ) {
         self.schemaVersion = schemaVersion
         self.id = id
         self.kind = kind
         self.meta = meta
-        self.signals = signals
+        self.input = input
     }
 
     // MARK: Kind
@@ -35,14 +35,46 @@ public struct FixtureInputFile: Codable, Sendable, Equatable {
 
     // MARK: Meta
 
-    /// Optional metadata for real-snapshot fixtures.
+    /// Metadata block present in all fixtures.
     public struct Meta: Codable, Sendable, Equatable {
-        public let sessionID: String?
-        public let capturedAt: String?
+        /// The failure mode this fixture is testing (e.g. "version-hallucination"). Nil for generic fixtures.
+        public let failureMode: String?
+        /// Human-readable description of the fixture scenario.
+        public let description: String
+        /// ISO8601 timestamp when the real snapshot was desensitized. Required if kind == .realSnapshot.
+        public let desensitizedAt: String?
+        /// Semver of the desensitization script. Required if kind == .realSnapshot.
+        public let desensitizationScriptVersion: String?
 
-        public init(sessionID: String? = nil, capturedAt: String? = nil) {
-            self.sessionID = sessionID
-            self.capturedAt = capturedAt
+        public init(
+            failureMode: String? = nil,
+            description: String,
+            desensitizedAt: String? = nil,
+            desensitizationScriptVersion: String? = nil
+        ) {
+            self.failureMode = failureMode
+            self.description = description
+            self.desensitizedAt = desensitizedAt
+            self.desensitizationScriptVersion = desensitizationScriptVersion
+        }
+    }
+
+    // MARK: Input
+
+    /// Wrapper struct containing the actual eval input data.
+    public struct Input: Codable, Sendable, Equatable {
+        public let signals: SignalsPayload
+        public let rawTurns: [String]
+        public let basedOnLastActiveAt: String
+
+        public init(
+            signals: SignalsPayload,
+            rawTurns: [String] = [],
+            basedOnLastActiveAt: String
+        ) {
+            self.signals = signals
+            self.rawTurns = rawTurns
+            self.basedOnLastActiveAt = basedOnLastActiveAt
         }
     }
 
