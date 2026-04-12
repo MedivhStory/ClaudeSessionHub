@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1",
+  "id": "synthetic-tail-bias-01",
+  "title": {
+    "mustContainAny": ["v0.2.5", "0.2.5", "LLM", "provider"],
+    "mustNotContain": ["README", "拼写", "changelog", "格式化"],
+    "maxLength": 30,
+    "mustNotBeEmpty": true
+  },
+  "progress": {
+    "mustNotBeEmpty": true
+  },
+  "summary": {
+    "mustContainAny": ["v0.2.5"],
+    "maxLength": 150
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1",
+  "id": "synthetic-empty-progress-01",
+  "progress": {
+    "mustNotBeEmpty": true,
+    "mustNotEqual": ["无明确进展", ""],
+    "minLength": 10
+  }
+}
