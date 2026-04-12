@@ -36,5 +36,14 @@ let package = Package(
             dependencies: ["EvalHarnessCore"],
             path: "Tests/EvalHarnessTests"
         ),
+        .executableTarget(
+            name: "ExtractPromptSourceTool",
+            path: "Sources/ExtractPromptSourceTool"
+        ),
+        .testTarget(
+            name: "ExtractPromptSourceToolTests",
+            dependencies: [],
+            path: "Tests/ExtractPromptSourceToolTests"
+        ),
     ]
 )
