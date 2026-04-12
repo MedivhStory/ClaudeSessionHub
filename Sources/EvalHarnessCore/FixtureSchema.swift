@@ -130,80 +130,86 @@ public struct FixtureInputFile: Codable, Sendable, Equatable {
 public struct ExpectedConstraintsFile: Codable, Sendable, Equatable {
     public let schemaVersion: String
     public let id: String
-    public let title: FieldConstraints
+    public let title: FieldConstraints?
+    public let progress: FieldConstraints?
     public let summary: FieldConstraints?
+    public let verbatimMatchJustification: String?
 
     public init(
-        schemaVersion: String,
+        schemaVersion: String = "1",
         id: String,
-        title: FieldConstraints,
-        summary: FieldConstraints? = nil
+        title: FieldConstraints? = nil,
+        progress: FieldConstraints? = nil,
+        summary: FieldConstraints? = nil,
+        verbatimMatchJustification: String? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.id = id
         self.title = title
+        self.progress = progress
         self.summary = summary
+        self.verbatimMatchJustification = verbatimMatchJustification
     }
 }
 
 // MARK: - FieldConstraints
 
 /// Constraint operators applied to a single output field (e.g. title, summary).
+/// Implements the 9-operator constraint DSL (spec §2.3 / Appendix A.2).
 public struct FieldConstraints: Codable, Sendable, Equatable {
+    /// Output must contain at least one of the listed substrings.
+    public let mustContainAny: [String]?
+    /// Output must contain every listed substring.
+    public let mustContainAll: [String]?
+    /// Output must NOT contain any of the listed substrings.
+    public let mustNotContain: [String]?
+    /// Output (whole string) must NOT equal any listed string.
+    public let mustNotEqual: [String]?
+    /// If true, output (trimmed) must have length > 0.
+    public let mustNotBeEmpty: Bool?
     /// Minimum string length (inclusive).
-    public var minLength: Int?
+    public let minLength: Int?
     /// Maximum string length (inclusive).
-    public var maxLength: Int?
-    /// Regex pattern the field must match.
-    public var matches: String?
-    /// Regex pattern the field must NOT match.
-    public var notMatches: String?
-    /// Substring that must appear in the field.
-    public var contains: String?
-    /// Substring that must NOT appear in the field.
-    public var notContains: String?
-    /// Exact string the field must equal.
-    public var equals: String?
-    /// Exact string the field must NOT equal.
-    public var notEquals: String?
-    /// Human-readable justification for a verbatim constraint (required when the
-    /// constraint value verbatim-matches content in the input).
-    public var verbatimMatchJustification: String?
+    public let maxLength: Int?
+    /// Regex pattern the field must match (at least one match found).
+    public let mustMatchRegex: String?
+    /// Number of non-overlapping regex matches must be <= n.
+    public let maxRegexMatchCount: CountConstraint?
 
     public init(
+        mustContainAny: [String]? = nil,
+        mustContainAll: [String]? = nil,
+        mustNotContain: [String]? = nil,
+        mustNotEqual: [String]? = nil,
+        mustNotBeEmpty: Bool? = nil,
         minLength: Int? = nil,
         maxLength: Int? = nil,
-        matches: String? = nil,
-        notMatches: String? = nil,
-        contains: String? = nil,
-        notContains: String? = nil,
-        equals: String? = nil,
-        notEquals: String? = nil,
-        verbatimMatchJustification: String? = nil
+        mustMatchRegex: String? = nil,
+        maxRegexMatchCount: CountConstraint? = nil
     ) {
+        self.mustContainAny = mustContainAny
+        self.mustContainAll = mustContainAll
+        self.mustNotContain = mustNotContain
+        self.mustNotEqual = mustNotEqual
+        self.mustNotBeEmpty = mustNotBeEmpty
         self.minLength = minLength
         self.maxLength = maxLength
-        self.matches = matches
-        self.notMatches = notMatches
-        self.contains = contains
-        self.notContains = notContains
-        self.equals = equals
-        self.notEquals = notEquals
-        self.verbatimMatchJustification = verbatimMatchJustification
+        self.mustMatchRegex = mustMatchRegex
+        self.maxRegexMatchCount = maxRegexMatchCount
     }
 }
 
 // MARK: - CountConstraint
 
-/// Constraint on the count/cardinality of a repeated field.
+/// Constraint on the maximum number of regex matches for a field.
 public struct CountConstraint: Codable, Sendable, Equatable {
-    public var min: Int?
-    public var max: Int?
-    public var exact: Int?
+    /// The regex pattern to count matches of.
+    public let pattern: String
+    /// The maximum allowed number of non-overlapping matches.
+    public let n: Int
 
-    public init(min: Int? = nil, max: Int? = nil, exact: Int? = nil) {
-        self.min = min
-        self.max = max
-        self.exact = exact
+    public init(pattern: String, n: Int) {
+        self.pattern = pattern
+        self.n = n
     }
 }

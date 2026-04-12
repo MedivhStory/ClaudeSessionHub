@@ -78,15 +78,12 @@ final class FixtureSchemaTests: XCTestCase {
 
     func test_expectedConstraintsFile_jsonRoundTrip() throws {
         let titleConstraints = FieldConstraints(
+            mustContainAny: ["parser"],
+            mustNotContain: ["bug"],
+            mustNotEqual: ["Untitled"],
             minLength: 10,
             maxLength: 80,
-            matches: "^[A-Z]",
-            notMatches: "TODO",
-            contains: "parser",
-            notContains: "bug",
-            equals: nil,
-            notEquals: "Untitled",
-            verbatimMatchJustification: nil
+            mustMatchRegex: "^[A-Z]"
         )
         let summaryConstraints = FieldConstraints(
             minLength: 50,
@@ -104,16 +101,16 @@ final class FixtureSchemaTests: XCTestCase {
 
         XCTAssertEqual(decoded.schemaVersion, "1")
         XCTAssertEqual(decoded.id, "test-fixture-001")
-        XCTAssertEqual(decoded.title.minLength, 10)
-        XCTAssertEqual(decoded.title.maxLength, 80)
-        XCTAssertEqual(decoded.title.matches, "^[A-Z]")
-        XCTAssertEqual(decoded.title.notMatches, "TODO")
-        XCTAssertEqual(decoded.title.contains, "parser")
-        XCTAssertEqual(decoded.title.notContains, "bug")
-        XCTAssertNil(decoded.title.equals)
-        XCTAssertEqual(decoded.title.notEquals, "Untitled")
+        XCTAssertEqual(decoded.title?.minLength, 10)
+        XCTAssertEqual(decoded.title?.maxLength, 80)
+        XCTAssertEqual(decoded.title?.mustMatchRegex, "^[A-Z]")
+        XCTAssertEqual(decoded.title?.mustContainAny, ["parser"])
+        XCTAssertEqual(decoded.title?.mustNotContain, ["bug"])
+        XCTAssertEqual(decoded.title?.mustNotEqual, ["Untitled"])
+        XCTAssertNil(decoded.title?.mustContainAll)
         XCTAssertEqual(decoded.summary?.minLength, 50)
         XCTAssertEqual(decoded.summary?.maxLength, 500)
+        XCTAssertNil(decoded.verbatimMatchJustification)
     }
 
     // MARK: - FieldConstraints all operators decodable
@@ -121,28 +118,29 @@ final class FixtureSchemaTests: XCTestCase {
     func test_fieldConstraints_allOperatorsDecodable() throws {
         let json = """
         {
+            "mustContainAny": ["keyword", "term"],
+            "mustContainAll": ["required"],
+            "mustNotContain": ["forbidden"],
+            "mustNotEqual": ["bad value"],
+            "mustNotBeEmpty": true,
             "minLength": 5,
             "maxLength": 100,
-            "matches": "^[A-Z]",
-            "notMatches": "\\\\b(TODO|FIXME)\\\\b",
-            "contains": "keyword",
-            "notContains": "forbidden",
-            "equals": "exact value",
-            "notEquals": "bad value",
-            "verbatimMatchJustification": "This is intentional"
+            "mustMatchRegex": "^[A-Z]",
+            "maxRegexMatchCount": {"pattern": "\\\\b(TODO|FIXME)\\\\b", "n": 0}
         }
         """
         let data = json.data(using: .utf8)!
         let constraints = try JSONDecoder().decode(FieldConstraints.self, from: data)
 
+        XCTAssertEqual(constraints.mustContainAny, ["keyword", "term"])
+        XCTAssertEqual(constraints.mustContainAll, ["required"])
+        XCTAssertEqual(constraints.mustNotContain, ["forbidden"])
+        XCTAssertEqual(constraints.mustNotEqual, ["bad value"])
+        XCTAssertEqual(constraints.mustNotBeEmpty, true)
         XCTAssertEqual(constraints.minLength, 5)
         XCTAssertEqual(constraints.maxLength, 100)
-        XCTAssertEqual(constraints.matches, "^[A-Z]")
-        XCTAssertNotNil(constraints.notMatches)
-        XCTAssertEqual(constraints.contains, "keyword")
-        XCTAssertEqual(constraints.notContains, "forbidden")
-        XCTAssertEqual(constraints.equals, "exact value")
-        XCTAssertEqual(constraints.notEquals, "bad value")
-        XCTAssertEqual(constraints.verbatimMatchJustification, "This is intentional")
+        XCTAssertEqual(constraints.mustMatchRegex, "^[A-Z]")
+        XCTAssertNotNil(constraints.maxRegexMatchCount)
+        XCTAssertEqual(constraints.maxRegexMatchCount?.n, 0)
     }
 }

@@ -27,19 +27,23 @@ public enum PreCheck {
 
         // Gather all (fieldName, string constant) pairs from expected.
         let allFieldConstraints: [(String, FieldConstraints)] = [
-            ("title", expected.title)
-        ] + (expected.summary.map { [("summary", $0)] } ?? [])
+            expected.title.map    { [("title",    $0)] } ?? [],
+            expected.progress.map { [("progress", $0)] } ?? [],
+            expected.summary.map  { [("summary",  $0)] } ?? [],
+        ].flatMap { $0 }
+
+        // verbatimMatchJustification is now on ExpectedConstraintsFile, not FieldConstraints.
+        let justification = expected.verbatimMatchJustification
 
         for (fieldName, fc) in allFieldConstraints {
-            let justification = fc.verbatimMatchJustification
-            let candidates: [String?] = [
-                fc.contains,
-                fc.notContains,
-                fc.equals,
-                fc.notEquals,
-            ]
-            for candidate in candidates {
-                guard let string = candidate else { continue }
+            // Collect all string literals from the constraint arrays.
+            var candidates: [String] = []
+            if let arr = fc.mustContainAny  { candidates.append(contentsOf: arr) }
+            if let arr = fc.mustContainAll  { candidates.append(contentsOf: arr) }
+            if let arr = fc.mustNotContain  { candidates.append(contentsOf: arr) }
+            if let arr = fc.mustNotEqual    { candidates.append(contentsOf: arr) }
+
+            for string in candidates {
                 if string.count >= verbatimThreshold && haystack.contains(string) && justification == nil {
                     errors.append(.verbatimMatchRequiresJustification(
                         id: id,

@@ -88,7 +88,7 @@ public enum Verifier {
         // Build field-value pairs.  Nil snapshot fields are treated as "".
         let fieldValues: [(Field, String, FieldConstraints?)] = [
             (.title,    snapshot.title,            expected.title),
-            (.progress, snapshot.progress ?? "",   nil),         // no progress constraints defined
+            (.progress, snapshot.progress ?? "",   expected.progress),
             (.summary,  snapshot.summary  ?? "",   expected.summary),
         ]
 
@@ -112,16 +112,21 @@ public enum Verifier {
         fc: FieldConstraints,
         violations: inout [Violation]
     ) {
-        // 1. mustNotBeEmpty – triggered by empty string.
-        //    We infer this is required when minLength > 0 OR any other constraint
-        //    is set.  But the spec only lists mustNotBeEmpty as its own operator.
-        //    FieldConstraints uses minLength for minimum; we treat minLength == 0
-        //    explicitly as "allow empty".  The mustNotBeEmpty operator fires when
-        //    minLength is set to any value > 0 AND value is "".
-        //    Per spec, treat the presence of minLength > 0 as the gate for
-        //    mustNotBeEmpty; the minLength operator itself is checked separately.
+        // 1. mustNotBeEmpty — fires when flag is true and value (trimmed) is empty.
+        //    Also fires when minLength > 0 and value is empty (backwards-compat path).
+        if fc.mustNotBeEmpty == true && value.trimmingCharacters(in: .whitespaces).isEmpty {
+            violations.append(Violation(
+                field: field,
+                constraint: .mustNotBeEmpty,
+                expected: "field must not be empty",
+                actual: "(empty)"
+            ))
+            // Don't run other length checks on an empty value when mustNotBeEmpty fires.
+            return
+        }
+
+        // Backward-compatible mustNotBeEmpty trigger: minLength > 0 on empty value.
         if value.isEmpty {
-            // mustNotBeEmpty: fire when any constraint implies non-empty presence.
             if let min = fc.minLength, min > 0 {
                 violations.append(Violation(
                     field: field,
@@ -129,7 +134,6 @@ public enum Verifier {
                     expected: "field must not be empty (minLength=\(min))",
                     actual: "(empty)"
                 ))
-                // Don't bother checking other length constraints on empty.
                 return
             }
         }
@@ -160,59 +164,63 @@ public enum Verifier {
             }
         }
 
-        // 4. mustContainAny (maps to `contains` in FieldConstraints)
-        if let needle = fc.contains {
-            if !value.contains(needle) {
+        // 4. mustContainAny — output must contain at least one of the listed substrings.
+        if let needles = fc.mustContainAny, !needles.isEmpty {
+            let found = needles.contains { value.contains($0) }
+            if !found {
                 violations.append(Violation(
                     field: field,
                     constraint: .mustContainAny,
-                    expected: "must contain \"\(needle)\"",
+                    expected: "must contain at least one of \(needles)",
                     actual: "\"\(truncate(value))\""
                 ))
             }
         }
 
-        // 5. mustNotContain
-        if let needle = fc.notContains {
-            if value.contains(needle) {
-                violations.append(Violation(
-                    field: field,
-                    constraint: .mustNotContain,
-                    expected: "must not contain \"\(needle)\"",
-                    actual: "\"\(truncate(value))\""
-                ))
+        // 5. mustContainAll — output must contain every listed substring.
+        if let needles = fc.mustContainAll {
+            for needle in needles {
+                if !value.contains(needle) {
+                    violations.append(Violation(
+                        field: field,
+                        constraint: .mustContainAll,
+                        expected: "must contain \"\(needle)\"",
+                        actual: "\"\(truncate(value))\""
+                    ))
+                }
             }
         }
 
-        // 6. mustNotEqual
-        if let forbidden = fc.notEquals {
-            if value == forbidden {
-                violations.append(Violation(
-                    field: field,
-                    constraint: .mustNotEqual,
-                    expected: "must not equal \"\(forbidden)\"",
-                    actual: "\"\(value)\""
-                ))
+        // 6. mustNotContain — output must NOT contain any of the listed substrings.
+        if let needles = fc.mustNotContain {
+            for needle in needles {
+                if value.contains(needle) {
+                    violations.append(Violation(
+                        field: field,
+                        constraint: .mustNotContain,
+                        expected: "must not contain \"\(needle)\"",
+                        actual: "\"\(truncate(value))\""
+                    ))
+                }
             }
         }
 
-        // 7. mustContainAll (maps to `equals` for exact match, treated as
-        //    mustContainAll with one element).
-        //    Per FieldConstraints schema, `equals` means exact equality.
-        //    We map it to mustContainAll (closest semantic fit for the operator).
-        if let exact = fc.equals {
-            if value != exact {
-                violations.append(Violation(
-                    field: field,
-                    constraint: .mustContainAll,
-                    expected: "must equal \"\(exact)\"",
-                    actual: "\"\(truncate(value))\""
-                ))
+        // 7. mustNotEqual — output must NOT equal any of the listed strings.
+        if let forbidden = fc.mustNotEqual {
+            for s in forbidden {
+                if value == s {
+                    violations.append(Violation(
+                        field: field,
+                        constraint: .mustNotEqual,
+                        expected: "must not equal \"\(s)\"",
+                        actual: "\"\(value)\""
+                    ))
+                }
             }
         }
 
-        // 8. mustMatchRegex (maps to `matches`)
-        if let pattern = fc.matches {
+        // 8. mustMatchRegex — output must match the regex (at least one match).
+        if let pattern = fc.mustMatchRegex {
             if !regexMatches(pattern: pattern, in: value) {
                 violations.append(Violation(
                     field: field,
@@ -223,16 +231,14 @@ public enum Verifier {
             }
         }
 
-        // 9. maxRegexMatchCount (maps to `notMatches` — fires when the pattern
-        //    DOES match, i.e. match count > 0, meaning the max is 0).
-        //    When `notMatches` is set we assert matchCount == 0.
-        if let pattern = fc.notMatches {
-            let count = regexMatchCount(pattern: pattern, in: value)
-            if count > 0 {
+        // 9. maxRegexMatchCount — number of non-overlapping matches must be <= n.
+        if let cc = fc.maxRegexMatchCount {
+            let count = regexMatchCount(pattern: cc.pattern, in: value)
+            if count > cc.n {
                 violations.append(Violation(
                     field: field,
                     constraint: .maxRegexMatchCount,
-                    expected: "must not match regex /\(pattern)/ (max 0 matches)",
+                    expected: "regex /\(cc.pattern)/ must match at most \(cc.n) time(s)",
                     actual: "\(count) match(es) in \"\(truncate(value))\""
                 ))
             }

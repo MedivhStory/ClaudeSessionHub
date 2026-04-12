@@ -20,16 +20,14 @@ final class PreCheckTests: XCTestCase {
     }
 
     private func makeExpected(
-        contains: String? = nil,
+        mustContainAny: String? = nil,
         justification: String? = nil
     ) -> ExpectedConstraintsFile {
         ExpectedConstraintsFile(
             schemaVersion: CanonicalGate.dslSchemaVersion,
             id: "precheck-test",
-            title: FieldConstraints(
-                contains: contains,
-                verbatimMatchJustification: justification
-            )
+            title: mustContainAny.map { FieldConstraints(mustContainAny: [$0]) },
+            verbatimMatchJustification: justification
         )
     }
 
@@ -39,7 +37,7 @@ final class PreCheckTests: XCTestCase {
         // 19 characters – just below threshold
         let shortString = String(repeating: "x", count: 19)
         let input = makeInput(firstUserIntent: shortString)
-        let expected = makeExpected(contains: shortString)
+        let expected = makeExpected(mustContainAny: shortString)
 
         let errors = PreCheck.checkVerbatimMatches(input: input, expected: expected)
 
@@ -53,7 +51,7 @@ final class PreCheckTests: XCTestCase {
         // 20 characters – at threshold
         let longString = String(repeating: "a", count: 20)
         let input = makeInput(firstUserIntent: longString)
-        let expected = makeExpected(contains: longString, justification: nil)
+        let expected = makeExpected(mustContainAny: longString, justification: nil)
 
         let errors = PreCheck.checkVerbatimMatches(input: input, expected: expected)
 
@@ -71,7 +69,7 @@ final class PreCheckTests: XCTestCase {
         let longString = String(repeating: "b", count: 25)
         let input = makeInput(firstUserIntent: longString)
         let expected = makeExpected(
-            contains: longString,
+            mustContainAny: longString,
             justification: "Intentional: testing exact phrase"
         )
 
@@ -89,7 +87,7 @@ final class PreCheckTests: XCTestCase {
         XCTAssertEqual(exactly20.count, 20)
 
         let input = makeInput(firstUserIntent: exactly20)
-        let expected = makeExpected(contains: exactly20, justification: nil)
+        let expected = makeExpected(mustContainAny: exactly20, justification: nil)
 
         let errors = PreCheck.checkVerbatimMatches(input: input, expected: expected)
 

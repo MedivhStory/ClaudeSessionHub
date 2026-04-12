@@ -158,16 +158,18 @@ public enum FixtureLoader {
 
             // ── Stage 6: Regex compilability ────────────────────────────
             let allFieldConstraints: [(String, FieldConstraints)] = [
-                ("title", expected.title)
-            ] + (expected.summary.map { [("summary", $0)] } ?? [])
+                expected.title.map    { [("title",    $0)] } ?? [],
+                expected.progress.map { [("progress", $0)] } ?? [],
+                expected.summary.map  { [("summary",  $0)] } ?? [],
+            ].flatMap { $0 }
 
             for (fieldName, fc) in allFieldConstraints {
-                if let pattern = fc.matches {
+                if let pattern = fc.mustMatchRegex {
                     validateRegex(pattern: pattern, id: prefix, field: fieldName,
                                   errors: &fixtureErrors)
                 }
-                if let pattern = fc.notMatches {
-                    validateRegex(pattern: pattern, id: prefix, field: fieldName,
+                if let cc = fc.maxRegexMatchCount {
+                    validateRegex(pattern: cc.pattern, id: prefix, field: fieldName,
                                   errors: &fixtureErrors)
                 }
             }
@@ -188,6 +190,11 @@ public enum FixtureLoader {
                     fixtureErrors.append(.invalidConstraintValue(
                         id: prefix, field: fieldName, constraint: "minLength/maxLength",
                         reason: "minLength \(min) must be <= maxLength \(max)"))
+                }
+                if let cc = fc.maxRegexMatchCount, cc.n < 0 {
+                    fixtureErrors.append(.invalidConstraintValue(
+                        id: prefix, field: fieldName, constraint: "maxRegexMatchCount",
+                        reason: "n \(cc.n) must be >= 0"))
                 }
             }
 

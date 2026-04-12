@@ -36,7 +36,7 @@ final class FixtureLoaderTests: XCTestCase {
         ExpectedConstraintsFile(
             schemaVersion: CanonicalGate.dslSchemaVersion,
             id: id,
-            title: FieldConstraints(minLength: 5, maxLength: 80)
+            title: FieldConstraints(mustNotBeEmpty: true, minLength: 5, maxLength: 80)
         )
     }
 
@@ -183,11 +183,11 @@ final class FixtureLoaderTests: XCTestCase {
     func test_invalidRegex_forBadPattern() throws {
         let dir = try makeTempDir()
         try writeJSON(makeInput(id: "regex-fix"), to: dir, name: "regex-fix.input.json")
-        // Bad regex in title.matches
+        // Bad regex in title.mustMatchRegex
         let expected = ExpectedConstraintsFile(
             schemaVersion: CanonicalGate.dslSchemaVersion,
             id: "regex-fix",
-            title: FieldConstraints(matches: "[invalid(")
+            title: FieldConstraints(mustMatchRegex: "[invalid(")
         )
         try writeJSON(expected, to: dir, name: "regex-fix.expected.json")
 
@@ -213,7 +213,7 @@ final class FixtureLoaderTests: XCTestCase {
         let expectedB = ExpectedConstraintsFile(
             schemaVersion: CanonicalGate.dslSchemaVersion,
             id: "b",
-            title: FieldConstraints(matches: "[bad(")
+            title: FieldConstraints(mustMatchRegex: "[bad(")
         )
         try writeJSON(expectedB, to: dir, name: "b.expected.json")
 

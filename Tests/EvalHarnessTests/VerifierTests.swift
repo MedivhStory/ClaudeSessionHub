@@ -34,11 +34,11 @@ final class VerifierTests: XCTestCase {
         )
     }
 
-    // MARK: - mustContainAny (via `contains`)
+    // MARK: - mustContainAny
 
     func test_mustContainAny_pass() {
         let snapshot = makeSnapshot(title: "Fix the parser bug")
-        let expected = makeExpected(title: FieldConstraints(contains: "parser"))
+        let expected = makeExpected(title: FieldConstraints(mustContainAny: ["parser"]))
         let result = Verifier.verify(fixtureID: "t1", snapshot: snapshot, expected: expected)
         XCTAssertTrue(result.passed)
         XCTAssertTrue(result.violations.isEmpty)
@@ -46,59 +46,75 @@ final class VerifierTests: XCTestCase {
 
     func test_mustContainAny_fail() {
         let snapshot = makeSnapshot(title: "Refactor utils")
-        let expected = makeExpected(title: FieldConstraints(contains: "parser"))
+        let expected = makeExpected(title: FieldConstraints(mustContainAny: ["parser"]))
         let result = Verifier.verify(fixtureID: "t1", snapshot: snapshot, expected: expected)
         XCTAssertFalse(result.passed)
         XCTAssertEqual(result.violations.first?.constraint, .mustContainAny)
     }
 
-    // MARK: - mustNotContain (via `notContains`)
+    func test_mustContainAny_passWhenOneOfMultipleMatches() {
+        let snapshot = makeSnapshot(title: "Refactor utils")
+        let expected = makeExpected(title: FieldConstraints(mustContainAny: ["parser", "utils"]))
+        let result = Verifier.verify(fixtureID: "t1b", snapshot: snapshot, expected: expected)
+        XCTAssertTrue(result.passed)
+    }
+
+    // MARK: - mustNotContain
 
     func test_mustNotContain_pass() {
         let snapshot = makeSnapshot(title: "Clean implementation")
-        let expected = makeExpected(title: FieldConstraints(notContains: "TODO"))
+        let expected = makeExpected(title: FieldConstraints(mustNotContain: ["TODO"]))
         let result = Verifier.verify(fixtureID: "t2", snapshot: snapshot, expected: expected)
         XCTAssertTrue(result.passed)
     }
 
     func test_mustNotContain_fail() {
         let snapshot = makeSnapshot(title: "TODO: fix this")
-        let expected = makeExpected(title: FieldConstraints(notContains: "TODO"))
+        let expected = makeExpected(title: FieldConstraints(mustNotContain: ["TODO"]))
         let result = Verifier.verify(fixtureID: "t2", snapshot: snapshot, expected: expected)
         XCTAssertFalse(result.passed)
         XCTAssertEqual(result.violations.first?.constraint, .mustNotContain)
     }
 
-    // MARK: - mustNotEqual (via `notEquals`)
+    // MARK: - mustNotEqual
 
     func test_mustNotEqual_pass() {
         let snapshot = makeSnapshot(title: "Good Title")
-        let expected = makeExpected(title: FieldConstraints(notEquals: "Untitled"))
+        let expected = makeExpected(title: FieldConstraints(mustNotEqual: ["Untitled"]))
         let result = Verifier.verify(fixtureID: "t3", snapshot: snapshot, expected: expected)
         XCTAssertTrue(result.passed)
     }
 
     func test_mustNotEqual_fail() {
         let snapshot = makeSnapshot(title: "Untitled")
-        let expected = makeExpected(title: FieldConstraints(notEquals: "Untitled"))
+        let expected = makeExpected(title: FieldConstraints(mustNotEqual: ["Untitled"]))
         let result = Verifier.verify(fixtureID: "t3", snapshot: snapshot, expected: expected)
         XCTAssertFalse(result.passed)
         XCTAssertEqual(result.violations.first?.constraint, .mustNotEqual)
     }
 
-    // MARK: - mustNotBeEmpty (triggered by minLength > 0 on empty value)
+    // MARK: - mustNotBeEmpty (direct flag)
 
     func test_mustNotBeEmpty_pass() {
         let snapshot = makeSnapshot(title: "Non-empty title")
-        let expected = makeExpected(title: FieldConstraints(minLength: 1))
+        let expected = makeExpected(title: FieldConstraints(mustNotBeEmpty: true))
         let result = Verifier.verify(fixtureID: "t4", snapshot: snapshot, expected: expected)
         XCTAssertTrue(result.passed)
     }
 
     func test_mustNotBeEmpty_fail_onEmptyTitle() {
         let snapshot = makeSnapshot(title: "")
-        let expected = makeExpected(title: FieldConstraints(minLength: 1))
+        let expected = makeExpected(title: FieldConstraints(mustNotBeEmpty: true))
         let result = Verifier.verify(fixtureID: "t4", snapshot: snapshot, expected: expected)
+        XCTAssertFalse(result.passed)
+        XCTAssertEqual(result.violations.first?.constraint, .mustNotBeEmpty)
+    }
+
+    func test_mustNotBeEmpty_alsoTriggeredByMinLengthOnEmptyValue() {
+        // Backward-compatible path: minLength > 0 on empty value triggers mustNotBeEmpty.
+        let snapshot = makeSnapshot(title: "")
+        let expected = makeExpected(title: FieldConstraints(minLength: 1))
+        let result = Verifier.verify(fixtureID: "t4b", snapshot: snapshot, expected: expected)
         XCTAssertFalse(result.passed)
         XCTAssertEqual(result.violations.first?.constraint, .mustNotBeEmpty)
     }
@@ -138,52 +154,66 @@ final class VerifierTests: XCTestCase {
         XCTAssertEqual(result.violations.first?.constraint, .maxLength)
     }
 
-    // MARK: - mustMatchRegex (via `matches`)
+    // MARK: - mustMatchRegex
 
     func test_mustMatchRegex_pass() {
         let snapshot = makeSnapshot(title: "Add feature X")
-        let expected = makeExpected(title: FieldConstraints(matches: "^[A-Z]"))
+        let expected = makeExpected(title: FieldConstraints(mustMatchRegex: "^[A-Z]"))
         let result = Verifier.verify(fixtureID: "t7", snapshot: snapshot, expected: expected)
         XCTAssertTrue(result.passed)
     }
 
     func test_mustMatchRegex_fail() {
         let snapshot = makeSnapshot(title: "add feature x")
-        let expected = makeExpected(title: FieldConstraints(matches: "^[A-Z]"))
+        let expected = makeExpected(title: FieldConstraints(mustMatchRegex: "^[A-Z]"))
         let result = Verifier.verify(fixtureID: "t7", snapshot: snapshot, expected: expected)
         XCTAssertFalse(result.passed)
         XCTAssertEqual(result.violations.first?.constraint, .mustMatchRegex)
     }
 
-    // MARK: - maxRegexMatchCount (via `notMatches` = match count must be 0)
+    // MARK: - maxRegexMatchCount
 
     func test_maxRegexMatchCount_pass_noMatches() {
         let snapshot = makeSnapshot(title: "Clean title with no forbidden words")
-        let expected = makeExpected(title: FieldConstraints(notMatches: "\\bTODO\\b"))
+        let expected = makeExpected(title: FieldConstraints(
+            maxRegexMatchCount: CountConstraint(pattern: "\\bTODO\\b", n: 0)
+        ))
         let result = Verifier.verify(fixtureID: "t8", snapshot: snapshot, expected: expected)
         XCTAssertTrue(result.passed)
     }
 
     func test_maxRegexMatchCount_fail_hasMatches() {
         let snapshot = makeSnapshot(title: "TODO: fix this TODO item")
-        let expected = makeExpected(title: FieldConstraints(notMatches: "\\bTODO\\b"))
+        let expected = makeExpected(title: FieldConstraints(
+            maxRegexMatchCount: CountConstraint(pattern: "\\bTODO\\b", n: 0)
+        ))
         let result = Verifier.verify(fixtureID: "t8", snapshot: snapshot, expected: expected)
         XCTAssertFalse(result.passed)
         XCTAssertEqual(result.violations.first?.constraint, .maxRegexMatchCount)
     }
 
-    // MARK: - mustContainAll (via `equals` — exact match)
+    func test_maxRegexMatchCount_pass_withinLimit() {
+        // Allow up to 1 match — "TODO" appears once, so passes.
+        let snapshot = makeSnapshot(title: "TODO: fix this")
+        let expected = makeExpected(title: FieldConstraints(
+            maxRegexMatchCount: CountConstraint(pattern: "\\bTODO\\b", n: 1)
+        ))
+        let result = Verifier.verify(fixtureID: "t8b", snapshot: snapshot, expected: expected)
+        XCTAssertTrue(result.passed)
+    }
+
+    // MARK: - mustContainAll
 
     func test_mustContainAll_pass() {
-        let snapshot = makeSnapshot(title: "Exact Match Title")
-        let expected = makeExpected(title: FieldConstraints(equals: "Exact Match Title"))
+        let snapshot = makeSnapshot(title: "Implement parser rewrite")
+        let expected = makeExpected(title: FieldConstraints(mustContainAll: ["parser", "rewrite"]))
         let result = Verifier.verify(fixtureID: "t9", snapshot: snapshot, expected: expected)
         XCTAssertTrue(result.passed)
     }
 
-    func test_mustContainAll_fail() {
-        let snapshot = makeSnapshot(title: "Wrong Title")
-        let expected = makeExpected(title: FieldConstraints(equals: "Exact Match Title"))
+    func test_mustContainAll_fail_missingOne() {
+        let snapshot = makeSnapshot(title: "Implement parser")
+        let expected = makeExpected(title: FieldConstraints(mustContainAll: ["parser", "rewrite"]))
         let result = Verifier.verify(fixtureID: "t9", snapshot: snapshot, expected: expected)
         XCTAssertFalse(result.passed)
         XCTAssertEqual(result.violations.first?.constraint, .mustContainAll)
@@ -220,7 +250,7 @@ final class VerifierTests: XCTestCase {
         let snapshot = makeSnapshot(title: "Title", summary: nil)
         let expected = makeExpected(
             title: FieldConstraints(),
-            summary: FieldConstraints(minLength: 1)
+            summary: FieldConstraints(mustNotBeEmpty: true)
         )
         let result = Verifier.verify(fixtureID: "t11", snapshot: snapshot, expected: expected)
         XCTAssertFalse(result.passed)
@@ -232,15 +262,14 @@ final class VerifierTests: XCTestCase {
     // MARK: - Multi-violation aggregation (non-fail-fast)
 
     func test_multipleViolations_areAllCollected() {
-        // Title violates: minLength (too short), mustNotContain (has "TODO"),
-        // mustNotEqual (equals "bad"), mustMatchRegex (doesn't start uppercase).
+        // Title "bad" violates: minLength (too short), mustNotContain (has "bad"),
+        // mustNotEqual (equals "bad"), mustMatchRegex (doesn't start with digit).
         let snapshot = makeSnapshot(title: "bad")
         let expected = makeExpected(title: FieldConstraints(
+            mustNotContain: ["bad"],
+            mustNotEqual: ["bad"],
             minLength: 10,
-            maxLength: 5,      // also fires maxLength (len=3 is fine… wait, 3 < 5, passes)
-            matches: "^[0-9]", // must start with digit — fails
-            notContains: "bad",
-            notEquals: "bad"
+            mustMatchRegex: "^[0-9]"   // must start with digit — fails
         ))
         let result = Verifier.verify(fixtureID: "t12", snapshot: snapshot, expected: expected)
         XCTAssertFalse(result.passed)
@@ -270,12 +299,12 @@ final class VerifierTests: XCTestCase {
         let snapshot = makeSnapshot(title: "Implement parser rewrite", summary: "A detailed summary of the work done.")
         let expected = makeExpected(
             title: FieldConstraints(
+                mustContainAny: ["parser"],
+                mustNotContain: ["TODO"],
+                mustNotEqual: ["Untitled"],
                 minLength: 5,
                 maxLength: 80,
-                matches: "^[A-Z]",
-                contains: "parser",
-                notContains: "TODO",
-                notEquals: "Untitled"
+                mustMatchRegex: "^[A-Z]"
             ),
             summary: FieldConstraints(minLength: 10, maxLength: 200)
         )
