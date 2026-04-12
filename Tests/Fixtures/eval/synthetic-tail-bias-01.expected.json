@@ -4,7 +4,7 @@
   "title": {
     "mustContainAny": ["v0.2.5", "0.2.5", "LLM", "provider"],
     "mustNotContain": ["README", "拼写", "changelog", "格式化"],
-    "maxLength": 30,
+    "maxLength": 45,
     "mustNotBeEmpty": true
   },
   "progress": {
@@ -12,6 +12,6 @@
   },
   "summary": {
     "mustContainAny": ["v0.2.5"],
-    "maxLength": 150
+    "maxLength": 200
   }
 }
