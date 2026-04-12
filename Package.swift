@@ -29,7 +29,8 @@ let package = Package(
         .target(
             name: "EvalHarnessCore",
             dependencies: ["ClaudeSessionHubLib"],
-            path: "Sources/EvalHarnessCore"
+            path: "Sources/EvalHarnessCore",
+            plugins: [.plugin(name: "ExtractPromptSourcePlugin")]
         ),
         .testTarget(
             name: "EvalHarnessTests",
@@ -44,6 +45,12 @@ let package = Package(
             name: "ExtractPromptSourceToolTests",
             dependencies: [],
             path: "Tests/ExtractPromptSourceToolTests"
+        ),
+        .plugin(
+            name: "ExtractPromptSourcePlugin",
+            capability: .buildTool(),
+            dependencies: ["ExtractPromptSourceTool"],
+            path: "Plugins/ExtractPromptSource"
         ),
     ]
 )
