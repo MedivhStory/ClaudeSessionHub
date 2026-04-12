@@ -4,6 +4,9 @@ import PackageDescription
 let package = Package(
     name: "ClaudeSessionHub",
     platforms: [.macOS(.v14)],
+    products: [
+        .executable(name: "eval-harness", targets: ["EvalHarnessCLI"]),
+    ],
     targets: [
         .target(
             name: "ClaudeSessionHubLib",
@@ -45,6 +48,11 @@ let package = Package(
             name: "ExtractPromptSourceToolTests",
             dependencies: [],
             path: "Tests/ExtractPromptSourceToolTests"
+        ),
+        .executableTarget(
+            name: "EvalHarnessCLI",
+            dependencies: ["EvalHarnessCore"],
+            path: "Sources/EvalHarnessCLI"
         ),
         .plugin(
             name: "ExtractPromptSourcePlugin",
