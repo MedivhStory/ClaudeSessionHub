@@ -38,34 +38,32 @@ public enum LLMPrompts {
             if let status = signals.taskStatus { parts.append("任务状态: \(status)") }
         }
 
+        // v0.2.8: Structured version mention injection (I-14: zero-detection covers all 3 fields)
+        if !signals.versionMentions.isEmpty {
+            parts.append("识别到的版本号（有限列表，请严格依据）:")
+            for vm in signals.versionMentions {
+                let loc = renderSourceRef(vm.selectedSource)
+                parts.append("  - \(vm.raw) → normalized=\(vm.normalized), 出现 \(vm.occurrenceCount) 次, selectedSource: \(loc)")
+            }
+        } else {
+            parts.append("本 session 未识别到任何版本号。")
+        }
+
+        // v0.2.8: MilestoneSampler replaces inline keyword filter
         if !signals.historyDisplayTexts.isEmpty {
-            let all = signals.historyDisplayTexts
-
-            // Extract milestone entries first (version numbers, key decisions)
-            let milestoneKeywords = ["v0.", "v1.", "v2.", "版本", "封版", "brainstorm", "plan",
-                                     "tag", "release", "开始", "完成", "准备"]
-            let milestones = all.enumerated().filter { (_, text) in
-                let lower = text.lowercased()
-                return milestoneKeywords.contains(where: { lower.contains($0) })
-            }.prefix(5).map { (i, text) in "[\(i+1)/\(all.count)] \(String(text.prefix(100)))" }
-
-            // Head + tail for context
-            let head = all.prefix(2).map { String($0.prefix(100)) }
-            let tail = all.count > 4
-                ? all.suffix(2).map { String($0.prefix(100)) }
-                : []
-
-            var historyLines: [String] = []
-            historyLines.append(contentsOf: head)
-            if !milestones.isEmpty {
-                historyLines.append("--- 关键里程碑 ---")
-                historyLines.append(contentsOf: milestones)
+            let K = MilestoneSampler.adaptiveK(
+                historyCount: signals.historyDisplayTexts.count
+            )
+            let milestones = MilestoneSampler.sample(
+                history: signals.historyDisplayTexts,
+                versionMentions: signals.versionMentions,
+                K: K
+            )
+            parts.append("用户输入历史（\(signals.historyDisplayTexts.count) 条，选取 \(milestones.count) 个关键里程碑）:")
+            for m in milestones {
+                let label = renderMilestoneLabel(m.reasons)
+                parts.append("  \(label) \(String(m.text.prefix(100)))")
             }
-            if !tail.isEmpty {
-                historyLines.append("--- 最近 ---")
-                historyLines.append(contentsOf: tail)
-            }
-            parts.append("用户输入历史（\(all.count) 条，从早到晚）:\n\(historyLines.joined(separator: "\n"))")
         }
 
         if !rawTurns.isEmpty {
@@ -131,4 +129,29 @@ public enum LLMPrompts {
     public static let titleSystemPrompt = baseTitleSystemPrompt + versionClauseShared
     public static let progressSystemPrompt = baseProgressSystemPrompt + versionClauseShared
     public static let summarySystemPrompt = baseSummarySystemPrompt + versionClauseShared
+
+    private static func renderMilestoneLabel(_ reasons: [MilestoneEntry.Reason]) -> String {
+        let pieces: [String] = reasons.map { reason in
+            switch reason {
+            case .firstEntry:
+                return "首条"
+            case .lastEntry:
+                return "末条"
+            case .versionAnchor(let normalized):
+                return "版本锚点 \(normalized)"
+            case .timeFill(let bucket, let total):
+                return "时间补点 \(bucket + 1)/\(total)"
+            }
+        }
+        return "[" + pieces.joined(separator: " | ") + "]"
+    }
+
+    private static func renderSourceRef(_ ref: SourceRef) -> String {
+        switch ref.kind {
+        case .history:
+            return "history[\(ref.index ?? -1)]"
+        default:
+            return ref.kind.rawValue
+        }
+    }
 }
