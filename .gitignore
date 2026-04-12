@@ -3,3 +3,7 @@ build/
 *.docx
 dist/
 *.secret
+
+# v0.2.8 eval harness — dev-mode artifacts only.
+# Release artifacts live in docs/eval/gate-runs/ (committed).
+dist/eval-artifacts/dev/
