@@ -26,5 +26,15 @@ let package = Package(
             dependencies: ["ClaudeSessionHubLib"],
             path: "Tests/TestRunner"
         ),
+        .target(
+            name: "EvalHarnessCore",
+            dependencies: ["ClaudeSessionHubLib"],
+            path: "Sources/EvalHarnessCore"
+        ),
+        .testTarget(
+            name: "EvalHarnessTests",
+            dependencies: ["EvalHarnessCore"],
+            path: "Tests/EvalHarnessTests"
+        ),
     ]
 )
