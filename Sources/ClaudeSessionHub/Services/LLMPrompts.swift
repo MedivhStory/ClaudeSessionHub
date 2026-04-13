@@ -122,7 +122,7 @@ public enum LLMPrompts {
     【版本号约束】
     - 如果上面的 input 里提供了"识别到的版本号"列表：仅当某版本号**出现次数 ≥ 2 次**，或其 **selectedSource 属于 taskSubject / firstUserIntent / taskDescription 之一**时，才应在输出中引用它
     - 满足上述条件的版本号，若是主题型版本（即该 session 是在开发该版本），应在输出中体现；若 session 跨越多个满足条件的版本号，应在输出中体现版本范围（例如 "v0.2.5-v0.2.6" 或 "v0.2.5 到 v0.2.6"）
-    - 如果版本号仅出现 1 次，且 selectedSource 属于 lastUserIntent / history / lastAssistantProgress 之一，属于顺带提及，**禁止**在输出中引用它
+    - 如果版本号仅出现 1 次，且 selectedSource 属于 lastUserIntent / history / lastAssistantProgress 之一，属于顺带提及：**绝对禁止**在 title / progress / summary 任何一个字段中引用它。这条规则对 summary 字段尤为严格——即使在描述"向后兼容"、"适配旧接口"等场景时，也绝对不得在 summary 里写出该版本号。正确做法：用抽象描述（如"保持向后兼容"）代替具体版本号。错误示例（禁止）："适配 v0.2.0 的旧接口"；正确示例（允许）："适配旧接口以保持向后兼容"
     - 如果上面的 input 里"本 session 未识别到任何版本号"：**禁止**在输出（title / progress / summary 任一字段）中引入任何版本号、版本范围、版本类语言。不要虚构、不要从语境推断、不要使用类似 "新版本"、"v1.0" 的占位表达
     """
 
