@@ -37,17 +37,23 @@
    ```
    Expected: 6 PASS lines.
 
-4. Run `check-artifact` to verify 8-way binding on HEAD (artifact commit) vs HEAD^ (candidate):
-   ```bash
-   swift run eval-harness check-artifact --tag v0.2.8
-   ```
-   Expected: `✓ Gate check passed for tag 'v0.2.8'`
-   Expected commitSHA echoed: `5ac5efb37656812985c2ac3c7fed61e3286295df`
-   Expected provider/model: `dashscope / qwen-plus`
+4. **Process gotcha**: `check-artifact` must be run with HEAD at the artifact commit (`cc4a2ce`), not at the branch tip. The verify manifest commit (`8cbf27e`) is ON TOP of the artifact commit, so at branch tip `HEAD^ == cc4a2ce ≠ 5ac5efb` and check-artifact fails with a false-FAIL.
 
-5. Confirm HEAD^ is the candidate commit the artifact claims:
+   Correct invocation — temporarily detach at the artifact commit:
    ```bash
-   git rev-parse HEAD^
+   git checkout cc4a2ce
+   swift run eval-harness check-artifact --tag v0.2.8
+   # Expected: ✓ Gate check passed for tag 'v0.2.8'
+   # Expected commitSHA echoed: 5ac5efb37656812985c2ac3c7fed61e3286295df
+   # Expected provider/model: dashscope / qwen-plus
+   git checkout feature/v0.2.8-ai-eval
+   ```
+
+   This gotcha is a known process nuance; the `--artifact <path>` explicit-path escape hatch ALSO fails at branch tip because it still validates commitSHA against HEAD^. The only way is to detach HEAD at the artifact commit.
+
+5. Confirm at the artifact commit (`cc4a2ce`), HEAD^ is the candidate commit the artifact claims:
+   ```bash
+   git rev-parse cc4a2ce^
    ```
    Expected: `5ac5efb37656812985c2ac3c7fed61e3286295df`
 
