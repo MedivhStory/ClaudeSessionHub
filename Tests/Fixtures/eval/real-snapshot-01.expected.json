@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1",
+  "id": "real-snapshot-01",
+  "title": {
+    "mustNotBeEmpty": true,
+    "minLength": 5,
+    "maxLength": 45
+  },
+  "progress": {
+    "mustNotBeEmpty": true,
+    "mustNotEqual": ["无明确进展", ""],
+    "minLength": 10,
+    "maxLength": 200
+  },
+  "summary": {
+    "mustNotBeEmpty": true,
+    "minLength": 20,
+    "maxLength": 200
+  }
+}

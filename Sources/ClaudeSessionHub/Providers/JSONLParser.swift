@@ -122,27 +122,134 @@ public enum JSONLParser {
     }
 
     /// Read user-type entries sampled evenly from the middle of the file.
-    public static func readSampledUserTurns(at path: String, count: Int, skipHead: Int = 10, skipTail: Int = 50) throws -> [[String: Any]] {
-        let allEntries = try readAllEntries(at: path)
-        let total = allEntries.count
-        guard total > skipHead + skipTail else { return [] }
+    public static func readSampledUserTurns(
+        at path: String,
+        count: Int,
+        skipHead: Int = 10,
+        skipTail: Int = 50
+    ) throws -> [[String: Any]] {
+        guard let handle = FileHandle(forReadingAtPath: path) else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        defer { try? handle.close() }
 
-        let middleEntries = Array(allEntries[skipHead..<(total - skipTail)])
-        let userEntries = middleEntries.filter { entry in
-            entry["type"] as? String == "user" &&
-            entry["isMeta"] as? Bool != true
+        // ─── Pass 1: byte-scan total line count ───
+        var totalLines = 0
+        var sawAnyByte = false
+        var lastByte: UInt8 = 0
+        try handle.seek(toOffset: 0)
+        let chunkSize = 65536
+        while true {
+            let chunk = handle.readData(ofLength: chunkSize)
+            if chunk.isEmpty { break }
+            sawAnyByte = true
+            chunk.forEach { byte in
+                if byte == 0x0A { totalLines += 1 }
+            }
+            if let last = chunk.last { lastByte = last }
+        }
+        // Final line without trailing \n counts as one more line
+        if sawAnyByte && lastByte != 0x0A { totalLines += 1 }
+
+        // ─── Bounds ───
+        let middleStart = skipHead
+        let middleEnd = totalLines - skipTail
+        let middleSize = middleEnd - middleStart
+        if middleSize <= 0 { return [] }
+        let actualK = min(count, middleSize)
+        if actualK <= 0 { return [] }
+
+        // ─── Bucket centers ───
+        let bucketWidth = Double(middleSize) / Double(actualK)
+        var bucketCenters: [Int] = []
+        for i in 0..<actualK {
+            let center = middleStart + Int((Double(i) + 0.5) * bucketWidth)
+            bucketCenters.append(min(center, middleEnd - 1))
         }
 
-        guard !userEntries.isEmpty else { return [] }
-        if userEntries.count <= count { return userEntries }
+        // ─── Pass 2: streaming line extraction with bucket-center selection ───
+        var bestEntry: [Int: [String: Any]] = [:]
+        var bestDistance: [Int: Int] = [:]
+        var buffer = Data()
+        var lineIndex = 0
+        var stop = false
 
-        var sampled: [[String: Any]] = []
-        let step = Double(userEntries.count) / Double(count)
-        for i in 0..<count {
-            let index = min(Int(Double(i) * step), userEntries.count - 1)
-            sampled.append(userEntries[index])
+        func processLine(_ lineData: Data) {
+            defer { lineIndex += 1 }
+
+            // Skip header range
+            if lineIndex < middleStart { return }
+            // Skip tail range
+            if lineIndex >= middleEnd { return }
+
+            // Parse JSON; skip malformed lines silently
+            guard let parsed = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else { return }
+
+            // Qualifying user turn filter
+            guard parsed["type"] as? String == "user",
+                  (parsed["isMeta"] as? Bool) != true else { return }
+
+            // Determine bucket
+            let offsetInMiddle = lineIndex - middleStart
+            var bucketIdx = Int(Double(offsetInMiddle) / bucketWidth)
+            if bucketIdx >= actualK { bucketIdx = actualK - 1 }
+            if bucketIdx < 0 { bucketIdx = 0 }
+
+            let dist = abs(lineIndex - bucketCenters[bucketIdx])
+
+            if let currentBest = bestDistance[bucketIdx] {
+                if dist < currentBest {
+                    bestEntry[bucketIdx] = parsed
+                    bestDistance[bucketIdx] = dist
+                }
+                // else if dist == currentBest: earlier wins (already stored).
+                // This branch is deliberately a no-op — NOT `break`, NOT `continue`.
+                // else if dist > currentBest: also no-op.
+            } else {
+                bestEntry[bucketIdx] = parsed
+                bestDistance[bucketIdx] = dist
+            }
         }
-        return sampled
+
+        try handle.seek(toOffset: 0)
+        while !stop {
+            let chunk = handle.readData(ofLength: chunkSize)
+            if chunk.isEmpty { break }
+            buffer.append(chunk)
+            // Drain all complete newline-delimited lines
+            while let newlineIdx = buffer.firstIndex(of: 0x0A) {
+                let lineData = buffer.subdata(in: 0..<newlineIdx)
+                buffer.removeSubrange(0...newlineIdx)
+                processLine(lineData)
+                if lineIndex >= middleEnd { stop = true; break }
+            }
+            if lineIndex >= middleEnd { stop = true; break }
+        }
+
+        // ─── EOF flush: handle unterminated final line ───
+        //
+        // Invariant: after the chunk loop exits normally, `buffer` contains AT
+        // MOST ONE unterminated line (the file's final line without trailing \n).
+        // The inner `while let newlineIdx = ...` loop drained every complete line
+        // before exiting. No loop needed here — at most one processLine call.
+        //
+        // If the outer loop exited because lineIndex >= middleEnd (early break),
+        // the residual buffer contents are past middleEnd and should be discarded.
+        // The `lineIndex < middleEnd` guard below enforces this.
+        if !buffer.isEmpty && lineIndex < middleEnd {
+            processLine(buffer)
+            buffer.removeAll()
+        }
+
+        // ─── Finalize ───
+        var result: [[String: Any]] = []
+        for i in 0..<actualK {
+            if let entry = bestEntry[i] {
+                result.append(entry)
+            }
+            // else: bucket had no qualifying user turn; slot left empty.
+        }
+        return result
     }
 
     private static func parseLine(_ data: Data) -> [String: Any]? {

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1",
+  "id": "synthetic-cross-version-range-01",
+  "title": {
+    "mustContainAny": ["v0.2.5", "0.2.5"],
+    "mustMatchRegex": "v0\\.2\\.5.{0,10}v0\\.2\\.6|v0\\.2\\.6.{0,10}v0\\.2\\.5",
+    "maxLength": 45,
+    "mustNotBeEmpty": true
+  },
+  "progress": {
+    "mustNotBeEmpty": true
+  },
+  "summary": {
+    "mustContainAny": ["v0.2.5", "v0.2.6"],
+    "maxLength": 200
+  }
+}

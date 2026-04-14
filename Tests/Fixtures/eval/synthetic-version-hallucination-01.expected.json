@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1",
+  "id": "synthetic-version-hallucination-01",
+  "title": {
+    "mustNotContain": ["v0.2.0", "0.2.0"],
+    "maxRegexMatchCount": {
+      "pattern": "(?i)v?\\d+\\.\\d+(\\.\\d+)?",
+      "n": 0
+    },
+    "maxLength": 45,
+    "mustNotBeEmpty": true
+  },
+  "progress": {
+    "mustNotContain": ["v0.2.0", "0.2.0"],
+    "mustNotBeEmpty": true,
+    "mustNotEqual": ["无明确进展"],
+    "minLength": 10
+  },
+  "summary": {
+    "mustNotContain": ["v0.2.0", "0.2.0"],
+    "maxLength": 200
+  }
+}

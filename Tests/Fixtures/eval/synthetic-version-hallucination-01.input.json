@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "1",
+  "id": "synthetic-version-hallucination-01",
+  "kind": "synthetic",
+  "meta": {
+    "failureMode": "version-hallucination",
+    "description": "Session about Go refactor, mentions v0.2.0 once in passing",
+    "desensitizedAt": null,
+    "desensitizationScriptVersion": null
+  },
+  "input": {
+    "signals": {
+      "sessionID": "synth-01",
+      "firstUserIntent": "帮我重构 Go 的 auth middleware，protocol 化",
+      "lastUserIntent": "test 都过了",
+      "sampledUserIntents": [],
+      "lastAssistantProgress": "完成了 protocol 化重构",
+      "historyDisplayTexts": [
+        "重构 auth middleware",
+        "提取 interface",
+        "适配 v0.2.0 的旧接口以避免破坏",
+        "写单测",
+        "单测通过"
+      ],
+      "taskSubject": null,
+      "taskDescription": null,
+      "taskStatus": null,
+      "entrypoint": "resume",
+      "branch": "refactor/auth",
+      "slug": null,
+      "toolsUsed": ["Read", "Edit"],
+      "filesModified": ["auth/middleware.go"],
+      "isSidechain": false,
+      "turnCount": 12,
+      "slashCommands": [],
+      "commandErrors": [],
+      "hasAssistantReply": true,
+      "totalEntryCount": 24,
+      "historyCount": 5,
+      "versionMentions": [
+        {
+          "raw": "v0.2.0",
+          "normalized": "0.2.0",
+          "selectedSource": { "kind": "history", "index": 2 },
+          "occurrenceCount": 1
+        }
+      ]
+    },
+    "rawTurns": [
+      "用户: 帮我重构 Go 的 auth middleware，protocol 化",
+      "助手: 好的，我先看一下当前实现",
+      "用户: 注意要适配 v0.2.0 的旧接口",
+      "助手: 明白，我会保持向后兼容",
+      "用户: test 都过了"
+    ],
+    "basedOnLastActiveAt": "2026-04-09T12:00:00Z"
+  }
+}

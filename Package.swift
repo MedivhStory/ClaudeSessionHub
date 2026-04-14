@@ -4,6 +4,9 @@ import PackageDescription
 let package = Package(
     name: "ClaudeSessionHub",
     platforms: [.macOS(.v14)],
+    products: [
+        .executable(name: "eval-harness", targets: ["EvalHarnessCLI"]),
+    ],
     targets: [
         .target(
             name: "ClaudeSessionHubLib",
@@ -25,6 +28,42 @@ let package = Package(
             name: "TestRunner",
             dependencies: ["ClaudeSessionHubLib"],
             path: "Tests/TestRunner"
+        ),
+        .target(
+            name: "EvalHarnessCore",
+            dependencies: ["ClaudeSessionHubLib"],
+            path: "Sources/EvalHarnessCore",
+            plugins: [.plugin(name: "ExtractPromptSourcePlugin")]
+        ),
+        .testTarget(
+            name: "EvalHarnessTests",
+            dependencies: ["EvalHarnessCore"],
+            path: "Tests/EvalHarnessTests"
+        ),
+        .executableTarget(
+            name: "ExtractPromptSourceTool",
+            path: "Sources/ExtractPromptSourceTool"
+        ),
+        .testTarget(
+            name: "ExtractPromptSourceToolTests",
+            dependencies: [],
+            path: "Tests/ExtractPromptSourceToolTests"
+        ),
+        .executableTarget(
+            name: "EvalHarnessCLI",
+            dependencies: ["EvalHarnessCore"],
+            path: "Sources/EvalHarnessCLI"
+        ),
+        .executableTarget(
+            name: "DesensitizeSession",
+            dependencies: ["ClaudeSessionHubLib", "EvalHarnessCore"],
+            path: "Sources/DesensitizeSession"
+        ),
+        .plugin(
+            name: "ExtractPromptSourcePlugin",
+            capability: .buildTool(),
+            dependencies: ["ExtractPromptSourceTool"],
+            path: "Plugins/ExtractPromptSource"
         ),
     ]
 )

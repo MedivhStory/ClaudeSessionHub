@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "1",
+  "id": "synthetic-tail-bias-01",
+  "kind": "synthetic",
+  "meta": {
+    "failureMode": "tail-bias",
+    "description": "Long session about v0.2.5 LLM provider presets; last turns are trivial housekeeping",
+    "desensitizedAt": null,
+    "desensitizationScriptVersion": null
+  },
+  "input": {
+    "signals": {
+      "sessionID": "synth-02",
+      "firstUserIntent": "开始 v0.2.5 的 LLM provider preset 功能开发",
+      "lastUserIntent": "好，提交了",
+      "sampledUserIntents": [],
+      "lastAssistantProgress": "更新了 changelog 并提交",
+      "historyDisplayTexts": [
+        "规划 v0.2.5 LLM provider preset 功能",
+        "设计 LLMProvider enum",
+        "实现 preset 配置逻辑",
+        "为 Anthropic 添加 preset",
+        "为 OpenAI 添加 preset",
+        "为 Gemini 添加 preset",
+        "实现 LLMConfig.preset() 工厂方法",
+        "编写 preset 单测",
+        "修复 model name 默认值",
+        "添加 temperature preset",
+        "完善 provider 文档注释",
+        "集成测试通过",
+        "review preset 配置覆盖逻辑",
+        "修复边界情况：空 model name",
+        "确认 v0.2.5 preset 功能完整",
+        "修复 README 拼写",
+        "git add",
+        "格式化代码",
+        "更新 changelog",
+        "git commit"
+      ],
+      "taskSubject": "Claude Session Hub v0.2.5 LLM provider preset 开发",
+      "taskDescription": null,
+      "taskStatus": null,
+      "entrypoint": "resume",
+      "branch": "feature/v0.2.5-llm-presets",
+      "slug": null,
+      "toolsUsed": ["Read", "Edit", "Bash"],
+      "filesModified": [
+        "Sources/ClaudeSessionHub/Models/LLMConfig.swift",
+        "Sources/ClaudeSessionHub/Providers/LLMProvider.swift",
+        "Tests/XCTests/LLMConfigTests.swift",
+        "CHANGELOG.md",
+        "README.md"
+      ],
+      "isSidechain": false,
+      "turnCount": 38,
+      "slashCommands": [],
+      "commandErrors": [],
+      "hasAssistantReply": true,
+      "totalEntryCount": 42,
+      "historyCount": 20,
+      "versionMentions": [
+        {
+          "raw": "v0.2.5",
+          "normalized": "0.2.5",
+          "selectedSource": { "kind": "firstUserIntent", "index": null },
+          "occurrenceCount": 4
+        }
+      ]
+    },
+    "rawTurns": [
+      "用户: 开始 v0.2.5 的 LLM provider preset 功能开发",
+      "助手: 好的，我先规划一下功能列表",
+      "用户: 好，提交了"
+    ],
+    "basedOnLastActiveAt": "2026-04-09T14:00:00Z"
+  }
+}

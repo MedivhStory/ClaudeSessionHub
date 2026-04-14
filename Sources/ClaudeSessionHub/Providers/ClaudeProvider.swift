@@ -493,6 +493,9 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         // Session scale: count lines in file (cheap, no JSON parsing)
         signals.totalEntryCount = Self.countLines(at: path)
 
+        // v0.2.8: populate versionMentions from assembled signals (I-11)
+        signals.versionMentions = VersionMentionExtractor.extract(from: signals)
+
         return signals
     }
 

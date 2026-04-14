@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1",
+  "id": "synthetic-empty-progress-01",
+  "kind": "synthetic",
+  "meta": {
+    "failureMode": "empty-progress",
+    "description": "Session where build kept failing; no clear assistant progress to extract",
+    "desensitizedAt": null,
+    "desensitizationScriptVersion": null
+  },
+  "input": {
+    "signals": {
+      "sessionID": "synth-03",
+      "firstUserIntent": "构建失败了，帮我看看",
+      "lastUserIntent": "还是报错，先这样吧",
+      "sampledUserIntents": [],
+      "lastAssistantProgress": null,
+      "historyDisplayTexts": [
+        "查看构建错误日志",
+        "检查 Package.swift 依赖",
+        "尝试 clean build",
+        "排查编译器错误信息",
+        "检查 Swift 版本兼容性"
+      ],
+      "taskSubject": null,
+      "taskDescription": null,
+      "taskStatus": null,
+      "entrypoint": "new",
+      "branch": "main",
+      "slug": null,
+      "toolsUsed": ["Read", "Bash"],
+      "filesModified": [],
+      "isSidechain": false,
+      "turnCount": 8,
+      "slashCommands": [],
+      "commandErrors": ["build failed: compiler error"],
+      "hasAssistantReply": true,
+      "totalEntryCount": 10,
+      "historyCount": 5,
+      "versionMentions": []
+    },
+    "rawTurns": [
+      "用户: 构建失败了，帮我看看",
+      "助手: 我来查看一下错误日志",
+      "用户: 还是报错，先这样吧"
+    ],
+    "basedOnLastActiveAt": "2026-04-09T10:00:00Z"
+  }
+}

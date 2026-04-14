@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1",
+  "id": "synthetic-cross-version-range-01",
+  "kind": "synthetic",
+  "meta": {
+    "failureMode": "cross-version-range",
+    "description": "Session spanning v0.2.5 and v0.2.6 development; both versions mentioned prominently",
+    "desensitizedAt": null,
+    "desensitizationScriptVersion": null
+  },
+  "input": {
+    "signals": {
+      "sessionID": "synth-04",
+      "firstUserIntent": "开始 v0.2.5 开发",
+      "lastUserIntent": "准备打 v0.2.6 tag",
+      "sampledUserIntents": [],
+      "lastAssistantProgress": "完成 v0.2.6 功能，准备打 tag",
+      "historyDisplayTexts": [
+        "规划 v0.2.5 功能列表",
+        "实现 v0.2.5 LLM provider preset",
+        "v0.2.5 单测全通过",
+        "发布 v0.2.5 tag",
+        "开始规划 v0.2.6 功能",
+        "实现 v0.2.6 eval harness 基础框架",
+        "添加 FixtureLoader",
+        "实现 Verifier 约束检查",
+        "编写 EvalHarnessCLI",
+        "v0.2.6 集成测试通过",
+        "更新 CHANGELOG for v0.2.6",
+        "准备 v0.2.6 release"
+      ],
+      "taskSubject": "Claude Session Hub v0.2.5-v0.2.6 开发",
+      "taskDescription": null,
+      "taskStatus": null,
+      "entrypoint": "resume",
+      "branch": "feature/v0.2.6-eval-harness",
+      "slug": null,
+      "toolsUsed": ["Read", "Edit", "Bash"],
+      "filesModified": [
+        "Sources/EvalHarnessCore/FixtureLoader.swift",
+        "Sources/EvalHarnessCore/Verifier.swift",
+        "Sources/EvalHarnessCLI/main.swift",
+        "CHANGELOG.md"
+      ],
+      "isSidechain": false,
+      "turnCount": 28,
+      "slashCommands": [],
+      "commandErrors": [],
+      "hasAssistantReply": true,
+      "totalEntryCount": 32,
+      "historyCount": 12,
+      "versionMentions": [
+        {
+          "raw": "v0.2.5",
+          "normalized": "0.2.5",
+          "selectedSource": { "kind": "taskSubject", "index": null },
+          "occurrenceCount": 3
+        },
+        {
+          "raw": "v0.2.6",
+          "normalized": "0.2.6",
+          "selectedSource": { "kind": "taskSubject", "index": null },
+          "occurrenceCount": 3
+        }
+      ]
+    },
+    "rawTurns": [
+      "用户: 开始 v0.2.5 开发",
+      "助手: 好的，我来规划 v0.2.5 功能列表",
+      "用户: 准备打 v0.2.6 tag"
+    ],
+    "basedOnLastActiveAt": "2026-04-09T16:00:00Z"
+  }
+}
