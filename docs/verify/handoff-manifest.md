@@ -30,7 +30,7 @@
 - **Prompt fix #2 (title tail-bias)**: `baseTitleSystemPrompt` anti-recency bullets elevated to **必须** wording; added explicit priority rule [首条]/[版本锚点] > [末条]; added concrete negative example matching the real-snapshot-02 failure (v0.2.x session wrongly titled as Xcode CI update); added quantitative long-session threshold (>100 entries/turns). This fixed the real-snapshot-02 title.mustContainAny failure.
 - **Prompt fix #3 (length variance stabilization)**: Soft `最多 N 个字` replaced with hard-cap `严格不超过 N 个字（含标点）；超出删减后再返回` for both title (30) and summary (150) prompts. Added title compression discipline bullet with concrete good/bad example pair. This reduced qwen-plus output length variance and converted a 1/3 flake rate (runs 1 and 2 each had a different length failure) to 3/3 consecutive clean dev-mode runs. No fixture constraints changed; no numeric prompt limits changed; no architectural changes.
 - **Release-mode run**: single execution of `swift run eval-harness live --release --tag v0.2.8 --fixtures Tests/Fixtures/eval` on candidate commit `5ac5efb`. Result: 6/6 PASS, gateResult=PASS. No retry pattern used ("ε / rerun-until-green" explicitly rejected by user protocol).
-- **Artifact committed**: `docs/eval/gate-runs/2026-04-13-v0.2.8-5ac5efb3.json` committed at `cc4a2ce` and pushed to origin. After commit, HEAD = artifact commit (`cc4a2ce`), HEAD^ = candidate commit (`5ac5efb`) — satisfying I-15 "commit artifact before check-artifact" step.
+- **Artifact committed**: `docs/eval/gate-runs/2026-04-13-v0.2.8-5ac5efb3.json` committed at `cc4a2ce` and pushed to origin. The artifact commit is `cc4a2ce`; its parent is the candidate commit `5ac5efb` — satisfying I-15 "commit artifact before check-artifact" step. The tag target is `cc4a2ce`; `check-artifact` must be run with git HEAD positioned at `cc4a2ce` (detach the HEAD or checkout the commit directly, since the branch tip has moved beyond it).
 - **check-artifact passed**: all 8-way binding checks in I-4 pass on the current branch state (mode/commitSHA/promptBuilderHash/dslSchemaVersion/provider/model/temperature/gateResult).
 
 ### Scenarios
@@ -76,7 +76,7 @@
 ### Critical invariants to spot-check
 
 1. **Artifact content equals current branch state**: the artifact's `promptBuilderHash` must match what `swift run eval-harness check-artifact --tag v0.2.8` computes from current `LLMPrompts.swift`. If the prompt file was modified after release-mode run but before verification, `check-artifact` will reject. Any such divergence is a blocker.
-2. **commitSHA = HEAD^**: the artifact's `commitSHA` field must equal `git rev-parse HEAD^` on the current branch. If you pull fresh commits on top, HEAD^ changes, and check-artifact will reject.
+2. **commitSHA = parent of tag target**: the artifact's `commitSHA` field must equal the parent of the tag target commit (`cc4a2ce`), which is the candidate commit `5ac5efb`. Check with `git rev-parse cc4a2ce^`. Note: `check-artifact` internally uses `git rev-parse HEAD^`, so it must be invoked with HEAD positioned at `cc4a2ce` (not at the moving branch tip). See scenario 012 for the exact invocation.
 3. **Canonical provider locked**: artifact's provider/model/temperature must equal `CanonicalGate` constants (dashscope / qwen-plus / 0). Environment variable overrides are impossible in release mode (LiveRunConfig rejects them with a warning). Verify.
 4. **Fail-closed semantics**: any fixture FAIL in artifact.fixtureResults = release blocked. The artifact shows 6/6 PASS — verify this directly.
 
@@ -112,8 +112,10 @@ cc4a2ce chore(eval): v0.2.8 release gate artifact
 
 ## Commit state at handoff time
 
-- HEAD: `cc4a2cec899586db4c0386f410cda608aac8816c` (artifact commit)
-- HEAD^: `5ac5efb37656812985c2ac3c7fed61e3286295df` (candidate commit)
+- **Tag target commit**: `cc4a2cec899586db4c0386f410cda608aac8816c` (the artifact commit)
+- **Candidate commit** (parent of tag target): `5ac5efb37656812985c2ac3c7fed61e3286295df`
 - Branch: `feature/v0.2.8-ai-eval`
-- Pushed to origin: yes
-- Remote state: `origin/feature/v0.2.8-ai-eval` == `HEAD` == `cc4a2ce`
+- Branch tip at handoff is beyond the tag target (verify manifest + gotcha doc + this sync commit were committed after the artifact). The tag must still be placed on `cc4a2ce` regardless of where the branch tip has advanced to.
+- Pushed to origin: yes (all commits including this sync commit)
+
+All SHA references in this manifest are absolute. Relative HEAD/HEAD^/HEAD^^ references have been removed to avoid stale positioning as the branch advances.

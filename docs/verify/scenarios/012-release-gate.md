@@ -37,7 +37,7 @@
    ```
    Expected: 6 PASS lines.
 
-4. **Process gotcha**: `check-artifact` must be run with HEAD at the artifact commit (`cc4a2ce`), not at the branch tip. The verify manifest commit (`8cbf27e`) is ON TOP of the artifact commit, so at branch tip `HEAD^ == cc4a2ce ≠ 5ac5efb` and check-artifact fails with a false-FAIL.
+4. **Process gotcha**: `check-artifact` must be run with git HEAD positioned at the tag target commit (`cc4a2ce`), not at the branch tip. Multiple commits were added on top of the artifact commit (verify manifest, gotcha doc, and subsequent sync commits), so at the branch tip the parent relationship `cc4a2ce → 5ac5efb` is no longer reachable via `HEAD^`. `check-artifact` fails with a false-FAIL at the branch tip.
 
    Correct invocation — temporarily detach at the artifact commit:
    ```bash
@@ -49,9 +49,9 @@
    git checkout feature/v0.2.8-ai-eval
    ```
 
-   This gotcha is a known process nuance; the `--artifact <path>` explicit-path escape hatch ALSO fails at branch tip because it still validates commitSHA against HEAD^. The only way is to detach HEAD at the artifact commit.
+   This gotcha is a known process nuance; the `--artifact <path>` explicit-path escape hatch ALSO fails at the branch tip because it still validates the artifact's `commitSHA` field against the parent of the currently-checked-out commit. The only way is to detach HEAD at the artifact commit `cc4a2ce`.
 
-5. Confirm at the artifact commit (`cc4a2ce`), HEAD^ is the candidate commit the artifact claims:
+5. Confirm that the parent of the tag target commit is the candidate commit (this does NOT require checkout — works from any branch state):
    ```bash
    git rev-parse cc4a2ce^
    ```
@@ -68,7 +68,7 @@
 - Release gate artifact at `docs/eval/gate-runs/2026-04-13-v0.2.8-5ac5efb3.json`, committed at `cc4a2ce`, pushed to origin
 - All 6 fixtures passing in release mode (not dev mode)
 - `check-artifact` 8-way binding passes
-- Current branch HEAD is the artifact commit (`cc4a2ce`); HEAD^ is the candidate commit (`5ac5efb`)
+- Tag target commit is `cc4a2ce` (the artifact commit); its parent is the candidate commit `5ac5efb`. Branch tip has advanced beyond `cc4a2ce` due to verify manifest and subsequent doc commits, but the tag will be placed directly on `cc4a2ce` regardless of branch tip position.
 - Unit tests unchanged (339 passing)
 
 ## Notes
