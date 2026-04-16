@@ -57,14 +57,8 @@ final class SecretStoreTests: XCTestCase {
         let data = try! JSONSerialization.data(withJSONObject: oldConfig, options: .prettyPrinted)
         try! data.write(to: URL(fileURLWithPath: path))
 
-        // Load — migration is deferred until ensureApiKeyLoaded
+        // Load — migration now happens eagerly at init
         let store = SettingsStore(directory: dir, secretStore: secretStore)
-
-        // Before ensure: apiKey not yet loaded
-        XCTAssertTrue(store.llmConfig.apiKey.isEmpty, "apiKey should not be loaded at init")
-
-        // Trigger lazy load
-        store.ensureApiKeyLoaded()
 
         // API key should now be in SecretStore
         XCTAssertEqual(secretStore.load(key: "apiKey"), "sk-plaintext-secret")

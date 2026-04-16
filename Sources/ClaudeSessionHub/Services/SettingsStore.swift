@@ -18,6 +18,7 @@ public final class SettingsStore {
         self.filePath = (directory as NSString).appendingPathComponent("settings.json")
         self.secretStore = secretStore
         load()
+        ensureApiKeyLoaded()
     }
 
     /// Lazily load API key from secret storage. Called only when AI features are actually used.
