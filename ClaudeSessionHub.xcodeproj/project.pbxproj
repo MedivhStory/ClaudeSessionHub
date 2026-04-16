@@ -79,6 +79,8 @@
 		A0280006 /* MilestoneEntryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0280006; };
 		A0280007 /* VersionMentionExtractorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0280007; };
 		A0280008 /* MilestoneSamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0280008; };
+		A0290001 /* ClaudeProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290001; };
+		A0290002 /* JSONLParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290002; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -174,6 +176,8 @@
 		B0280006 /* MilestoneEntryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneEntryTests.swift; sourceTree = "<group>"; };
 		B0280007 /* VersionMentionExtractorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionMentionExtractorTests.swift; sourceTree = "<group>"; };
 		B0280008 /* MilestoneSamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneSamplerTests.swift; sourceTree = "<group>"; };
+		B0290001 /* ClaudeProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeProviderTests.swift; sourceTree = "<group>"; };
+		B0290002 /* JSONLParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLParserTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -370,10 +374,20 @@
 			children = (
 				XCTINTEG /* Integration */,
 				XCTMODEL /* Models */,
+				XCTPROVD /* Providers */,
 				XCTSERVS /* Services */,
 			);
 			name = XCTests;
 			path = Tests/XCTests;
+			sourceTree = "<group>";
+		};
+		XCTPROVD /* Providers */ = {
+			isa = PBXGroup;
+			children = (
+				B0290001 /* ClaudeProviderTests.swift */,
+				B0290002 /* JSONLParserTests.swift */,
+			);
+			path = Providers;
 			sourceTree = "<group>";
 		};
 		XCTMODEL /* Models */ = {
@@ -588,6 +602,8 @@
 				A0280006 /* MilestoneEntryTests.swift in Sources */,
 				A0280007 /* VersionMentionExtractorTests.swift in Sources */,
 				A0280008 /* MilestoneSamplerTests.swift in Sources */,
+				A0290001 /* ClaudeProviderTests.swift in Sources */,
+				A0290002 /* JSONLParserTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

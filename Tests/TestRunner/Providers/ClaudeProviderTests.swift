@@ -20,6 +20,9 @@ enum ClaudeProviderTests {
         testLoadSessionDetailRecentFiles()
         testLoadSessionDetailModelInfo()
         testLoadSessionDetailNextStep()
+        testExtractEnhanceInputsRecoversIntentOutsideWindow()
+        testExtractEnhanceInputsPopulatesJsonlHistoryFallback()
+        testExtractEnhanceInputsLabelsRawTurnsByPosition()
     }
 
     // MARK: - Helpers
@@ -448,6 +451,117 @@ enum ClaudeProviderTests {
         if let nextStep = detail.nextStep {
             check(nextStep.contains("接下来"), "nextStep should contain forward-looking pattern, got: \(nextStep)")
             check(nextStep.count <= 120, "nextStep should be <= 120 chars")
+        }
+    }
+
+    // MARK: - v0.2.8.1 extractEnhanceInputs regression tests
+
+    /// Build a jsonl where the first 15 entries are slash-command noise and
+    /// the last 60 entries are tool_result-heavy. The REAL first and last
+    /// user text turns sit at lines 16 and 80 — outside the 10+50 window that
+    /// `extractSignals` uses. extractEnhanceInputs must recover them via full scan.
+    private static func buildTailBiasTestJSONL(sessionID: String, topic: String) -> String {
+        var lines: [String] = []
+        // 15 head entries: slash-command wrappers + attachments (all noise)
+        for i in 0..<5 {
+            lines.append("{\"type\":\"user\",\"isMeta\":true,\"message\":{\"role\":\"user\",\"content\":\"<local-command-caveat>noise \(i)</local-command-caveat>\"}}")
+            lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"<command-name>/model</command-name>\"}}")
+            lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"<local-command-stdout>Set model</local-command-stdout>\"}}")
+        }
+        // Entry 16: the real first user intent mentioning the topic
+        lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"我在 \(topic) 平台上搭一个 workflow，帮我理清思路\"},\"cwd\":\"/Users/test/\(topic)\",\"gitBranch\":\"HEAD\"}")
+        // Middle: 60 real user turns + 10 assistant turns discussing the topic
+        for i in 0..<60 {
+            lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"关于 \(topic) 的第 \(i) 条讨论内容，需要继续优化\"}}")
+        }
+        for _ in 0..<10 {
+            lines.append("{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-test\",\"content\":[{\"type\":\"text\",\"text\":\"好的我理解了 \(topic) 的需求\"}]}}")
+        }
+        // Last 60 entries: tool_result-heavy debug tail (no qualifying user text turns)
+        for i in 0..<30 {
+            lines.append("{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"点击 selector.\(i) 但 innerText 仍为空\"}]}}")
+            lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t\(i)\",\"content\":\"[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"Dragged\\\"}]\"}]}}")
+        }
+        // Ensure sessionId appears on at least one entry
+        lines[0] = "{\"type\":\"user\",\"isMeta\":true,\"sessionId\":\"\(sessionID)\",\"message\":{\"role\":\"user\",\"content\":\"<local-command-caveat>noise 0</local-command-caveat>\"}}"
+        return lines.joined(separator: "\n")
+    }
+
+    /// Bug B regression: real first/last user text turns sitting outside the
+    /// cheap 10+50 window are still extracted via the full-scan path.
+    static func testExtractEnhanceInputsRecoversIntentOutsideWindow() {
+        let base = createTempDir()
+        defer { cleanup(base) }
+        let projectDir = base + "/projects/-Users-test-cozerepo"
+        try! FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        let sid = "enhance-recover-\(UUID().uuidString.prefix(8))"
+        try! buildTailBiasTestJSONL(sessionID: String(sid), topic: "coze")
+            .write(toFile: projectDir + "/\(sid).jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: String(sid))
+        let inputs = try! runAsync { try await provider.extractEnhanceInputs(for: ref) }
+
+        check(inputs.signals.firstUserIntent != nil,
+              "firstUserIntent must be recovered from full scan, got nil")
+        if let first = inputs.signals.firstUserIntent {
+            check(first.contains("coze"),
+                  "firstUserIntent should mention 'coze', got: \(first)")
+        }
+        check(inputs.signals.lastUserIntent != nil,
+              "lastUserIntent must be recovered (last real user turn before tool_result tail)")
+    }
+
+    /// Bug C regression: historyDisplayTexts is populated from jsonl when
+    /// the SessionExtractor's history.jsonl has no rows.
+    static func testExtractEnhanceInputsPopulatesJsonlHistoryFallback() {
+        let base = createTempDir()
+        defer { cleanup(base) }
+        let projectDir = base + "/projects/-Users-test-cozerepo"
+        try! FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        let sid = "enhance-history-\(UUID().uuidString.prefix(8))"
+        try! buildTailBiasTestJSONL(sessionID: String(sid), topic: "coze")
+            .write(toFile: projectDir + "/\(sid).jsonl", atomically: true, encoding: .utf8)
+        // Deliberately do NOT create base + "/history.jsonl"
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: String(sid))
+        let inputs = try! runAsync { try await provider.extractEnhanceInputs(for: ref) }
+
+        check(!inputs.signals.historyDisplayTexts.isEmpty,
+              "historyDisplayTexts should fall back to jsonl user-text stream, got empty")
+        check(inputs.signals.historyCount >= 30,
+              "historyCount should reflect the ~61 real user text turns in the fixture, got \(inputs.signals.historyCount)")
+        // And the SignalExtractor.enrich must preserve this fallback when history.jsonl is absent
+        let extractor = SignalExtractor(baseDirectory: base)
+        let enriched = extractor.enrich(inputs.signals)
+        check(!enriched.historyDisplayTexts.isEmpty,
+              "SignalExtractor.enrich must NOT wipe jsonl-derived history when history.jsonl is empty")
+    }
+
+    /// Bug D regression: extractEnhanceInputs emits position-labeled rawTurns.
+    static func testExtractEnhanceInputsLabelsRawTurnsByPosition() {
+        let base = createTempDir()
+        defer { cleanup(base) }
+        let projectDir = base + "/projects/-Users-test-cozerepo"
+        try! FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        let sid = "enhance-labels-\(UUID().uuidString.prefix(8))"
+        try! buildTailBiasTestJSONL(sessionID: String(sid), topic: "coze")
+            .write(toFile: projectDir + "/\(sid).jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: String(sid))
+        let inputs = try! runAsync { try await provider.extractEnhanceInputs(for: ref) }
+
+        check(!inputs.rawTurns.isEmpty, "rawTurns should not be empty")
+        let hasHead = inputs.rawTurns.contains { $0.hasPrefix("[首]") }
+        let hasMid  = inputs.rawTurns.contains { $0.hasPrefix("[中]") }
+        check(hasHead, "rawTurns must include at least one [首] labelled turn, got: \(inputs.rawTurns.map { String($0.prefix(10)) })")
+        check(hasMid,  "rawTurns must include at least one [中] labelled turn, got: \(inputs.rawTurns.map { String($0.prefix(10)) })")
+        // Every turn is labelled — no bare rawTurn strings
+        for turn in inputs.rawTurns {
+            let labelled = turn.hasPrefix("[首]") || turn.hasPrefix("[中]") || turn.hasPrefix("[末]")
+            check(labelled, "every rawTurn must be position-labelled, got: \(turn.prefix(30))")
         }
     }
 

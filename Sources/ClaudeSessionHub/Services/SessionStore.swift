@@ -253,13 +253,12 @@ public final class SessionStore: @unchecked Sendable {
             throw LLMClient.LLMError.notConfigured
         }
         guard let provider = await coordinator.provider(for: ref.providerID) as? ClaudeProvider,
-              var signals = try? await provider.extractSignals(for: ref) else { return }
-        signals = signalExtractor.enrich(signals)
-
-        // Extract key conversation turns for richer LLM context
-        // For long sessions (>100 entries), sample more turns spread across the session
-        let maxTurns = signals.totalEntryCount > 100 ? 8 : 5
-        let rawTurns = (try? await provider.extractKeyTurns(for: ref, maxTurns: maxTurns)) ?? []
+              let inputs = try? await provider.extractEnhanceInputs(for: ref) else { return }
+        // Full-scan signals (including jsonl-derived historyDisplayTexts
+        // fallback) are then enriched with tasks/ and, if present,
+        // ~/.claude/history.jsonl rows (which take precedence when non-empty).
+        let signals = signalExtractor.enrich(inputs.signals)
+        let rawTurns = inputs.rawTurns
 
         let session = sessions.first { $0.ref == ref }
         let lastActiveAt = session?.lastActiveAt ?? Date()
