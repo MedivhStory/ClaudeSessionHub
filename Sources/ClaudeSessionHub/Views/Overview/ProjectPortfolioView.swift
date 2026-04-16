@@ -11,6 +11,7 @@ struct ProjectPortfolioView: View {
             Text("Project Portfolio")
                 .font(.subheadline)
                 .fontWeight(.semibold)
+                .accessibilityAddTraits(.isHeader)
 
             ForEach(sortedProjectNames, id: \.self) { name in
                 projectCard(name: name, sessions: projects[name] ?? [])
@@ -24,6 +25,7 @@ struct ProjectPortfolioView: View {
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
+                    .accessibilityAddTraits(.isHeader)
 
                 ForEach(recentlyFinished, id: \.ref) { session in
                     finishedRow(session)

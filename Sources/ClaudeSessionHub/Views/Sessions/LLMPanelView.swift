@@ -23,6 +23,7 @@ struct LLMPanelView: View {
             Label("AI 理解", systemImage: "sparkles")
                 .font(.system(size: 12))
                 .foregroundStyle(.purple)
+                .accessibilityAddTraits(.isHeader)
 
             if let snap = snapshot {
                 snapshotContent(snap)
