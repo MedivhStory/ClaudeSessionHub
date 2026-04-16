@@ -289,6 +289,65 @@ final class ClaudeProviderXCTests: XCTestCase {
         XCTAssertEqual(detail.modelInfo?.contextLimit, 200_000)
     }
 
+    // MARK: - v0.2.8.2 Synthetic tail regression
+
+    /// Regression: sessions ending with <synthetic> assistant entries must not
+    /// report zero contextUsage. extractContextUsage should skip synthetic entries
+    /// and return the last real assistant's usage snapshot.
+    func testContextUsageSkipsSyntheticTailEntries() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+
+        // Real assistant entry followed by synthetic tail entries (model: <synthetic>, all-zero usage)
+        let jsonl = [
+            #"{"type":"system","timestamp":"2026-04-14T10:00:00Z","cwd":"/tmp","gitBranch":"main"}"#,
+            #"{"type":"user","message":{"role":"user","content":"帮我检查代码"},"timestamp":"2026-04-14T10:00:01Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"claude-opus-4-6","content":[{"type":"text","text":"好的"}],"usage":{"input_tokens":3,"output_tokens":591,"cache_creation_input_tokens":754777,"cache_read_input_tokens":0}},"timestamp":"2026-04-14T10:00:02Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"<synthetic>","content":[{"type":"text","text":""}],"usage":{"input_tokens":0,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}},"timestamp":"2026-04-14T10:00:03Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"<synthetic>","content":[{"type":"text","text":""}],"usage":{"input_tokens":0,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}},"timestamp":"2026-04-14T10:00:04Z"}"#
+        ].joined(separator: "\n")
+        try jsonl.write(toFile: projectDir + "/synthetic-tail.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let sessions = try await provider.discoverSessions()
+        let ctx = sessions.first?.contextUsage
+
+        XCTAssertNotNil(ctx, "contextUsage should not be nil")
+        // Must reflect the real assistant entry, not the synthetic zeros
+        XCTAssertEqual(ctx?.inputTokens, 3, "should be real inputTokens, not 0")
+        XCTAssertEqual(ctx?.cacheCreationTokens, 754777, "should be real cacheCreation, not 0")
+        XCTAssertGreaterThan(ctx?.promptContext ?? 0, 0, "promptContext must be > 0")
+    }
+
+    /// Regression: sumCumulativeTokens should also skip synthetic entries so
+    /// the cumulative count is not polluted by zero-token sentinels.
+    func testCumulativeTokensSkipsSyntheticEntries() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+
+        let jsonl = [
+            #"{"type":"system","timestamp":"2026-04-14T10:00:00Z","cwd":"/tmp","gitBranch":"main"}"#,
+            #"{"type":"user","message":{"role":"user","content":"start"},"timestamp":"2026-04-14T10:00:01Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"claude-opus-4-6","content":[{"type":"text","text":"ok"}],"usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":200,"cache_read_input_tokens":0}},"timestamp":"2026-04-14T10:00:02Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"<synthetic>","content":[{"type":"text","text":""}],"usage":{"input_tokens":0,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}},"timestamp":"2026-04-14T10:00:03Z"}"#
+        ].joined(separator: "\n")
+        try jsonl.write(toFile: projectDir + "/synthetic-cumul.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: "synthetic-cumul")
+        let detail = try await provider.loadSessionDetail(for: ref)
+
+        XCTAssertNotNil(detail.cumulativeTokens)
+        XCTAssertEqual(detail.cumulativeTokens?.inputTokens, 100)
+        XCTAssertEqual(detail.cumulativeTokens?.outputTokens, 50)
+    }
+
     // MARK: - v0.2 Signal Extraction Tests
 
     func testEntrypointExtracted() async throws {

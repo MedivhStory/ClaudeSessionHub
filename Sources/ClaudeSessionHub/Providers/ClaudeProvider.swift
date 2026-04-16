@@ -289,10 +289,12 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
     // MARK: - contextUsage
 
     private func extractContextUsage(from entries: [[String: Any]]) -> ContextUsage? {
-        // Find last assistant entry with message.usage
+        // Find last real assistant entry with message.usage.
+        // Skip <synthetic> sentinel entries that Claude Code appends with all-zero tokens.
         for entry in entries.reversed() {
             guard entry["type"] as? String == "assistant" else { continue }
             guard let message = entry["message"] as? [String: Any] else { continue }
+            if message["model"] as? String == "<synthetic>" { continue }
             guard let usage = message["usage"] as? [String: Any] else { continue }
 
             let inputTokens = usage["input_tokens"] as? Int ?? 0
