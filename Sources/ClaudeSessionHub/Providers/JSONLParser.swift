@@ -185,9 +185,32 @@ public enum JSONLParser {
             // Parse JSON; skip malformed lines silently
             guard let parsed = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else { return }
 
-            // Qualifying user turn filter
+            // Qualifying user turn filter — must carry real user text.
+            //
+            // Claude Code user entries can take three shapes:
+            //   1. `message.content` as String              → real text (legacy/slash-command path)
+            //   2. `message.content` as [text blocks]       → real text (structured content API)
+            //   3. `message.content` as [tool_result, ...]  → tool call return, NOT user intent
+            //
+            // Shape 3 is noise and previously dominated middle samples in
+            // heavy-tool sessions, starving the LLM prompt of real text turns.
+            // Accept shapes 1 and 2; reject shape 3.
             guard parsed["type"] as? String == "user",
-                  (parsed["isMeta"] as? Bool) != true else { return }
+                  (parsed["isMeta"] as? Bool) != true,
+                  let message = parsed["message"] as? [String: Any] else { return }
+            let content = message["content"]
+            if content is String {
+                // Shape 1 — accept
+            } else if let blocks = content as? [[String: Any]] {
+                // Shape 2 vs 3 — accept only if at least one block is a text block
+                let hasTextBlock = blocks.contains { block in
+                    (block["type"] as? String) == "text" &&
+                    !((block["text"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                }
+                guard hasTextBlock else { return }
+            } else {
+                return
+            }
 
             // Determine bucket
             let offsetInMiddle = lineIndex - middleStart

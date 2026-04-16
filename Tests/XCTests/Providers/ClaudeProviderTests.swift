@@ -443,4 +443,105 @@ final class ClaudeProviderXCTests: XCTestCase {
         XCTAssertEqual(signalsA.versionMentions, signalsB.versionMentions)
         XCTAssertFalse(signalsA.versionMentions.isEmpty)
     }
+
+    // MARK: - v0.2.8.1 extractEnhanceInputs regression
+
+    /// Build a jsonl shaped like a real sdk-cli session: first 15 lines are
+    /// slash-command wrappers + meta caveats (all noise), middle 70 lines are
+    /// real user turns discussing a topic, last 60 lines are tool_result
+    /// arrays (which look like user entries but have no text content).
+    /// The real first/last text turns sit outside the 10+50 window.
+    private func buildTailBiasTestJSONL(sessionID: String, topic: String) -> String {
+        var lines: [String] = []
+        lines.append("{\"type\":\"user\",\"isMeta\":true,\"sessionId\":\"\(sessionID)\",\"message\":{\"role\":\"user\",\"content\":\"<local-command-caveat>n0</local-command-caveat>\"}}")
+        for _ in 0..<4 {
+            lines.append("{\"type\":\"user\",\"isMeta\":true,\"message\":{\"role\":\"user\",\"content\":\"<local-command-caveat>noise</local-command-caveat>\"}}")
+            lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"<command-name>/model</command-name>\"}}")
+            lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"<local-command-stdout>Set model</local-command-stdout>\"}}")
+        }
+        // Entry 16: the real first user intent mentioning the topic
+        lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"我在 \(topic) 平台上搭一个 workflow，帮我理清思路\"},\"cwd\":\"/Users/test/\(topic)\",\"gitBranch\":\"HEAD\"}")
+        for i in 0..<60 {
+            lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"关于 \(topic) 的第 \(i) 条讨论内容，需要继续优化\"}}")
+        }
+        for _ in 0..<10 {
+            lines.append("{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-test\",\"content\":[{\"type\":\"text\",\"text\":\"好的我理解了 \(topic) 的需求\"}]}}")
+        }
+        for i in 0..<30 {
+            lines.append("{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"点击 selector.\(i) 但 innerText 仍为空\"}]}}")
+            lines.append("{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t\(i)\",\"content\":\"[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"Dragged\\\"}]\"}]}}")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    func testExtractEnhanceInputsRecoversIntentOutsideWindow() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+        let projectDir = base + "/projects/-Users-test-cozerepo"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        let sid = "enhance-recover-\(UUID().uuidString.prefix(8))"
+        try buildTailBiasTestJSONL(sessionID: String(sid), topic: "coze")
+            .write(toFile: projectDir + "/\(sid).jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: String(sid))
+        let inputs = try await provider.extractEnhanceInputs(for: ref)
+
+        XCTAssertNotNil(inputs.signals.firstUserIntent,
+                        "firstUserIntent must be recovered via full scan when real first turn is outside the 10-entry window")
+        XCTAssertTrue(inputs.signals.firstUserIntent?.contains("coze") == true,
+                      "firstUserIntent should mention 'coze', got: \(inputs.signals.firstUserIntent ?? "nil")")
+        XCTAssertNotNil(inputs.signals.lastUserIntent,
+                        "lastUserIntent must be recovered via full scan when real last user turn is buried before tool_result tail")
+    }
+
+    func testExtractEnhanceInputsPopulatesJsonlHistoryFallback() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+        let projectDir = base + "/projects/-Users-test-cozerepo"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        let sid = "enhance-history-\(UUID().uuidString.prefix(8))"
+        try buildTailBiasTestJSONL(sessionID: String(sid), topic: "coze")
+            .write(toFile: projectDir + "/\(sid).jsonl", atomically: true, encoding: .utf8)
+        // Deliberately do NOT create base + "/history.jsonl"
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: String(sid))
+        let inputs = try await provider.extractEnhanceInputs(for: ref)
+
+        XCTAssertFalse(inputs.signals.historyDisplayTexts.isEmpty,
+                       "historyDisplayTexts should fall back to jsonl-derived user-text stream")
+        XCTAssertGreaterThanOrEqual(inputs.signals.historyCount, 30,
+                                    "historyCount should reflect the real user text turns from jsonl")
+
+        // And SignalExtractor.enrich must preserve the fallback when history.jsonl is absent.
+        let extractor = SignalExtractor(baseDirectory: base)
+        let enriched = extractor.enrich(inputs.signals)
+        XCTAssertFalse(enriched.historyDisplayTexts.isEmpty,
+                       "SignalExtractor.enrich must NOT wipe jsonl-derived history when history.jsonl has no rows")
+    }
+
+    func testExtractEnhanceInputsLabelsRawTurnsByPosition() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+        let projectDir = base + "/projects/-Users-test-cozerepo"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+        let sid = "enhance-labels-\(UUID().uuidString.prefix(8))"
+        try buildTailBiasTestJSONL(sessionID: String(sid), topic: "coze")
+            .write(toFile: projectDir + "/\(sid).jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let ref = SessionRef(providerID: "claude", sessionID: String(sid))
+        let inputs = try await provider.extractEnhanceInputs(for: ref)
+
+        XCTAssertFalse(inputs.rawTurns.isEmpty, "rawTurns should not be empty")
+        XCTAssertTrue(inputs.rawTurns.contains { $0.hasPrefix("[首]") },
+                      "rawTurns must include at least one [首] labelled turn")
+        XCTAssertTrue(inputs.rawTurns.contains { $0.hasPrefix("[中]") },
+                      "rawTurns must include at least one [中] labelled turn")
+        for turn in inputs.rawTurns {
+            let labelled = turn.hasPrefix("[首]") || turn.hasPrefix("[中]") || turn.hasPrefix("[末]")
+            XCTAssertTrue(labelled, "every rawTurn must be position-labelled, got: \(turn.prefix(30))")
+        }
+    }
 }

@@ -216,9 +216,27 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     private func extractStringContent(from entry: [String: Any]) -> String? {
         guard let message = entry["message"] as? [String: Any] else { return nil }
-        // content can be a String or an Array
+        // Claude Code JSONL user content can be:
+        //   • a plain String (legacy shape for slash-command wrappers)
+        //   • an array of content blocks; blocks can be:
+        //       - `{ "type": "text", "text": "..." }`  → real user text
+        //       - `{ "type": "tool_result", ... }`     → tool call return, NOT user intent
+        //   We return the joined text of all text blocks (if any). Arrays
+        //   containing only tool_result blocks return nil (treated as noise).
         if let content = message["content"] as? String {
-            return content.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        if let blocks = message["content"] as? [[String: Any]] {
+            var texts: [String] = []
+            for block in blocks {
+                guard block["type"] as? String == "text",
+                      let text = block["text"] as? String else { continue }
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { texts.append(trimmed) }
+            }
+            if texts.isEmpty { return nil }
+            return texts.joined(separator: " ")
         }
         return nil
     }
@@ -238,18 +256,14 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
     private func extractCurrentTaskSummary(from entries: [[String: Any]]) -> String? {
         // Reverse scan for last user entry that is:
         // - not isMeta
-        // - has plain String content (not array / tool_result)
+        // - has real text content (String or array-of-text-blocks; tool_result
+        //   arrays are rejected by extractStringContent)
         // - not an internal command or system noise
         for entry in entries.reversed() {
             guard entry["type"] as? String == "user" else { continue }
             guard entry["isMeta"] as? Bool != true else { continue }
-            guard let message = entry["message"] as? [String: Any] else { continue }
-            // Must be plain string content, not array (tool_result)
-            guard let content = message["content"] as? String else { continue }
-            let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let trimmed = extractStringContent(from: entry) else { continue }
             if trimmed.isEmpty { continue }
-            // Skip internal noise: local-command-stdout, local-command-caveat,
-            // command-name tags, /resume, /login, task-notification
             if isInternalCommandNoise(trimmed) { continue }
             return truncate(trimmed, to: 80)
         }
@@ -388,8 +402,9 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
     // MARK: - turnCount
 
     /// Prefer system subtype == turn_duration events (structural, accurate).
-    /// Fallback to counting non-meta user messages with plain string content
-    /// (excludes tool_result entries which are also type=="user").
+    /// Fallback to counting non-meta user messages that contain any real text
+    /// (either String content or an array with at least one text block).
+    /// Tool-result arrays are correctly excluded by `extractStringContent`.
     private func countUserTurns(from entries: [[String: Any]]) -> Int {
         // Try structured turn_duration events first
         let turnDurationCount = entries.filter { entry in
@@ -397,13 +412,10 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         }.count
         if turnDurationCount > 0 { return turnDurationCount }
 
-        // Fallback: count non-meta user entries with string content only
-        // (tool_result entries have array content, not string)
         return entries.filter { entry in
             guard entry["type"] as? String == "user" else { return false }
             guard entry["isMeta"] as? Bool != true else { return false }
-            guard let message = entry["message"] as? [String: Any] else { return false }
-            return message["content"] is String
+            return extractStringContent(from: entry) != nil
         }.count
     }
 
@@ -501,6 +513,8 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     /// Extract key user + assistant text turns for LLM context.
     /// Uses head (10) + middle sample + tail (50) to avoid full file parse.
+    /// Kept for callers that want the cheap (windowed) path; the LLM enhance
+    /// flow uses `extractEnhanceInputs` instead, which reads the full file.
     public func extractKeyTurns(for ref: SessionRef, maxTurns: Int = 5) async throws -> [String] {
         let path = try findJSONLPath(for: ref.sessionID)
         let firstEntries = try JSONLParser.readFirstEntries(at: path, count: 10)
@@ -543,6 +557,127 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
             sampled.append(turns[min(Int(Double(i) * step), turns.count - 1)])
         }
         return sampled
+    }
+
+    /// Bundled result of a single full-file pass for the LLM enhance path.
+    public struct EnhanceInputs: Sendable {
+        public let signals: SessionSignals
+        public let rawTurns: [String]
+    }
+
+    /// Full-scan extraction used only by the LLM enhance flow.
+    ///
+    /// This path reads every entry of the session JSONL (unlike the cheap
+    /// head-10 / tail-50 window used by `extractSignals`). It fixes three
+    /// classes of silent failure seen on heavy-tool / sdk-cli sessions:
+    ///
+    /// - `firstUserIntent` / `lastUserIntent` no longer nil just because the
+    ///   real text turns happen to sit outside the 60-entry window.
+    /// - `historyDisplayTexts` is populated directly from the JSONL user
+    ///   stream when the external `~/.claude/history.jsonl` has no rows for
+    ///   this session (common for `entrypoint: sdk-cli`).
+    /// - `rawTurns` are position-labeled `[首]` / `[中]` / `[末]` so the
+    ///   system prompt's anti-tail-bias rule has concrete anchors to bind to.
+    public func extractEnhanceInputs(for ref: SessionRef) async throws -> EnhanceInputs {
+        let path = try findJSONLPath(for: ref.sessionID)
+        let allEntries = try JSONLParser.readAllEntries(at: path)
+
+        var signals = SessionSignals(sessionID: ref.sessionID)
+        signals.entrypoint = extractEntrypoint(from: allEntries)
+        signals.branch = extractBranch(from: allEntries)
+        signals.slug = extractSlug(from: allEntries)
+        signals.firstUserIntent = extractFirstUserIntent(from: allEntries)
+        signals.lastUserIntent = extractCurrentTaskSummary(from: allEntries)
+        signals.lastAssistantProgress = extractLastCompletedProgress(from: allEntries)
+        let (tools, files) = extractToolsAndFiles(from: allEntries)
+        signals.toolsUsed = tools
+        signals.filesModified = files
+        signals.isSidechain = allEntries.contains { $0["isSidechain"] as? Bool == true }
+        signals.turnCount = countUserTurns(from: allEntries)
+        signals.hasAssistantReply = allEntries.contains { $0["type"] as? String == "assistant" }
+
+        let (cmds, errors) = extractCommandInfo(from: allEntries)
+        signals.slashCommands = cmds
+        signals.commandErrors = errors
+
+        signals.totalEntryCount = Self.countLines(at: path)
+
+        // Jsonl-derived user-text history — fallback source for MilestoneSampler
+        // when ~/.claude/history.jsonl has no rows for this session.
+        // SignalExtractor.enrich() will preserve this unless history.jsonl has content.
+        let jsonlHistory = extractUserTextHistory(from: allEntries)
+        signals.historyDisplayTexts = jsonlHistory
+        signals.historyCount = jsonlHistory.count
+
+        signals.versionMentions = VersionMentionExtractor.extract(from: signals)
+
+        // Position-labeled rawTurns sampled from user text turns across the file.
+        let maxTurns = signals.totalEntryCount > 100 ? 8 : 5
+        let rawTurns = extractLabeledUserTurns(from: allEntries, maxTurns: maxTurns)
+
+        return EnhanceInputs(signals: signals, rawTurns: rawTurns)
+    }
+
+    /// Collect all non-meta, non-noise user text turns in chronological order.
+    /// Used both to populate `historyDisplayTexts` fallback and as the source
+    /// pool for `extractLabeledUserTurns`. Accepts both String and text-block
+    /// array shapes via `extractStringContent`.
+    private func extractUserTextHistory(from entries: [[String: Any]]) -> [String] {
+        var out: [String] = []
+        for entry in entries {
+            guard entry["type"] as? String == "user" else { continue }
+            guard entry["isMeta"] as? Bool != true else { continue }
+            guard let cleaned = extractStringContent(from: entry) else { continue }
+            if cleaned.isEmpty || isInternalCommandNoise(cleaned) { continue }
+            out.append(cleaned)
+        }
+        return out
+    }
+
+    /// Evenly sample `maxTurns` user text turns from `entries`, tagging each
+    /// with a position label. Labels are based on the turn's index inside the
+    /// filtered user-text stream (not on raw file line index), so 10% head and
+    /// 10% tail windows stay meaningful regardless of how much tool_result
+    /// noise surrounds the real turns.
+    private func extractLabeledUserTurns(from entries: [[String: Any]], maxTurns: Int) -> [String] {
+        // Collect qualifying turns (index inside filtered stream, text).
+        var collected: [String] = []
+        for entry in entries {
+            guard entry["type"] as? String == "user" else { continue }
+            guard entry["isMeta"] as? Bool != true else { continue }
+            guard let cleaned = extractStringContent(from: entry) else { continue }
+            if cleaned.isEmpty || isInternalCommandNoise(cleaned) { continue }
+            collected.append(String(cleaned.prefix(300)))
+        }
+        if collected.isEmpty { return [] }
+
+        // Evenly sample down to maxTurns (keep all if fewer).
+        let picked: [(pos: Int, text: String)]
+        if collected.count <= maxTurns {
+            picked = collected.enumerated().map { ($0.offset, $0.element) }
+        } else {
+            let step = Double(collected.count) / Double(maxTurns)
+            picked = (0..<maxTurns).map { i in
+                let idx = min(Int(Double(i) * step), collected.count - 1)
+                return (idx, collected[idx])
+            }
+        }
+
+        // Label by position inside the filtered user-text stream.
+        let total = collected.count
+        let headCut = max(total / 10, 1)          // first 10% (≥1)
+        let tailCut = max(total - max(total / 10, 1), 0) // last 10% (≥1)
+        return picked.map { item in
+            let label: String
+            if item.pos < headCut {
+                label = "[首]"
+            } else if item.pos >= tailCut {
+                label = "[末]"
+            } else {
+                label = "[中]"
+            }
+            return "\(label) 用户: \(item.text)"
+        }
     }
 
     // MARK: - Signal Extraction Helpers

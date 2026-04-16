@@ -80,10 +80,16 @@ public struct SignalExtractor: Sendable {
     public func enrich(_ jsonlSignals: SessionSignals) -> SessionSignals {
         var signals = jsonlSignals
 
-        // history.jsonl enrichment
+        // history.jsonl enrichment — only overwrite if the external history
+        // file has rows for this session. When it does not (common for
+        // `entrypoint: sdk-cli` sessions that bypass the Claude Code UI),
+        // we keep whatever the caller pre-populated from the session JSONL
+        // via ClaudeProvider.extractEnhanceInputs.
         let allHistory = historyDisplayTexts(for: signals.sessionID)
-        signals.historyDisplayTexts = allHistory
-        signals.historyCount = allHistory.count
+        if !allHistory.isEmpty {
+            signals.historyDisplayTexts = allHistory
+            signals.historyCount = allHistory.count
+        }
 
         // tasks/ enrichment
         let tasks = taskSignals(for: signals.sessionID)

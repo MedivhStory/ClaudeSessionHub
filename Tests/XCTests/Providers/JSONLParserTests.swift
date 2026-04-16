@@ -72,6 +72,10 @@ final class JSONLParserXCTests: XCTestCase {
     }
 
     func testWithSampleFixture() throws {
+        #if SWIFT_PACKAGE
+        // Only runs under SwiftPM where Bundle.module is available. The Xcode
+        // test target does not ship test fixtures as a resource bundle, so
+        // this scenario is covered by `swift test` only.
         guard let fixtureURL = Bundle.module.url(forResource: "sample-session", withExtension: "jsonl", subdirectory: "Fixtures") else {
             XCTFail("sample-session.jsonl fixture not found in bundle")
             return
@@ -83,6 +87,7 @@ final class JSONLParserXCTests: XCTestCase {
 
         let last = try JSONLParser.readLastEntries(at: fixturePath, count: 5)
         XCTAssertGreaterThan(last.count, 0, "should read at least 1 entry from fixture")
+        #endif
     }
 
     // MARK: - readSampledUserTurns tests (Task 4.1)
@@ -104,7 +109,7 @@ final class JSONLParserXCTests: XCTestCase {
 
     func test_readSampledUserTurns_fileSmallerThanSkipSum_returnsEmpty() throws {
         // skipHead=10 + skipTail=50 = 60; write only 5 lines
-        let lines = (0..<5).map { "{\"type\":\"user\",\"isMeta\":false,\"content\":\"line \($0)\"}" }
+        let lines = (0..<5).map { "{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"line \($0)\"}}" }
         let path = try writeJSONL(lines: lines)
         let result = try JSONLParser.readSampledUserTurns(at: path, count: 5)
         XCTAssertTrue(result.isEmpty)
@@ -114,7 +119,7 @@ final class JSONLParserXCTests: XCTestCase {
         // 70 lines: skip 10 head + 50 tail = 10 in middle; request K=20
         var lines: [String] = []
         for i in 0..<70 {
-            lines.append("{\"type\":\"user\",\"isMeta\":false,\"content\":\"m\(i)\"}")
+            lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"m\(i)\"}}")
         }
         let path = try writeJSONL(lines: lines)
         let result = try JSONLParser.readSampledUserTurns(at: path, count: 20)
@@ -126,15 +131,15 @@ final class JSONLParserXCTests: XCTestCase {
         // Same input, two calls → identical output
         var lines: [String] = []
         for i in 0..<100 {
-            lines.append("{\"type\":\"user\",\"isMeta\":false,\"content\":\"m\(i)\"}")
+            lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"m\(i)\"}}")
         }
         let path = try writeJSONL(lines: lines)
         let a = try JSONLParser.readSampledUserTurns(at: path, count: 5)
         let b = try JSONLParser.readSampledUserTurns(at: path, count: 5)
         XCTAssertEqual(a.count, b.count)
         // Compare content field across both results
-        let aContents = a.compactMap { $0["content"] as? String }
-        let bContents = b.compactMap { $0["content"] as? String }
+        let aContents = a.compactMap { ($0["message"] as? [String: Any])?["content"] as? String }
+        let bContents = b.compactMap { ($0["message"] as? [String: Any])?["content"] as? String }
         XCTAssertEqual(aContents, bContents)
     }
 
@@ -143,11 +148,11 @@ final class JSONLParserXCTests: XCTestCase {
         // bucketWidth=40/5=8, centers at middleStart + (i+0.5)*8 = 14, 22, 30, 38, 46
         var lines: [String] = []
         for i in 0..<100 {
-            lines.append("{\"type\":\"user\",\"isMeta\":false,\"content\":\"\(i)\"}")
+            lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"\(i)\"}}")
         }
         let path = try writeJSONL(lines: lines)
         let result = try JSONLParser.readSampledUserTurns(at: path, count: 5)
-        let picked = result.compactMap { $0["content"] as? String }
+        let picked = result.compactMap { ($0["message"] as? [String: Any])?["content"] as? String }
         // Should pick lines closest to centers 14, 22, 30, 38, 46
         XCTAssertEqual(picked, ["14", "22", "30", "38", "46"])
     }
@@ -174,14 +179,14 @@ final class JSONLParserXCTests: XCTestCase {
         for i in 0..<70 {
             // Indices 11, 13, 15, 17 are user; others are assistant (non-qualifying)
             if [11, 13, 15, 17].contains(i) {
-                lines.append("{\"type\":\"user\",\"isMeta\":false,\"content\":\"u\(i)\"}")
+                lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"u\(i)\"}}")
             } else {
                 lines.append("{\"type\":\"assistant\",\"content\":\"a\(i)\"}")
             }
         }
         let path = try writeJSONL(lines: lines)
         let result = try JSONLParser.readSampledUserTurns(at: path, count: 2)
-        let picked = result.compactMap { $0["content"] as? String }
+        let picked = result.compactMap { ($0["message"] as? [String: Any])?["content"] as? String }
         XCTAssertEqual(picked, ["u11", "u17"])
     }
 
@@ -190,11 +195,11 @@ final class JSONLParserXCTests: XCTestCase {
         var lines: [String] = []
         for i in 0..<100 {
             let isMeta = (i % 5 == 0)
-            lines.append("{\"type\":\"user\",\"isMeta\":\(isMeta),\"content\":\"\(i)\"}")
+            lines.append("{\"type\":\"user\",\"isMeta\":\(isMeta),\"message\":{\"content\":\"\(i)\"}}")
         }
         let path = try writeJSONL(lines: lines)
         let result = try JSONLParser.readSampledUserTurns(at: path, count: 5)
-        let picked = result.compactMap { $0["content"] as? String }.compactMap { Int($0) }
+        let picked = result.compactMap { ($0["message"] as? [String: Any])?["content"] as? String }.compactMap { Int($0) }
         // No picked index should be a multiple of 5
         for idx in picked {
             XCTAssertNotEqual(idx % 5, 0, "picked meta user at index \(idx)")
@@ -206,7 +211,7 @@ final class JSONLParserXCTests: XCTestCase {
         var lines: [String] = []
         for i in 0..<100 {
             if i % 2 == 0 {
-                lines.append("{\"type\":\"user\",\"isMeta\":false,\"content\":\"u\(i)\"}")
+                lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"u\(i)\"}}")
             } else {
                 lines.append("{\"type\":\"assistant\",\"content\":\"a\(i)\"}")
             }
@@ -223,7 +228,7 @@ final class JSONLParserXCTests: XCTestCase {
         var lines: [String] = []
         for i in 0..<100 {
             if i == 30 {
-                lines.append("{\"type\":\"user\",\"isMeta\":false,\"content\":\"lonely\"}")
+                lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"lonely\"}}")
             } else {
                 lines.append("{\"type\":\"assistant\",\"content\":\"a\(i)\"}")
             }
@@ -233,7 +238,7 @@ final class JSONLParserXCTests: XCTestCase {
         // Only 1 qualifying user turn in middle (at index 30) — result has ≤1 entry
         XCTAssertLessThanOrEqual(result.count, 1)
         if result.count == 1 {
-            XCTAssertEqual(result[0]["content"] as? String, "lonely")
+            XCTAssertEqual((result[0]["message"] as? [String: Any])?["content"] as? String, "lonely")
         }
     }
 
@@ -244,7 +249,7 @@ final class JSONLParserXCTests: XCTestCase {
             if i == 30 {
                 lines.append("this is not json")
             } else {
-                lines.append("{\"type\":\"user\",\"isMeta\":false,\"content\":\"\(i)\"}")
+                lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"\(i)\"}}")
             }
         }
         let path = try writeJSONL(lines: lines)
@@ -253,7 +258,7 @@ final class JSONLParserXCTests: XCTestCase {
         XCTAssertGreaterThan(result.count, 0)
         // The malformed line at index 30 must NOT appear
         for entry in result {
-            let content = entry["content"] as? String
+            let content = (entry["message"] as? [String: Any])?["content"] as? String
             XCTAssertNotNil(content)
         }
     }
@@ -262,7 +267,7 @@ final class JSONLParserXCTests: XCTestCase {
         // Write JSONL without trailing \n on the last line; Pass 1 must count the last line
         var lines: [String] = []
         for i in 0..<100 {
-            lines.append("{\"type\":\"user\",\"isMeta\":false,\"content\":\"\(i)\"}")
+            lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"\(i)\"}}")
         }
         let tmpDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
@@ -278,7 +283,7 @@ final class JSONLParserXCTests: XCTestCase {
         // 10k synthetic lines, all qualifying user turns
         var lines: [String] = []
         for i in 0..<10_000 {
-            lines.append("{\"type\":\"user\",\"isMeta\":false,\"content\":\"\(i)\"}")
+            lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"content\":\"\(i)\"}}")
         }
         let path = try writeJSONL(lines: lines)
         let result = try JSONLParser.readSampledUserTurns(at: path, count: 5)
@@ -288,12 +293,44 @@ final class JSONLParserXCTests: XCTestCase {
         let middleStart = 10
         let middleEnd = 10_000 - 50
         for entry in result {
-            guard let content = entry["content"] as? String, let idx = Int(content) else {
+            guard let content = (entry["message"] as? [String: Any])?["content"] as? String, let idx = Int(content) else {
                 XCTFail("expected integer content, got \(entry)")
                 continue
             }
             XCTAssertGreaterThanOrEqual(idx, middleStart)
             XCTAssertLessThan(idx, middleEnd)
+        }
+    }
+
+    // MARK: - v0.2.8.1 regression
+
+    /// Bug A: readSampledUserTurns must reject entries whose message.content
+    /// is not a String (tool_result array content). Previously the middle
+    /// sampler returned these silently, then downstream consumers dropped
+    /// them, starving the LLM prompt of real user text for heavy-tool sessions.
+    func testReadSampledUserTurnsSkipsToolResults() throws {
+        let tmp = NSTemporaryDirectory() + "test-sampled-filter-\(UUID().uuidString).jsonl"
+        var lines: [String] = []
+        for i in 0..<10 { lines.append("{\"type\":\"system\",\"idx\":\(i)}") }
+        let realTexts = ["关于 coze workflow 的设计问题", "讨论会议记录整理", "需要改进 operator 逻辑", "再确认一下 Selector 的行为", "coze 里这个下拉遮挡怎么解决"]
+        for i in 0..<10 {
+            if i % 2 == 0 {
+                lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"role\":\"user\",\"content\":\"\(realTexts[i/2])\"}}")
+            } else {
+                lines.append("{\"type\":\"user\",\"isMeta\":false,\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"content\":\"Dragged from A to B\"}]}}")
+            }
+        }
+        for i in 0..<50 { lines.append("{\"type\":\"system\",\"idx\":\(i)}") }
+        try lines.joined(separator: "\n").write(toFile: tmp, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(atPath: tmp) }
+
+        let sampled = try JSONLParser.readSampledUserTurns(at: tmp, count: 5)
+        XCTAssertEqual(sampled.count, 5, "should pick 5 qualifying user text entries, not tool_results")
+        for entry in sampled {
+            let msg = entry["message"] as? [String: Any]
+            XCTAssertTrue(msg?["content"] is String, "every sampled entry must have String content")
+            let content = msg?["content"] as? String ?? ""
+            XCTAssertFalse(content.contains("Dragged from"), "must not return tool_result payload as content")
         }
     }
 }

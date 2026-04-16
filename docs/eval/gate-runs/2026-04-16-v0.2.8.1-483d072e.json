@@ -1,0 +1,108 @@
+{
+  "artifactSchemaVersion" : "1",
+  "commitSHA" : "483d072efd9a7a6e31847146f3f7949ddc1e28dc",
+  "dslSchemaVersion" : "1",
+  "fixtureResults" : [
+    {
+      "id" : "real-snapshot-01",
+      "passed" : true,
+      "rawOutput" : {
+        "latencySeconds" : 5.596671938896179,
+        "summary" : "本 session 目标是完成 v0.2.7 到 v0.2.8 版本的更新检查与交付准备。目前已完成文档修订、fixture 验证、代码变更确认及合并策略审定，正待最终提交批准。遗留事项为按约定执行 squash merge 并推送至 main 分支。",
+        "title" : "v0.2.7 到 v0.2.8 版本交接与发布准备"
+      },
+      "snapshot" : {
+        "capturedAt" : "2026-04-13T04:07:38Z",
+        "sourceSessionID" : "real-snapshot-01"
+      },
+      "violations" : [
+
+      ]
+    },
+    {
+      "id" : "real-snapshot-02",
+      "passed" : true,
+      "rawOutput" : {
+        "latencySeconds" : 5.144891023635864,
+        "summary" : "本 session 目标是完成 v0.2.x 系列版本的收尾与交接，重点聚焦 CI 约束梳理和 handoff 文档更新。目前已审查并确认 Xcode 16.2 与 macos-15 的硬约束，同步更新了 MEMORY.md 和 handoff 文档中的 CI 段落。遗留工作包括将约束信息同步至其他相关文档，并为 v0.3.0 的 SSH 聚焦任务做好交接准备。",
+        "title" : "v0.2.x 系列版本开发收尾与交接"
+      },
+      "snapshot" : {
+        "capturedAt" : "2026-04-13T02:46:03Z",
+        "sourceSessionID" : "real-snapshot-02"
+      },
+      "violations" : [
+
+      ]
+    },
+    {
+      "id" : "synthetic-cross-version-range-01",
+      "passed" : true,
+      "rawOutput" : {
+        "latencySeconds" : 3.7415000200271606,
+        "summary" : "本 session 目标是完成 Claude Session Hub v0.2.5 到 v0.2.6 的开发与发布。目前已实现全部功能，集成测试通过，正准备打 v0.2.6 tag。需更新 CHANGELOG 并执行最终发布流程。",
+        "title" : "v0.2.5 到 v0.2.6 版本开发与发布"
+      },
+      "violations" : [
+
+      ]
+    },
+    {
+      "id" : "synthetic-empty-progress-01",
+      "passed" : true,
+      "rawOutput" : {
+        "latencySeconds" : 2.8234689235687256,
+        "summary" : "目标是诊断并解决用户构建失败的问题。目前已检查构建日志、Package.swift 依赖、编译器错误及 Swift 版本兼容性。问题尚未定位，用户暂告一段落。",
+        "title" : "排查 Swift 项目构建失败原因"
+      },
+      "violations" : [
+
+      ]
+    },
+    {
+      "id" : "synthetic-tail-bias-01",
+      "passed" : true,
+      "rawOutput" : {
+        "latencySeconds" : 3.738435983657837,
+        "summary" : "本 session 目标是开发 Claude Session Hub 的 v0.2.5 版本 LLM provider preset 功能。目前已完成 Gemini preset 添加、README 修正、测试覆盖及 changelog 更新，并已提交代码。所有核心修改已落地，无遗留任务。",
+        "title" : "v0.2.5 LLM provider preset 功能开发"
+      },
+      "violations" : [
+
+      ]
+    },
+    {
+      "id" : "synthetic-version-hallucination-01",
+      "passed" : true,
+      "rawOutput" : {
+        "latencySeconds" : 3.2448760271072388,
+        "summary" : "本 session 目标是将 Go 的 auth middleware 协议化重构并保持向后兼容。  \n目前已完成 interface 提取、protocol 化改造及全部单测通过。  \n遗留事项无，重构已在 refactor\/auth 分支的 auth\/middleware.go 中落地。",
+        "title" : "auth middleware protocol 化重构"
+      },
+      "violations" : [
+
+      ]
+    }
+  ],
+  "gateResult" : "PASS",
+  "generatedAt" : "2026-04-16T08:40:21Z",
+  "mode" : "release",
+  "model" : "qwen-plus",
+  "promptBuilderHash" : "sha256:3ca892d8fed42b127163d1be9d3ba74d6ff85cf2fd271e63725dec45a6dff88c",
+  "promptBuilderHashInputs" : {
+    "algorithm" : "sha256",
+    "sourceFiles" : [
+      "Sources\/ClaudeSessionHub\/Services\/LLMPrompts.swift",
+      "Sources\/ClaudeSessionHub\/Services\/SignalExtractor.swift"
+    ]
+  },
+  "provider" : "dashscope",
+  "summary" : {
+    "failedFixtures" : 0,
+    "passedFixtures" : 6,
+    "totalFixtures" : 6,
+    "totalViolations" : 0
+  },
+  "tagLabel" : "v0.2.8.1",
+  "temperature" : 0
+}

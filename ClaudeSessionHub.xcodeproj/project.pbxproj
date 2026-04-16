@@ -79,6 +79,15 @@
 		A0280006 /* MilestoneEntryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0280006; };
 		A0280007 /* VersionMentionExtractorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0280007; };
 		A0280008 /* MilestoneSamplerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0280008; };
+		A0290001 /* ClaudeProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290001; };
+		A0290002 /* JSONLParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290002; };
+		A0290003 /* CanonicalModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290003; };
+		A0290004 /* ArchiveStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290004; };
+		A0290005 /* HealthEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290005; };
+		A0290006 /* LLMPromptsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290006; };
+		A0290007 /* LabelStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290007; };
+		A0290008 /* ScanCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290008; };
+		A0290009 /* TerminalLauncherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290009; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -174,6 +183,15 @@
 		B0280006 /* MilestoneEntryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneEntryTests.swift; sourceTree = "<group>"; };
 		B0280007 /* VersionMentionExtractorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionMentionExtractorTests.swift; sourceTree = "<group>"; };
 		B0280008 /* MilestoneSamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneSamplerTests.swift; sourceTree = "<group>"; };
+		B0290001 /* ClaudeProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeProviderTests.swift; sourceTree = "<group>"; };
+		B0290002 /* JSONLParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONLParserTests.swift; sourceTree = "<group>"; };
+		B0290003 /* CanonicalModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanonicalModelsTests.swift; sourceTree = "<group>"; };
+		B0290004 /* ArchiveStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveStoreTests.swift; sourceTree = "<group>"; };
+		B0290005 /* HealthEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthEngineTests.swift; sourceTree = "<group>"; };
+		B0290006 /* LLMPromptsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPromptsTests.swift; sourceTree = "<group>"; };
+		B0290007 /* LabelStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabelStoreTests.swift; sourceTree = "<group>"; };
+		B0290008 /* ScanCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanCoordinatorTests.swift; sourceTree = "<group>"; };
+		B0290009 /* TerminalLauncherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLauncherTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -370,15 +388,26 @@
 			children = (
 				XCTINTEG /* Integration */,
 				XCTMODEL /* Models */,
+				XCTPROVD /* Providers */,
 				XCTSERVS /* Services */,
 			);
 			name = XCTests;
 			path = Tests/XCTests;
 			sourceTree = "<group>";
 		};
+		XCTPROVD /* Providers */ = {
+			isa = PBXGroup;
+			children = (
+				B0290001 /* ClaudeProviderTests.swift */,
+				B0290002 /* JSONLParserTests.swift */,
+			);
+			path = Providers;
+			sourceTree = "<group>";
+		};
 		XCTMODEL /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				B0290003 /* CanonicalModelsTests.swift */,
 				B0250009 /* LLMUnderstandingSnapshotTests.swift */,
 				B0280006 /* MilestoneEntryTests.swift */,
 				B0200007 /* SessionSignalsTests.swift */,
@@ -390,15 +419,21 @@
 		XCTSERVS /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				B0290004 /* ArchiveStoreTests.swift */,
+				B0290005 /* HealthEngineTests.swift */,
+				B0290007 /* LabelStoreTests.swift */,
 				B0250011 /* LLMClientTests.swift */,
 				B0250010 /* LLMConfigTests.swift */,
 				B0250012 /* LLMEnhancerTests.swift */,
+				B0290006 /* LLMPromptsTests.swift */,
 				B0280008 /* MilestoneSamplerTests.swift */,
 				B0200009 /* RuleTitleStrategyTests.swift */,
+				B0290008 /* ScanCoordinatorTests.swift */,
 				B0200011 /* SearchScoringTests.swift */,
 				B0270003 /* SecretStoreTests.swift */,
 				B0200012 /* SettingsStoreTests.swift */,
 				B0200008 /* SignalExtractorTests.swift */,
+				B0290009 /* TerminalLauncherTests.swift */,
 				B0200010 /* TitleStoreTests.swift */,
 				B0250013 /* UnderstandingStoreTests.swift */,
 				B0280007 /* VersionMentionExtractorTests.swift */,
@@ -588,6 +623,15 @@
 				A0280006 /* MilestoneEntryTests.swift in Sources */,
 				A0280007 /* VersionMentionExtractorTests.swift in Sources */,
 				A0280008 /* MilestoneSamplerTests.swift in Sources */,
+				A0290001 /* ClaudeProviderTests.swift in Sources */,
+				A0290002 /* JSONLParserTests.swift in Sources */,
+				A0290003 /* CanonicalModelsTests.swift in Sources */,
+				A0290004 /* ArchiveStoreTests.swift in Sources */,
+				A0290005 /* HealthEngineTests.swift in Sources */,
+				A0290006 /* LLMPromptsTests.swift in Sources */,
+				A0290007 /* LabelStoreTests.swift in Sources */,
+				A0290008 /* ScanCoordinatorTests.swift in Sources */,
+				A0290009 /* TerminalLauncherTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
