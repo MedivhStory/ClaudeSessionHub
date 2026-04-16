@@ -59,8 +59,12 @@ final class LLMPromptsTests: XCTestCase {
     }
 
     func test_titleInput_noInlineMilestoneKeywordFilter() {
-        // Guard against accidental re-introduction of the old inline code
+        #if SWIFT_PACKAGE
+        // Guard against accidental re-introduction of the old inline code.
+        // Only runs under SwiftPM where cwd is the repo root; xcodebuild
+        // runs from DerivedData, where relative source paths don't resolve.
         let source = try! String(contentsOfFile: "Sources/ClaudeSessionHub/Services/LLMPrompts.swift", encoding: .utf8)
         XCTAssertFalse(source.contains("let milestoneKeywords"), "inline milestone keyword filter should be removed")
+        #endif
     }
 }

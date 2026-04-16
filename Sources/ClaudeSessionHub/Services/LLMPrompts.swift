@@ -67,11 +67,14 @@ public enum LLMPrompts {
         }
 
         if !rawTurns.isEmpty {
-            // Pass all rawTurns provided by caller (already sampled upstream).
+            // Pass all rawTurns provided by caller (already sampled + position-labeled upstream).
+            // Labels [首] / [中] / [末] signal position inside the filtered user-text stream,
+            // so the anti-tail-bias rule in the system prompt can bind to concrete anchors
+            // even when historyDisplayTexts milestones are absent (sdk-cli sessions etc.).
             // Do NOT re-truncate here — the caller controls the count.
             let turnsSnippet = rawTurns
                 .map { String($0.prefix(300)) }.joined(separator: "\n---\n")
-            parts.append("关键对话片段（\(rawTurns.count) 条）:\n\(turnsSnippet)")
+            parts.append("关键对话片段（\(rawTurns.count) 条，带位置标签 [首]/[中]/[末]）:\n\(turnsSnippet)")
         }
 
         return parts.joined(separator: "\n")
@@ -83,7 +86,7 @@ public enum LLMPrompts {
     要求：
     - **严格不超过 30 个字**（含标点）；如果超出，删减后再返回
     - **标题必须反映 session 的主线 arc，不得仅反映最后几轮对话的局部主题**
-    - 判断主线 arc 时：优先参考 [首条]、[版本锚点] 标记的 milestone 条目，它们代表整个会话的脉络；[末条] 代表会话当前结束点，通常只是阶段性动作，不应主导标题
+    - 判断主线 arc 时：优先参考 [首条]、[版本锚点] 标记的 milestone 条目，以及"关键对话片段"中带 [首] / [中] 位置标签的条目——它们代表整个会话的脉络；[末条] 与 [末] 标签代表会话当前结束点，通常只是阶段性动作，不应主导标题
     - 如果 session 很长（总条目数 > 100 或轮次 > 100），标题**必须**概括整体方向，反例：session 讨论了 v0.2.5 到 v0.2.8 的开发收尾，不应写"更新 Xcode CI 文档"（那只是最后一步），应写"v0.2.x 系列开发收尾"或"Claude Session Hub v0.2 版本交接"
     - **优先使用反映主线 arc 的抽象级别表述，不要枚举具体子任务；如果一个 session 涉及多个子任务，用一个更高层的主题概括它们，而不是罗列**
       好示例：
