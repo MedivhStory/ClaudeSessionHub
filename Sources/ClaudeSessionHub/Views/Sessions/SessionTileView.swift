@@ -94,6 +94,9 @@ struct SessionTileView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("sessionTile_\(session.ref.sessionID)")
+        .accessibilityAction(named: isExpanded ? "折叠" : "展开详情") {
+            withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+        }
         .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() } }
         .contextMenu {
             Button("编辑备注") {
