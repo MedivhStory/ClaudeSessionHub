@@ -82,9 +82,29 @@ struct ClaudeSessionHubApp: App {
                     }
                 }
         }
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                AboutMenuItem()
+            }
+        }
         Settings {
             SettingsView()
                 .environment(store)
+        }
+        Window("关于 Claude Session Hub", id: "about") {
+            AboutView()
+        }
+        .windowResizability(.contentSize)
+    }
+}
+
+/// Helper view that holds @Environment(\.openWindow) for the menu item.
+private struct AboutMenuItem: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("关于 Claude Session Hub") {
+            openWindow(id: "about")
         }
     }
 }

@@ -88,6 +88,8 @@
 		A0290007 /* LabelStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290007; };
 		A0290008 /* ScanCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290008; };
 		A0290009 /* TerminalLauncherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290009; };
+		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
+		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -192,6 +194,8 @@
 		B0290007 /* LabelStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabelStoreTests.swift; sourceTree = "<group>"; };
 		B0290008 /* ScanCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanCoordinatorTests.swift; sourceTree = "<group>"; };
 		B0290009 /* TerminalLauncherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLauncherTests.swift; sourceTree = "<group>"; };
+		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -267,6 +271,8 @@
 		GRPAPP00 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				B0300001 /* AboutView.swift */,
+				B0300002 /* AppVersion.swift */,
 				B1000001 /* ClaudeSessionHubApp.swift */,
 			);
 			path = App;
@@ -590,6 +596,8 @@
 				A0280002 /* MilestoneEntry.swift in Sources */,
 				A0280003 /* VersionMentionExtractor.swift in Sources */,
 				A0280004 /* MilestoneSampler.swift in Sources */,
+				A0300001 /* AboutView.swift in Sources */,
+				A0300002 /* AppVersion.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
