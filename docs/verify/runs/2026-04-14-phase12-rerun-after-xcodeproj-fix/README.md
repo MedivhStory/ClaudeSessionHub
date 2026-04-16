@@ -1,5 +1,10 @@
 # Phase 12 rerun verify-run directory
 
+**Status: authoritative release-authorizing audit for v0.2.8.** The earlier
+`../2026-04-14-phase12-release-gate/accept-decision.md` is preserved in-repo as
+superseded audit history (see that directory's `README.md` for why). This
+rerun's `accept-decision.md` is the one that authorized the v0.2.8 ship.
+
 This is the verify-run output directory for the **Phase 12 RERUN** after the xcodeproj membership fix.
 
 ## Context
