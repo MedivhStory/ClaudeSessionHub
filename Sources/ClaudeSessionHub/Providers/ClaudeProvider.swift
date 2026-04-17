@@ -174,7 +174,7 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
 
     private func extractTitle(from entries: [[String: Any]], sessionID: String) -> String {
         let chinesePattern = "帮我|修复|重构|设计|实现|添加|创建|优化|调试|分析|配置|部署"
-        let englishPattern = "^(fix|add|create|build|implement|refactor|debug|update|remove|setup|configure|write|test|review|check|run)\\b"
+        let englishPattern = "^(fix|add|create|build|implement|refactor|debug|update|remove|setup|configure|write|test|review|check|run|generate|verify|read|use|proceed|stop|invoke|deploy|migrate|install|delete|move|rename|merge|push|pull|fetch|search|find|list|show|explain|analyze|clean|upgrade|downgrade|convert|parse|validate|publish|release|start|init|set|get|make|do|help|try|send|open|close|enable|disable|connect|disconnect)\\b"
 
         let nonMetaUserMessages = entries.filter { entry in
             guard entry["type"] as? String == "user" else { return false }
