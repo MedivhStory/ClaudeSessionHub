@@ -14,7 +14,7 @@
 
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue?logo=apple&logoColor=white)](https://www.apple.com/macos/sonoma/)
 [![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange?logo=swift&logoColor=white)](https://swift.org)
-[![Tests](https://img.shields.io/badge/测试-142%20单元%20%2B%2016%20UI-brightgreen)](.)
+[![Tests](https://img.shields.io/badge/测试-passing-brightgreen)](.)
 [![License](https://img.shields.io/badge/许可-MIT-lightgrey)](LICENSE)
 
 </div>
@@ -95,14 +95,14 @@ SessionStore (@Observable, @MainActor)
   └─ SettingsStore (settings.json + LLMConfig)
 ```
 
-应用设置存储在 `~/.claude-hub/`。
+所有会话数据均从 Claude Code 的本地数据目录读取（只读，从不修改）。
 
 ## 当前限制
 
 - Codex provider 为桩实现（协议已就绪）
 - 未做代码签名和公证（首次启动需右键打开）
 - AI 提示词为中文——纯英文模型可能效果欠佳
-- API Key 以明文存储在 settings.json（计划迁移 Keychain）
+- API Key 存储在独立本地文件中（受限权限），未使用 Keychain（计划在代码签名后迁移）
 
 ## 开发
 
@@ -113,10 +113,10 @@ SessionStore (@Observable, @MainActor)
 # 从源码运行
 swift run ClaudeSessionHub
 
-# 单元测试（142）
+# 单元测试
 swift test
 
-# UI 测试（16，需要 Xcode）
+# UI 测试（需要 Xcode）
 xcodebuild -project ClaudeSessionHub.xcodeproj \
   -scheme ClaudeSessionHub \
   -destination 'platform=macOS' \

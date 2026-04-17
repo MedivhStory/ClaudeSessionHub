@@ -14,7 +14,7 @@ Discover, organize, and understand your sessions across all projects — at a gl
 
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue?logo=apple&logoColor=white)](https://www.apple.com/macos/sonoma/)
 [![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange?logo=swift&logoColor=white)](https://swift.org)
-[![Tests](https://img.shields.io/badge/Tests-142%20unit%20%2B%2016%20UI-brightgreen)](.)
+[![Tests](https://img.shields.io/badge/Tests-passing-brightgreen)](.)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
 </div>
@@ -48,7 +48,7 @@ Claude Session Hub reads your local Claude Code data (`~/.claude/`) and gives yo
 
 ### Core Features
 
-- **Smart Session Naming** — Rule-based title generation from history.jsonl, tasks, and JSONL signals. Automatically cleans up command noise, pasted wrappers, file paths.
+- **Smart Session Naming** — Rule-based title generation from session history and task signals. Automatically cleans up command noise, pasted wrappers, file paths.
 - **Last Progress Tracking** — Answers "what was recently completed?" not "what was last said". Filters noise from permissions, resume, and system messages.
 - **Optional AI Enhancement** — Connect any OpenAI-compatible API to get AI-powered titles, progress summaries, and session overviews. Works with GPT-4o, Claude, or any compatible endpoint.
 - **Two-Column Expanded View** — Left: rule-based facts, files, operations. Right: AI understanding panel with title, progress, and summary.
@@ -97,23 +97,14 @@ SessionStore (@Observable, @MainActor)
   └─ SettingsStore (settings.json + LLMConfig)
 ```
 
-**Data sources** (read-only, never modified):
-
-| Source | Path | Purpose |
-|---|---|---|
-| Session JSONL | `~/.claude/projects/<key>/<id>.jsonl` | Session content |
-| Process metadata | `~/.claude/sessions/<pid>.json` | PID liveness |
-| History index | `~/.claude/history.jsonl` | User commands |
-| Tasks | `~/.claude/tasks/<id>/*.json` | Structured goals |
-
-App settings stored in `~/.claude-hub/`.
+All session data is read from Claude Code's local data directory (read-only, never modified).
 
 ## Current Limitations
 
 - Codex provider is a stub (protocol ready, no implementation)
 - Not code-signed or notarized (first launch requires right-click > Open)
 - AI prompt language is Chinese — may produce suboptimal results with English-only models
-- API key stored in plaintext in settings.json (Keychain migration planned)
+- API key is stored in a dedicated local file with restricted permissions, not in Keychain (Keychain migration planned after code signing)
 
 ## Development
 
@@ -127,16 +118,16 @@ swift run ClaudeSessionHub
 # Run from Xcode
 # Open Package.swift > select ClaudeSessionHub scheme > Cmd+R
 
-# Unit tests (142)
+# Unit tests
 swift test
 
-# Xcode unit tests (83)
+# Xcode unit tests
 xcodebuild -project ClaudeSessionHub.xcodeproj \
   -scheme ClaudeSessionHub \
   -destination 'platform=macOS' \
   test -only-testing:'ClaudeSessionHubTests'
 
-# UI tests (16, requires Xcode)
+# UI tests (requires Xcode)
 xcodebuild -project ClaudeSessionHub.xcodeproj \
   -scheme ClaudeSessionHub \
   -destination 'platform=macOS' \

@@ -23,6 +23,7 @@ struct LLMPanelView: View {
             Label("AI 理解", systemImage: "sparkles")
                 .font(.system(size: 12))
                 .foregroundStyle(.purple)
+                .accessibilityAddTraits(.isHeader)
 
             if let snap = snapshot {
                 snapshotContent(snap)
@@ -34,6 +35,7 @@ struct LLMPanelView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("llmPanel_\(session.ref.sessionID)")
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - State 1 & 2: Has snapshot
@@ -111,6 +113,7 @@ struct LLMPanelView: View {
                 .tint(.purple)
                 .controlSize(.mini)
                 .accessibilityIdentifier("regenerateAI_\(session.ref.sessionID)")
+                .accessibilityLabel("重新生成 AI 理解")
             }
         }
     }
@@ -129,6 +132,7 @@ struct LLMPanelView: View {
         }
         .buttonStyle(.bordered)
         .accessibilityIdentifier("generateAI_\(session.ref.sessionID)")
+        .accessibilityLabel("生成 AI 理解")
     }
 
     // MARK: - State 4: No snapshot, LLM not configured

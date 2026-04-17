@@ -74,6 +74,9 @@ struct AttentionInboxView: View {
                     .clipShape(Capsule())
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityLabel(count > 0 ? "\(title), \(count)" : title)
     }
 
     // MARK: - Attention Row (compact)
