@@ -113,14 +113,14 @@ private struct AboutMenuItem: View {
     }
 }
 
-/// Menu-bar command for batch AI enhance on all loaded sessions.
+/// Menu-bar command for batch AI enhance on all visible (non-archived) sessions.
 private struct BatchEnhanceMenuItem: View {
     @Environment(SessionStore.self) var store
 
     var body: some View {
-        Button("批量 AI 增强") {
+        Button("批量 AI 增强全部会话") {
             Task {
-                let refs = store.sessions.map(\.ref)
+                let refs = store.visibleSessions.map(\.ref)
                 let _ = await store.batchEnhanceLLM(sessions: refs)
             }
         }
