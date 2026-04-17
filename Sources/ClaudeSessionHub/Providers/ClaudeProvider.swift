@@ -513,54 +513,6 @@ public final class ClaudeProvider: AgentProvider, @unchecked Sendable {
         return signals
     }
 
-    /// Extract key user + assistant text turns for LLM context.
-    /// Uses head (10) + middle sample + tail (50) to avoid full file parse.
-    /// Kept for callers that want the cheap (windowed) path; the LLM enhance
-    /// flow uses `extractEnhanceInputs` instead, which reads the full file.
-    public func extractKeyTurns(for ref: SessionRef, maxTurns: Int = 5) async throws -> [String] {
-        let path = try findJSONLPath(for: ref.sessionID)
-        let firstEntries = try JSONLParser.readFirstEntries(at: path, count: 10)
-        let lastEntries = try JSONLParser.readLastEntries(at: path, count: 50)
-        // Also grab middle samples if file is large enough
-        let middleSamples = (try? JSONLParser.readSampledUserTurns(at: path, count: 5)) ?? []
-        let allEntries = mergeEntries(first: firstEntries, last: lastEntries) + middleSamples
-
-        var turns: [String] = []
-        for entry in allEntries {
-            guard let type = entry["type"] as? String else { continue }
-            guard let message = entry["message"] as? [String: Any] else { continue }
-
-            if type == "user" && entry["isMeta"] as? Bool != true {
-                if let content = message["content"] as? String {
-                    let cleaned = content.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !cleaned.isEmpty && !isInternalCommandNoise(cleaned) {
-                        turns.append("用户: \(String(cleaned.prefix(300)))")
-                    }
-                }
-            } else if type == "assistant" {
-                if let content = message["content"] as? String {
-                    turns.append("助手: \(String(content.prefix(300)))")
-                } else if let contentArray = message["content"] as? [[String: Any]] {
-                    for block in contentArray {
-                        if block["type"] as? String == "text", let text = block["text"] as? String {
-                            turns.append("助手: \(String(text.prefix(300)))")
-                            break
-                        }
-                    }
-                }
-            }
-        }
-
-        // Take evenly spaced turns if more than maxTurns
-        if turns.count <= maxTurns { return turns }
-        var sampled: [String] = []
-        let step = Double(turns.count) / Double(maxTurns)
-        for i in 0..<maxTurns {
-            sampled.append(turns[min(Int(Double(i) * step), turns.count - 1)])
-        }
-        return sampled
-    }
-
     /// Bundled result of a single full-file pass for the LLM enhance path.
     public struct EnhanceInputs: Sendable {
         public let signals: SessionSignals
