@@ -136,16 +136,4 @@ struct QuickFactsView: View {
         .buttonStyle(.bordered)
         .tint(color)
     }
-
-    private func contextBarColor(_ percentage: Double) -> Color {
-        if percentage >= 0.9 { return .red }
-        if percentage >= 0.75 { return .orange }
-        return .green
-    }
-
-    private func formatTokenCount(_ count: Int) -> String {
-        if count >= 1_000_000 { return String(format: "%.1fM", Double(count) / 1_000_000) }
-        if count >= 1_000 { return String(format: "%.1fk", Double(count) / 1_000) }
-        return "\(count)"
-    }
 }
