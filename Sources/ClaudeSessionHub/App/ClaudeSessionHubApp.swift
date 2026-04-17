@@ -86,6 +86,10 @@ struct ClaudeSessionHubApp: App {
             CommandGroup(replacing: .appInfo) {
                 AboutMenuItem()
             }
+            CommandMenu("AI") {
+                BatchEnhanceMenuItem()
+                    .environment(store)
+            }
         }
         Settings {
             SettingsView()
@@ -106,5 +110,21 @@ private struct AboutMenuItem: View {
         Button("关于 Claude Session Hub") {
             openWindow(id: "about")
         }
+    }
+}
+
+/// Menu-bar command for batch AI enhance on all loaded sessions.
+private struct BatchEnhanceMenuItem: View {
+    @Environment(SessionStore.self) var store
+
+    var body: some View {
+        Button("批量 AI 增强") {
+            Task {
+                let refs = store.sessions.map(\.ref)
+                let _ = await store.batchEnhanceLLM(sessions: refs)
+            }
+        }
+        .keyboardShortcut("e", modifiers: [.command, .shift])
+        .disabled(!store.settings.llmConfig.isConfigured || store.batchProgress != nil)
     }
 }
