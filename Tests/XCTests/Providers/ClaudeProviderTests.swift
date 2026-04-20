@@ -72,6 +72,34 @@ final class ClaudeProviderXCTests: XCTestCase {
         XCTAssertTrue(sessions.first?.title.contains("帮我重构") ?? false)
     }
 
+    /// Regression: sdk-cli sessions whose first user message starts with an
+    /// expanded-verb like "Generate" should get a title from that verb match,
+    /// not fall through to UUID prefix.
+    func testTitleMatchesExpandedEnglishVerbs() async throws {
+        let base = createTempDir()
+        defer { try? FileManager.default.removeItem(atPath: base) }
+
+        let projectDir = base + "/projects/myproject"
+        try FileManager.default.createDirectory(atPath: projectDir, withIntermediateDirectories: true)
+
+        // Simulate sdk-cli session: queue-operation noise + one user message with "Generate ..."
+        let jsonl = [
+            #"{"type":"queue-operation","operation":"enqueue","timestamp":"2026-04-14T07:00:00Z"}"#,
+            #"{"type":"queue-operation","operation":"dequeue","timestamp":"2026-04-14T07:00:00Z"}"#,
+            #"{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Generate metadata for a coding agent based on the user prompt."}]},"timestamp":"2026-04-14T07:00:01Z"}"#,
+            #"{"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"{\"title\": \"New Session\"}"}],"usage":{"input_tokens":100,"output_tokens":50}},"timestamp":"2026-04-14T07:00:02Z"}"#
+        ].joined(separator: "\n")
+        try jsonl.write(toFile: projectDir + "/sdk-cli-test.jsonl", atomically: true, encoding: .utf8)
+
+        let provider = ClaudeProvider(baseDirectory: base)
+        let sessions = try await provider.discoverSessions()
+
+        XCTAssertEqual(sessions.count, 1)
+        let title = sessions.first?.title ?? ""
+        XCTAssertTrue(title.contains("Generate metadata"), "should match expanded verb 'Generate', got: \(title)")
+        XCTAssertFalse(title.hasPrefix("sdk-cli-"), "should not fall back to session ID prefix")
+    }
+
     func testCwdAndBranchExtracted() async throws {
         let base = createTempDir()
         defer { try? FileManager.default.removeItem(atPath: base) }
