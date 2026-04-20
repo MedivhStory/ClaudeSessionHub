@@ -1,5 +1,64 @@
 # Changelog
 
+## [v0.2.8.3] - 2026-04-20
+
+### Added
+- Menu-bar "AI > 批量 AI 增强全部会话" command (⇧⌘E) for all visible non-archived sessions
+
+### Changed
+- Expanded English verb pattern from 16 to 60+ imperatives to reduce UUID fallback titles (partial fix — 10+50 entry window limitation still exists, deeper fix deferred)
+
+### Removed
+- `extractKeyTurns` public method (zero callers since v0.2.8.1, replaced by `extractEnhanceInputs`)
+- Dead `formatTokenCount` and `contextBarColor` from QuickFactsView
+
+---
+
+## [v0.2.8.2] - 2026-04-17
+
+### Added
+- About window with version, author, GitHub link, MIT license (`AppVersion.swift` as single version source)
+
+### Fixed
+- Token count showed 0 — `extractContextUsage` now skips `<synthetic>` sentinel entries with all-zero tokens
+- AI enhance unreachable by VoiceOver — added `.accessibilityAction` for tile expand/collapse and button labels
+- 5 section headings had no a11y labels — added `.isHeader` trait to AI 理解, Attention Inbox, Active Sessions, Project Portfolio, Recently Finished
+- AI config lost on restart — `SettingsStore.init()` now loads API key eagerly instead of deferring
+
+### Changed
+- README: removed `~/.claude/` sub-path enumeration from Data Sources section
+- README: test badge uses "passing" instead of hardcoded counts; API key limitation updated
+
+---
+
+## [v0.2.8.1] - 2026-04-16
+
+### Fixed
+- `firstUserIntent` / `lastUserIntent` recovery when real text is outside the 10+50 window
+- `historyDisplayTexts` fallback from JSONL when `history.jsonl` has no rows
+- `rawTurns` position-labelled with [首]/[中]/[末] markers
+- `SignalExtractor.enrich` preserves JSONL-derived history instead of wiping it
+- Dual-build test coverage added for all five `extractEnhanceInputs` fixes
+
+---
+
+## [v0.2.8] - 2026-04-15
+
+### Added
+- Eval harness CLI (`eval-harness`) for automated prompt quality evaluation
+- Release gate with fail-closed semantics and 8-way binding
+- Gate artifacts in `docs/eval/gate-runs/` (immutable audit history)
+- VersionMention model and VersionMentionExtractor for structured version extraction
+- MilestoneSampler for time-distributed + version-density history sampling
+- ExtractPromptSourcePlugin build plugin for prompt template hash binding
+- DesensitizeSession CLI for creating eval fixtures from real sessions
+
+### Changed
+- Prompt system improvements for title/progress/summary generation
+- `SessionSignals` extended with `versionMentions`, `totalEntryCount`, `slashCommands`, `commandErrors`
+
+---
+
 ## [v0.2.7] - 2026-04-10
 
 ### Security
