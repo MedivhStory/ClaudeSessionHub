@@ -126,7 +126,10 @@ public struct UnderstandingArtifact {
     let source: UnderstandingSource
     let trigger: UnderstandingTrigger
     let createdAt: Date
-    let sessionFingerprint: String   // hash of session state at generation
+    let sessionFingerprint: String?  // hash of session state at generation;
+                                     // required for .ai and .rule artifacts;
+                                     // optional for .manual (may be nil or
+                                     // inherit the current session fingerprint)
     let inputEvidenceRef: String?    // reference to evidence snapshot if any
     let staleState: StaleState
     let promptVersion: String?       // for AI artifacts
@@ -147,7 +150,8 @@ public struct SelectionEvent {
     let id: UUID
     let field: UnderstandingField
     let action: SelectionAction
-    let targetVersionID: UUID
+    let previousVersionID: UUID?  // pointer before this event; nil if pointer was unset
+    let targetVersionID: UUID     // pointer after this event
     let timestamp: Date
 }
 
@@ -166,7 +170,7 @@ public struct LegacyUnderstandingSnapshot {
     let title: String?
     let progress: String?
     let summary: String?
-    let generatedAt: Date
+    let generatedAt: Date?  // legacy data may lack a trustworthy generation time
     let modelName: String?
 }
 
@@ -508,15 +512,17 @@ before merge.
 
 After P7 merges, before tagging `v0.2.9`:
 
-1. Run milestone release gate:
+1. `CHANGELOG.md` must be updated with v0.2.9 Added / Changed / Fixed /
+   Removed entries (Keep a Changelog format) **before opening the release
+   PR**. The CHANGELOG update is independent of gate artifact ordering;
+   it only needs to be in place at PR-open time.
+2. Run milestone release gate:
    - `eval-harness live --release --tag v0.2.9` (produces gate artifact
      against synthetic fixtures).
    - `check-artifact --tag v0.2.9` (8-way binding validation).
    - Gate result must be `PASS`. Real-sample fixtures are advisory and
      not part of the gate.
-2. Commit gate artifact on the release branch.
-3. Update `CHANGELOG.md` with v0.2.9 Added / Changed / Fixed / Removed
-   entries (Keep a Changelog format).
+3. Commit gate artifact on the release branch.
 4. Open PR to `main`, CI green, merge with merge commit (no squash).
 5. Tag `v0.2.9` on the merge commit. Push tag.
 6. `release.yml` produces draft `.dmg` / `.zip`.
