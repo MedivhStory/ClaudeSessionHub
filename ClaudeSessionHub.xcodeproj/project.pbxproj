@@ -91,6 +91,8 @@
 		A0290010 /* UnderstandingArtifact.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290010; };
 		A0290011 /* UnderstandingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290011; };
 		A0290012 /* UnderstandingArtifactTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290012; };
+		A0290013 /* UnderstandingStoreV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290013; };
+		A0290014 /* UnderstandingStoreV2Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290014; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -200,6 +202,8 @@
 		B0290010 /* UnderstandingArtifact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingArtifact.swift; sourceTree = "<group>"; };
 		B0290011 /* UnderstandingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingState.swift; sourceTree = "<group>"; };
 		B0290012 /* UnderstandingArtifactTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingArtifactTests.swift; sourceTree = "<group>"; };
+		B0290013 /* UnderstandingStoreV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingStoreV2.swift; sourceTree = "<group>"; };
+		B0290014 /* UnderstandingStoreV2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingStoreV2Tests.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -335,6 +339,7 @@
 				B1000015 /* TerminalLauncher.swift */,
 				B0200005 /* TitleStore.swift */,
 				B0250006 /* UnderstandingStore.swift */,
+				B0290013 /* UnderstandingStoreV2.swift */,
 				B0280003 /* VersionMentionExtractor.swift */,
 			);
 			path = Services;
@@ -451,6 +456,7 @@
 				B0290009 /* TerminalLauncherTests.swift */,
 				B0200010 /* TitleStoreTests.swift */,
 				B0250013 /* UnderstandingStoreTests.swift */,
+				B0290014 /* UnderstandingStoreV2Tests.swift */,
 				B0280007 /* VersionMentionExtractorTests.swift */,
 			);
 			path = Services;
@@ -609,6 +615,7 @@
 				A0300002 /* AppVersion.swift in Sources */,
 				A0290010 /* UnderstandingArtifact.swift in Sources */,
 				A0290011 /* UnderstandingState.swift in Sources */,
+				A0290013 /* UnderstandingStoreV2.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -652,6 +659,7 @@
 				A0290008 /* ScanCoordinatorTests.swift in Sources */,
 				A0290009 /* TerminalLauncherTests.swift in Sources */,
 				A0290012 /* UnderstandingArtifactTests.swift in Sources */,
+				A0290014 /* UnderstandingStoreV2Tests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
