@@ -132,8 +132,10 @@ V2 store methods (`appendArtifact`, `setCurrentPointer`,
 | `Tests/XCTests/Services/UnderstandingDisplayPolicyTests.swift` | Precedence resolution, all combinations including manual paths |
 | `Tests/XCTests/Services/UnderstandingMigrationTests.swift` | Hybrid migration scenarios end-to-end |
 
-Mirror tests under `Tests/TestRunner/Services/` per dual-test-runner
-convention.
+Tests live under `Tests/XCTests/` only. The `Tests/TestRunner/` target
+contains a small selective subset (currently only `ClaudeProviderTests`)
+and is not maintained as a mirror — new tests do not need to be
+duplicated there.
 
 ---
 
