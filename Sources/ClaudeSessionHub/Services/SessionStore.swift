@@ -13,7 +13,16 @@ public final class SessionStore: @unchecked Sendable {
     public let archiveStore: ArchiveStore
     public let settings: SettingsStore
     public let titleStore: TitleStore
+    /// V1 understanding storage. Kept for dual-write compatibility during
+    /// v0.2.9. Will become read-only / removed in a later PR after V2 is
+    /// proven across P1/P2/P3.
     public let understandingStore: UnderstandingStore
+    /// V2 versioned understanding storage (v0.2.9, P1).
+    public let understandingV2: UnderstandingStoreV2
+    /// Read-only adapter over V1 file as legacy baseline source (v0.2.9, P1).
+    public let legacyAdapter: LegacyUnderstandingAdapter
+    /// Pure resolver for v0.2.9 display precedence (v0.2.9, P1).
+    public let displayPolicy: UnderstandingDisplayPolicy
     private let signalExtractor: SignalExtractor
     private let titleStrategy: any SessionTitleStrategy
     @MainActor private var historyTextsCache: [String: [String]] = [:]
@@ -27,7 +36,10 @@ public final class SessionStore: @unchecked Sendable {
                 titleStore: TitleStore = TitleStore(),
                 signalExtractor: SignalExtractor = SignalExtractor(),
                 titleStrategy: any SessionTitleStrategy = RuleTitleStrategy(),
-                understandingStore: UnderstandingStore = UnderstandingStore()) {
+                understandingStore: UnderstandingStore = UnderstandingStore(),
+                understandingV2: UnderstandingStoreV2 = UnderstandingStoreV2(),
+                legacyAdapter: LegacyUnderstandingAdapter = LegacyUnderstandingAdapter(),
+                displayPolicy: UnderstandingDisplayPolicy = UnderstandingDisplayPolicy()) {
         self.coordinator = coordinator
         self.labelStore = labelStore
         self.archiveStore = archiveStore
@@ -36,6 +48,9 @@ public final class SessionStore: @unchecked Sendable {
         self.signalExtractor = signalExtractor
         self.titleStrategy = titleStrategy
         self.understandingStore = understandingStore
+        self.understandingV2 = understandingV2
+        self.legacyAdapter = legacyAdapter
+        self.displayPolicy = displayPolicy
     }
 
     @MainActor
@@ -265,7 +280,58 @@ public final class SessionStore: @unchecked Sendable {
 
         let enhancer = LLMEnhancer(config: settings.llmConfig)
         guard let snapshot = await enhancer.enhance(signals: signals, rawTurns: rawTurns, basedOnLastActiveAt: lastActiveAt) else { return }
+        persistEnhancement(snapshot)
+    }
+
+    /// Persist an AI-generated snapshot with dual-write semantics:
+    /// - V1: existing `UnderstandingStore.setSnapshot` (preserves downgrade
+    ///   compatibility — pre-v0.2.9 builds keep reading current data).
+    /// - V2: `UnderstandingStoreV2.appendArtifact` for title + (optional)
+    ///   progress + (optional) summary. Pointer movement follows the C2
+    ///   rules (manual override, if any, is preserved).
+    ///
+    /// Either write may fail independently; failures are best-effort and
+    /// do not throw, matching the existing v0.2.7+ behavior.
+    @MainActor
+    func persistEnhancement(_ snapshot: LLMUnderstandingSnapshot) {
+        // V1 dual-write (existing path)
         understandingStore.setSnapshot(snapshot)
+
+        // V2 dual-write (new path) — convert snapshot fields to artifacts.
+        let sid = snapshot.sessionID
+        let titleArtifact = UnderstandingArtifact(
+            value: snapshot.title,
+            source: .ai,
+            trigger: .manualGenerate,
+            createdAt: snapshot.generatedAt,
+            staleState: .fresh,
+            modelName: snapshot.modelName
+        )
+        understandingV2.appendArtifact(for: sid, field: .title, titleArtifact)
+
+        if let progress = snapshot.progress, !progress.isEmpty {
+            let progressArtifact = UnderstandingArtifact(
+                value: progress,
+                source: .ai,
+                trigger: .manualGenerate,
+                createdAt: snapshot.generatedAt,
+                staleState: .fresh,
+                modelName: snapshot.modelName
+            )
+            understandingV2.appendArtifact(for: sid, field: .progress, progressArtifact)
+        }
+
+        if let summary = snapshot.summary, !summary.isEmpty {
+            let summaryArtifact = UnderstandingArtifact(
+                value: summary,
+                source: .ai,
+                trigger: .manualGenerate,
+                createdAt: snapshot.generatedAt,
+                staleState: .fresh,
+                modelName: snapshot.modelName
+            )
+            understandingV2.appendArtifact(for: sid, field: .summary, summaryArtifact)
+        }
     }
 
     /// LLM-enhance a specific list of sessions. User-triggered only.

@@ -46,6 +46,9 @@ struct ClaudeSessionHubApp: App {
         let archiveStore = ArchiveStore(directory: hubDirectory)
         let titleStore = TitleStore(directory: hubDirectory)
         let understandingStore = UnderstandingStore(directory: hubDirectory)
+        let understandingV2 = UnderstandingStoreV2(directory: hubDirectory)
+        let legacyAdapter = LegacyUnderstandingAdapter(directory: hubDirectory)
+        let displayPolicy = UnderstandingDisplayPolicy()
         let signalExtractor: SignalExtractor
         if isUITestMode {
             signalExtractor = SignalExtractor()
@@ -59,7 +62,10 @@ struct ClaudeSessionHubApp: App {
             settings: settings,
             titleStore: titleStore,
             signalExtractor: signalExtractor,
-            understandingStore: understandingStore
+            understandingStore: understandingStore,
+            understandingV2: understandingV2,
+            legacyAdapter: legacyAdapter,
+            displayPolicy: displayPolicy
         ))
     }
 
