@@ -93,6 +93,8 @@
 		A0290012 /* UnderstandingArtifactTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290012; };
 		A0290013 /* UnderstandingStoreV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290013; };
 		A0290014 /* UnderstandingStoreV2Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290014; };
+		A0290015 /* LegacyUnderstandingAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290015; };
+		A0290016 /* LegacyUnderstandingAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290016; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -204,6 +206,8 @@
 		B0290012 /* UnderstandingArtifactTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingArtifactTests.swift; sourceTree = "<group>"; };
 		B0290013 /* UnderstandingStoreV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingStoreV2.swift; sourceTree = "<group>"; };
 		B0290014 /* UnderstandingStoreV2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingStoreV2Tests.swift; sourceTree = "<group>"; };
+		B0290015 /* LegacyUnderstandingAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyUnderstandingAdapter.swift; sourceTree = "<group>"; };
+		B0290016 /* LegacyUnderstandingAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyUnderstandingAdapterTests.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -324,6 +328,7 @@
 				B1000032 /* ArchiveStore.swift */,
 				B1000010 /* HealthEngine.swift */,
 				B1000011 /* LabelStore.swift */,
+				B0290015 /* LegacyUnderstandingAdapter.swift */,
 				B0250003 /* LLMClient.swift */,
 				B0250002 /* LLMConfig.swift */,
 				B0250004 /* LLMEnhancer.swift */,
@@ -442,6 +447,7 @@
 				B0290004 /* ArchiveStoreTests.swift */,
 				B0290005 /* HealthEngineTests.swift */,
 				B0290007 /* LabelStoreTests.swift */,
+				B0290016 /* LegacyUnderstandingAdapterTests.swift */,
 				B0250011 /* LLMClientTests.swift */,
 				B0250010 /* LLMConfigTests.swift */,
 				B0250012 /* LLMEnhancerTests.swift */,
@@ -616,6 +622,7 @@
 				A0290010 /* UnderstandingArtifact.swift in Sources */,
 				A0290011 /* UnderstandingState.swift in Sources */,
 				A0290013 /* UnderstandingStoreV2.swift in Sources */,
+				A0290015 /* LegacyUnderstandingAdapter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -660,6 +667,7 @@
 				A0290009 /* TerminalLauncherTests.swift in Sources */,
 				A0290012 /* UnderstandingArtifactTests.swift in Sources */,
 				A0290014 /* UnderstandingStoreV2Tests.swift in Sources */,
+				A0290016 /* LegacyUnderstandingAdapterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
