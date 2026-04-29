@@ -95,6 +95,8 @@
 		A0290014 /* UnderstandingStoreV2Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290014; };
 		A0290015 /* LegacyUnderstandingAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290015; };
 		A0290016 /* LegacyUnderstandingAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290016; };
+		A0290017 /* UnderstandingDisplayPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290017; };
+		A0290018 /* UnderstandingDisplayPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290018; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -208,6 +210,8 @@
 		B0290014 /* UnderstandingStoreV2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingStoreV2Tests.swift; sourceTree = "<group>"; };
 		B0290015 /* LegacyUnderstandingAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyUnderstandingAdapter.swift; sourceTree = "<group>"; };
 		B0290016 /* LegacyUnderstandingAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyUnderstandingAdapterTests.swift; sourceTree = "<group>"; };
+		B0290017 /* UnderstandingDisplayPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingDisplayPolicy.swift; sourceTree = "<group>"; };
+		B0290018 /* UnderstandingDisplayPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingDisplayPolicyTests.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -343,6 +347,7 @@
 				B0200003 /* SignalExtractor.swift */,
 				B1000015 /* TerminalLauncher.swift */,
 				B0200005 /* TitleStore.swift */,
+				B0290017 /* UnderstandingDisplayPolicy.swift */,
 				B0250006 /* UnderstandingStore.swift */,
 				B0290013 /* UnderstandingStoreV2.swift */,
 				B0280003 /* VersionMentionExtractor.swift */,
@@ -461,6 +466,7 @@
 				B0200008 /* SignalExtractorTests.swift */,
 				B0290009 /* TerminalLauncherTests.swift */,
 				B0200010 /* TitleStoreTests.swift */,
+				B0290018 /* UnderstandingDisplayPolicyTests.swift */,
 				B0250013 /* UnderstandingStoreTests.swift */,
 				B0290014 /* UnderstandingStoreV2Tests.swift */,
 				B0280007 /* VersionMentionExtractorTests.swift */,
@@ -623,6 +629,7 @@
 				A0290011 /* UnderstandingState.swift in Sources */,
 				A0290013 /* UnderstandingStoreV2.swift in Sources */,
 				A0290015 /* LegacyUnderstandingAdapter.swift in Sources */,
+				A0290017 /* UnderstandingDisplayPolicy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -668,6 +675,7 @@
 				A0290012 /* UnderstandingArtifactTests.swift in Sources */,
 				A0290014 /* UnderstandingStoreV2Tests.swift in Sources */,
 				A0290016 /* LegacyUnderstandingAdapterTests.swift in Sources */,
+				A0290018 /* UnderstandingDisplayPolicyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
