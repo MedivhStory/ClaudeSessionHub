@@ -43,6 +43,46 @@ struct LLMPanelView: View {
         store.settings.llmConfig.isConfigured
     }
 
+    /// Metadata row data: (model, generatedAt, isStale).
+    ///
+    /// In P1, dual-write keeps the V1 snapshot in sync with V2 for any
+    /// AI-enhanced session. We use V1 first because it carries
+    /// `basedOnLastActiveAt`, which gives the stable stale signal users
+    /// already rely on. If a session never had V1 (would only happen
+    /// after dual-write is removed in a later PR), fall back to the
+    /// latest V2 AI artifact's `createdAt` as a proxy. Legacy-only
+    /// sessions surface model + generatedAt with no stale claim.
+    /// Returns nil when no AI / legacy content exists.
+    private var metadata: (model: String, time: Date, isStale: Bool)? {
+        let sid = session.ref.sessionID
+
+        if let snap = store.understandingStore.snapshot(for: sid) {
+            let stale = store.understandingStore.isStale(
+                for: sid, lastActiveAt: session.lastActiveAt
+            )
+            return (snap.modelName, snap.generatedAt, stale)
+        }
+
+        if let state = store.understandingV2.state(for: sid) {
+            let candidate = state.summaryVersions.last(where: { $0.source == .ai })
+                ?? state.titleVersions.last(where: { $0.source == .ai })
+                ?? state.progressVersions.last(where: { $0.source == .ai })
+            if let artifact = candidate {
+                let isStale = session.lastActiveAt > artifact.createdAt
+                return (artifact.modelName ?? "?", artifact.createdAt, isStale)
+            }
+        }
+
+        if let legacy = store.legacyAdapter.legacySnapshot(for: sid),
+           let when = legacy.generatedAt {
+            // Legacy carries no trustworthy staleness — never raise the
+            // 已过期 marker for legacy-only metadata.
+            return (legacy.modelName ?? "Legacy", when, false)
+        }
+
+        return nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("AI 理解", systemImage: "sparkles")
@@ -120,8 +160,29 @@ struct LLMPanelView: View {
                 .accessibilityIdentifier("legacyBaselineHint_\(session.ref.sessionID)")
         }
 
-        // Bottom action row.
+        // Bottom row: model · time · [已过期] · [regenerate]
         HStack(spacing: 6) {
+            if let meta = metadata {
+                Text(meta.model)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                Text("·").foregroundStyle(.quaternary)
+                Text(meta.time.relativeFormatted)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+
+                if meta.isStale {
+                    Text("·").foregroundStyle(.quaternary)
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
+                    Text("已过期")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("staleMarker_\(session.ref.sessionID)")
+                }
+            }
+
             if isConfigured {
                 Button {
                     Task { try? await store.enhanceWithLLM(for: session.ref) }
