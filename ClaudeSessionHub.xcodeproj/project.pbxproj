@@ -98,6 +98,8 @@
 		A0290017 /* UnderstandingDisplayPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290017; };
 		A0290018 /* UnderstandingDisplayPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290018; };
 		A0290019 /* UnderstandingMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290019; };
+		A0290020 /* SourceChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290020; };
+		A0290021 /* SessionStoreResolvedAccessorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290021; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -214,6 +216,8 @@
 		B0290017 /* UnderstandingDisplayPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingDisplayPolicy.swift; sourceTree = "<group>"; };
 		B0290018 /* UnderstandingDisplayPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingDisplayPolicyTests.swift; sourceTree = "<group>"; };
 		B0290019 /* UnderstandingMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingMigrationTests.swift; sourceTree = "<group>"; };
+		B0290020 /* SourceChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceChip.swift; sourceTree = "<group>"; };
+		B0290021 /* SessionStoreResolvedAccessorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreResolvedAccessorsTests.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -378,6 +382,7 @@
 				B0270002 /* DateFormatting.swift */,
 				B1000017 /* FilterChips.swift */,
 				B1000018 /* SearchBar.swift */,
+				B0290020 /* SourceChip.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -463,6 +468,7 @@
 				B0200009 /* RuleTitleStrategyTests.swift */,
 				B0290008 /* ScanCoordinatorTests.swift */,
 				B0200011 /* SearchScoringTests.swift */,
+				B0290021 /* SessionStoreResolvedAccessorsTests.swift */,
 				B0270003 /* SecretStoreTests.swift */,
 				B0200012 /* SettingsStoreTests.swift */,
 				B0200008 /* SignalExtractorTests.swift */,
@@ -633,6 +639,7 @@
 				A0290013 /* UnderstandingStoreV2.swift in Sources */,
 				A0290015 /* LegacyUnderstandingAdapter.swift in Sources */,
 				A0290017 /* UnderstandingDisplayPolicy.swift in Sources */,
+				A0290020 /* SourceChip.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -680,6 +687,7 @@
 				A0290016 /* LegacyUnderstandingAdapterTests.swift in Sources */,
 				A0290018 /* UnderstandingDisplayPolicyTests.swift in Sources */,
 				A0290019 /* UnderstandingMigrationTests.swift in Sources */,
+				A0290021 /* SessionStoreResolvedAccessorsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,10 +1,16 @@
 import Foundation
+import Observation
 
 /// v0.2.9 versioned understanding storage. Persists per-session
 /// `UnderstandingState` to `understanding-v2.json`.
 ///
 /// Legacy snapshot is NOT persisted here — it is derived from V1 file
 /// at read time and joined into in-memory state by callers.
+///
+/// `@Observable` so SwiftUI views observing `state(for:)` re-render after
+/// `appendArtifact`, `setCurrentPointer`, or `appendSelectionEvent` mutate
+/// the in-memory state.
+@Observable
 public final class UnderstandingStoreV2: @unchecked Sendable {
 
     public enum StoreError: Error, Equatable {

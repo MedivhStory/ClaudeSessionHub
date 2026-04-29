@@ -1,17 +1,42 @@
 import SwiftUI
 
 /// Right-side AI understanding panel shown in expanded session tile.
-/// Has 4 states: fresh snapshot, stale snapshot, no snapshot (configured), no snapshot (unconfigured).
+/// In v0.2.9 P1 the panel reads through `SessionStore.resolved*` so the
+/// rendered values + source chips reflect the v0.2.9 display policy
+/// (Manual > AI > Legacy > Rule). Layout intentionally mirrors the
+/// v0.2.8 panel; only chip labels and the legacy baseline indicator are
+/// new in P1.
 struct LLMPanelView: View {
     @Environment(SessionStore.self) var store
     let session: SessionSummary
 
-    private var snapshot: LLMUnderstandingSnapshot? {
-        store.understandingStore.snapshot(for: session.ref.sessionID)
+    private var titleField: ResolvedField {
+        store.resolvedTitle(for: session.ref)
     }
 
-    private var isStale: Bool {
-        store.understandingStore.isStale(for: session.ref.sessionID, lastActiveAt: session.lastActiveAt)
+    private var progressField: ResolvedField {
+        store.resolvedProgress(for: session.ref)
+    }
+
+    private var summaryField: ResolvedField {
+        store.resolvedSummary(for: session.ref)
+    }
+
+    /// True when at least one current field comes from a v2 AI artifact
+    /// or a legacy baseline. Used to decide between the values panel and
+    /// the "generate AI" call-to-action.
+    private var hasUnderstandingContent: Bool {
+        let sources: [ResolvedSource] = [titleField.source, progressField.source, summaryField.source]
+        return sources.contains(where: { $0 == .ai || $0 == .manual || $0 == .legacy })
+    }
+
+    /// True when any displayed field's current value comes from the
+    /// pre-v0.2.9 legacy snapshot. Drives the "Pre-v0.2.9 baseline" hint
+    /// and the regenerate-to-create-AI affordance.
+    private var hasLegacyCurrent: Bool {
+        titleField.source == .legacy
+            || progressField.source == .legacy
+            || summaryField.source == .legacy
     }
 
     private var isConfigured: Bool {
@@ -25,12 +50,12 @@ struct LLMPanelView: View {
                 .foregroundStyle(.purple)
                 .accessibilityAddTraits(.isHeader)
 
-            if let snap = snapshot {
-                snapshotContent(snap)
+            if hasUnderstandingContent {
+                resolvedContent
             } else if isConfigured {
-                noSnapshotConfigured
+                noContentConfigured
             } else {
-                noSnapshotUnconfigured
+                noContentUnconfigured
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -38,24 +63,27 @@ struct LLMPanelView: View {
         .accessibilityElement(children: .contain)
     }
 
-    // MARK: - State 1 & 2: Has snapshot
+    // MARK: - Has resolved content
 
     @ViewBuilder
-    private func snapshotContent(_ snap: LLMUnderstandingSnapshot) -> some View {
-        // AI title
-        HStack(spacing: 4) {
+    private var resolvedContent: some View {
+        // Title
+        HStack(alignment: .top, spacing: 4) {
             Text("AI 标题:")
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
-            Text(snap.title)
-                .font(.system(size: 11))
-                .foregroundStyle(.primary)
-                .lineLimit(2)
+            if let value = titleField.value {
+                Text(value)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+            }
+            SourceChip(source: titleField.source)
         }
 
-        // AI progress
-        if let progress = snap.progress {
-            HStack(spacing: 4) {
+        // Progress
+        if let progress = progressField.value, !progress.isEmpty {
+            HStack(alignment: .top, spacing: 4) {
                 Text("AI 进展:")
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
@@ -63,15 +91,19 @@ struct LLMPanelView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+                SourceChip(source: progressField.source)
             }
         }
 
-        // AI summary
-        if let summary = snap.summary {
+        // Summary
+        if let summary = summaryField.value, !summary.isEmpty {
             VStack(alignment: .leading, spacing: 2) {
-                Text("AI 摘要:")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 4) {
+                    Text("AI 摘要:")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                    SourceChip(source: summaryField.source)
+                }
                 Text(summary)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
@@ -79,26 +111,17 @@ struct LLMPanelView: View {
             }
         }
 
-        // Bottom line: model · time · [stale warning] · [regenerate button]
+        // Legacy baseline note when any current field is legacy.
+        if hasLegacyCurrent {
+            Text("Pre-v0.2.9 baseline · 重新生成可创建带追溯信息的 AI 版本")
+                .font(.system(size: 11))
+                .italic()
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("legacyBaselineHint_\(session.ref.sessionID)")
+        }
+
+        // Bottom action row.
         HStack(spacing: 6) {
-            Text(snap.modelName)
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-            Text("·").foregroundStyle(.quaternary)
-            Text(snap.generatedAt.relativeFormatted)
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-
-            if isStale {
-                Text("·").foregroundStyle(.quaternary)
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.orange)
-                Text("已过期")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.orange)
-            }
-
             if isConfigured {
                 Button {
                     Task { try? await store.enhanceWithLLM(for: session.ref) }
@@ -118,9 +141,9 @@ struct LLMPanelView: View {
         }
     }
 
-    // MARK: - State 3: No snapshot, LLM configured
+    // MARK: - No understanding content yet
 
-    private var noSnapshotConfigured: some View {
+    private var noContentConfigured: some View {
         Button {
             Task { try? await store.enhanceWithLLM(for: session.ref) }
         } label: {
@@ -135,16 +158,10 @@ struct LLMPanelView: View {
         .accessibilityLabel("生成 AI 理解")
     }
 
-    // MARK: - State 4: No snapshot, LLM not configured
-
-    private var noSnapshotUnconfigured: some View {
+    private var noContentUnconfigured: some View {
         Text("配置 AI 增强以获取更好的理解")
             .font(.system(size: 11))
             .italic()
             .foregroundStyle(.tertiary)
     }
-
-    // MARK: - Helpers
-
-    // relativeTime moved to Date.relativeFormatted extension
 }

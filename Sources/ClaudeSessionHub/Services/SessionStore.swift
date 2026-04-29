@@ -146,6 +146,65 @@ public final class SessionStore: @unchecked Sendable {
         historyTextsCache[sessionID] ?? []
     }
 
+    // MARK: - v0.2.9 resolved field accessors
+    //
+    // Convenience entry points that join V2 state, legacy snapshot, and
+    // rule-layer fallbacks in a single call. Views consume `ResolvedField`
+    // and render source chips / staleness from it.
+
+    /// Resolves the current title for a session via the v0.2.9 display
+    /// policy: Manual(v2) > AI(v2) > Legacy.title > Rule > UUID prefix.
+    @MainActor
+    public func resolvedTitle(for ref: SessionRef) -> ResolvedField {
+        let sid = ref.sessionID
+        let session = sessions.first { $0.ref == ref }
+        let ruleTitle = ruleTitleFallback(for: sid, session: session)
+        return displayPolicy.resolveTitle(
+            state: understandingV2.state(for: sid),
+            legacy: legacyAdapter.legacySnapshot(for: sid),
+            ruleTitle: ruleTitle,
+            sessionIDForFallback: sid
+        )
+    }
+
+    /// Resolves the current progress for a session via the v0.2.9 display
+    /// policy: Manual(v2) > AI(v2) > Legacy.progress > Rule/derived.
+    @MainActor
+    public func resolvedProgress(for ref: SessionRef) -> ResolvedField {
+        let sid = ref.sessionID
+        let session = sessions.first { $0.ref == ref }
+        let ruleProgress = titleStore.lastProgress(for: sid) ?? session?.currentTaskSummary
+        return displayPolicy.resolveProgress(
+            state: understandingV2.state(for: sid),
+            legacy: legacyAdapter.legacySnapshot(for: sid),
+            ruleProgress: ruleProgress
+        )
+    }
+
+    /// Resolves the current summary for a session via the v0.2.9 display
+    /// policy: AI(v2) > Legacy.summary > nil. No manual path.
+    @MainActor
+    public func resolvedSummary(for ref: SessionRef) -> ResolvedField {
+        let sid = ref.sessionID
+        return displayPolicy.resolveSummary(
+            state: understandingV2.state(for: sid),
+            legacy: legacyAdapter.legacySnapshot(for: sid)
+        )
+    }
+
+    /// Composes the rule-layer title fallback: smart title (TitleStore)
+    /// or, if absent, the cleaned raw session title. Returns nil if both
+    /// would be empty so the policy walks down to UUID prefix.
+    @MainActor
+    private func ruleTitleFallback(for sid: String, session: SessionSummary?) -> String? {
+        if let smart = titleStore.currentTitle(for: sid)?.text, !smart.isEmpty {
+            return smart
+        }
+        guard let session else { return nil }
+        let cleaned = RuleTitleStrategy.normalizeText(session.title)
+        return cleaned.isEmpty ? nil : cleaned
+    }
+
     @MainActor
     public var visibleSessions: [SessionSummary] {
         sessions.filter { !archiveStore.isArchived($0.ref) || showArchived }
