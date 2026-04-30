@@ -147,6 +147,95 @@ final class SessionStoreResolvedAccessorsTests: XCTestCase {
 
     // MARK: - Cross-field after regenerate
 
+    // MARK: - resolvedMetadata source-awareness (regression)
+
+    /// Legacy-only sessions live in V1 too (V1 is the legacy file). Without
+    /// source-awareness, `understandingStore.snapshot(for:)` would fire
+    /// first and surface the V1 stale signal — contradicting
+    /// `StaleState.legacyUnknown`. This regression test enforces that a
+    /// session whose every resolved field is `.legacy` reports
+    /// `isStale = false` regardless of how old the V1 record is.
+    func testLegacyOnlyMetadataNeverStale() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+
+        // Pre-populate V1 with a snapshot whose basedOnLastActiveAt is
+        // far in the past — V1 isStale comparison would return true.
+        let writer = UnderstandingStore(directory: dir)
+        let oldDate = Date(timeIntervalSinceNow: -86_400)
+        writer.setSnapshot(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "legacy title",
+            progress: nil,
+            summary: nil,
+            modelName: "old-model",
+            generatedAt: oldDate,
+            basedOnLastActiveAt: oldDate
+        ))
+
+        let store = makeStore(directory: dir)
+        // Confirm prerequisites: every resolved source is .legacy / non-V2.
+        XCTAssertEqual(store.resolvedTitle(for: ref()).source, .legacy)
+        // V1 stale check would itself say "stale" — guard against the bug:
+        XCTAssertTrue(
+            store.understandingStore.isStale(
+                for: "s1", lastActiveAt: Date()
+            ),
+            "V1 isStale must say true for the bug surface; the source-aware "
+            + "metadata accessor must overrule it"
+        )
+
+        let meta = store.resolvedMetadata(for: ref())
+        XCTAssertNotNil(meta)
+        XCTAssertEqual(meta?.model, "old-model")
+        XCTAssertEqual(
+            meta?.isStale, false,
+            "legacy-only session must never claim 已过期 (legacyUnknown semantics)"
+        )
+    }
+
+    /// V2-active sessions still go through the V1 snapshot path so the
+    /// existing `basedOnLastActiveAt`-based stale signal continues to
+    /// work, including the 已过期 marker users already rely on.
+    func testV2ActiveMetadataPropagatesV1Stale() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+
+        let store = makeStore(directory: dir)
+        // Dual-write enhance with a snapshot that's old relative to "now".
+        let oldSnap = LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "ai title",
+            progress: nil,
+            summary: "ai summary",
+            modelName: "gpt-4o",
+            generatedAt: Date(timeIntervalSinceNow: -3_600),
+            basedOnLastActiveAt: Date(timeIntervalSinceNow: -3_600)
+        )
+        store.persistEnhancement(oldSnap)
+
+        // Resolved sources should be .ai (dual-write created V2 artifacts).
+        XCTAssertEqual(store.resolvedTitle(for: ref()).source, .ai)
+        XCTAssertEqual(store.resolvedSummary(for: ref()).source, .ai)
+
+        let meta = store.resolvedMetadata(for: ref())
+        XCTAssertNotNil(meta)
+        XCTAssertEqual(meta?.model, "gpt-4o")
+        XCTAssertEqual(
+            meta?.isStale, true,
+            "V2-active session with old snapshot must propagate V1 stale signal"
+        )
+    }
+
+    /// No content at all (no V1 snapshot, no V2 artifacts, no legacy)
+    /// → metadata is nil so the panel hides the model/time row.
+    func testNoContentMetadataIsNil() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+        XCTAssertNil(store.resolvedMetadata(for: ref()))
+    }
+
     /// Verifies the spec promise: after AI regenerate creates V2 artifacts,
     /// the legacy chip should disappear for those fields and AI chip should show.
     func testRegenerateReplacesLegacyChipAcrossFields() {

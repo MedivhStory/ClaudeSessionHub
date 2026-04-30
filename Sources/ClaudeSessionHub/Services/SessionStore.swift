@@ -192,6 +192,76 @@ public final class SessionStore: @unchecked Sendable {
         )
     }
 
+    /// Source-aware metadata for the AI panel's bottom row.
+    ///
+    /// Only consults V1 snapshot (and its `basedOnLastActiveAt`-driven
+    /// stale signal) when the resolved fields show V2 has taken
+    /// ownership (any title/progress/summary source is `.ai` or
+    /// `.manual`). Legacy-only baselines route through `legacyAdapter`
+    /// and force `isStale = false`, matching `StaleState.legacyUnknown`
+    /// — legacy carries no trustworthy staleness claim.
+    ///
+    /// Returns nil when no AI / legacy content exists.
+    @MainActor
+    public func resolvedMetadata(for ref: SessionRef) -> ResolvedMetadata? {
+        let sid = ref.sessionID
+        let sources: [ResolvedSource] = [
+            resolvedTitle(for: ref).source,
+            resolvedProgress(for: ref).source,
+            resolvedSummary(for: ref).source,
+        ]
+        let hasV2Ownership = sources.contains { $0 == .ai || $0 == .manual }
+        let hasLegacyCurrent = sources.contains { $0 == .legacy }
+
+        let session = sessions.first { $0.ref == ref }
+        let lastActive = session?.lastActiveAt ?? Date()
+
+        if hasV2Ownership {
+            // V2 has taken ownership of at least one field. P1 dual-write
+            // keeps V1 in sync, so V1 snapshot is the source of truth for
+            // model/time and the existing basedOnLastActiveAt-based stale
+            // check.
+            if let snap = understandingStore.snapshot(for: sid) {
+                let stale = understandingStore.isStale(
+                    for: sid, lastActiveAt: lastActive
+                )
+                return ResolvedMetadata(
+                    model: snap.modelName,
+                    time: snap.generatedAt,
+                    isStale: stale
+                )
+            }
+            // V1 snapshot missing (would happen only after dual-write is
+            // removed in a later PR). Fall back to the latest V2 AI
+            // artifact's metadata; use createdAt as a stale proxy.
+            if let state = understandingV2.state(for: sid) {
+                let candidate = state.summaryVersions.last(where: { $0.source == .ai })
+                    ?? state.titleVersions.last(where: { $0.source == .ai })
+                    ?? state.progressVersions.last(where: { $0.source == .ai })
+                if let artifact = candidate {
+                    return ResolvedMetadata(
+                        model: artifact.modelName ?? "?",
+                        time: artifact.createdAt,
+                        isStale: lastActive > artifact.createdAt
+                    )
+                }
+            }
+            return nil
+        }
+
+        if hasLegacyCurrent,
+           let legacy = legacyAdapter.legacySnapshot(for: sid),
+           let when = legacy.generatedAt {
+            return ResolvedMetadata(
+                model: legacy.modelName ?? "Legacy",
+                time: when,
+                isStale: false
+            )
+        }
+
+        return nil
+    }
+
     /// Composes the rule-layer title fallback: smart title (TitleStore)
     /// or, if absent, the cleaned raw session title. Returns nil if both
     /// would be empty so the policy walks down to UUID prefix.

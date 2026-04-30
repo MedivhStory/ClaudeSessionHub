@@ -20,6 +20,27 @@ public enum ResolvedSource: String, Sendable, Equatable, CaseIterable {
     case none
 }
 
+// MARK: - ResolvedMetadata
+
+/// Source-aware AI panel metadata: which model produced the current
+/// understanding, when, and whether it appears stale relative to the
+/// session's `lastActiveAt`.
+///
+/// Composed by `SessionStore.resolvedMetadata(for:)` — the policy
+/// itself does not produce this since metadata depends on V1 snapshot
+/// vs V2 artifact selection logic that lives in the store.
+public struct ResolvedMetadata: Sendable, Equatable {
+    public let model: String
+    public let time: Date
+    public let isStale: Bool
+
+    public init(model: String, time: Date, isStale: Bool) {
+        self.model = model
+        self.time = time
+        self.isStale = isStale
+    }
+}
+
 // MARK: - ResolvedField
 
 /// Result of resolving a single understanding field (title, progress, or
