@@ -205,11 +205,10 @@ public final class SessionStore: @unchecked Sendable {
     @MainActor
     public func resolvedMetadata(for ref: SessionRef) -> ResolvedMetadata? {
         let sid = ref.sessionID
-        let sources: [ResolvedSource] = [
-            resolvedTitle(for: ref).source,
-            resolvedProgress(for: ref).source,
-            resolvedSummary(for: ref).source,
-        ]
+        let titleR = resolvedTitle(for: ref)
+        let progressR = resolvedProgress(for: ref)
+        let summaryR = resolvedSummary(for: ref)
+        let sources = [titleR.source, progressR.source, summaryR.source]
         let hasV2Ownership = sources.contains { $0 == .ai || $0 == .manual }
         let hasLegacyCurrent = sources.contains { $0 == .legacy }
 
@@ -219,11 +218,21 @@ public final class SessionStore: @unchecked Sendable {
         if hasV2Ownership {
             // V2 has taken ownership of at least one field. Pick the
             // freshest signal between V1 snapshot and the latest V2 AI
-            // artifact across all three chains. Per-field regenerate is
+            // artifact that is *currently displayed* (i.e. one of the
+            // resolved fields' artifactIDs). Per-field regenerate is
             // V2-only (P2 C2), so V1 may lag behind a recent V2 write —
-            // panel metadata must reflect the newer source.
+            // panel metadata must reflect the newer source. But an
+            // unadopted AI candidate sitting in the chain while a manual
+            // pointer wins must NOT surface its metadata, because the
+            // visible field is still the manual value.
+            let currentAIArtifactIDs: [UUID] = [titleR, progressR, summaryR]
+                .filter { $0.source == .ai }
+                .compactMap { $0.artifactID }
             let v1 = understandingStore.snapshot(for: sid)
-            let v2Latest = latestV2AIArtifact(for: sid)
+            let v2Latest = latestCurrentV2AIArtifact(
+                for: sid,
+                currentAIArtifactIDs: currentAIArtifactIDs
+            )
 
             switch (v1, v2Latest) {
             case (let v1?, let v2?):
@@ -272,15 +281,23 @@ public final class SessionStore: @unchecked Sendable {
         return nil
     }
 
-    /// Returns the most recent `.ai` artifact across the title, progress,
-    /// and summary chains for `sessionID`, or nil if none exists. Used by
-    /// `resolvedMetadata` to compare V2 freshness against V1.
+    /// Returns the most recent `.ai` artifact among those currently
+    /// displayed (i.e. ID is in `currentAIArtifactIDs`), or nil if no
+    /// resolved field currently has an AI source. Unadopted AI
+    /// candidates that sit in the chain but are not selected by any
+    /// pointer are intentionally excluded — their metadata is not the
+    /// metadata of what the user actually sees.
     @MainActor
-    private func latestV2AIArtifact(for sessionID: String) -> UnderstandingArtifact? {
-        guard let state = understandingV2.state(for: sessionID) else { return nil }
+    private func latestCurrentV2AIArtifact(
+        for sessionID: String,
+        currentAIArtifactIDs: [UUID]
+    ) -> UnderstandingArtifact? {
+        guard !currentAIArtifactIDs.isEmpty,
+              let state = understandingV2.state(for: sessionID)
+        else { return nil }
         let pool = state.titleVersions + state.progressVersions + state.summaryVersions
         return pool
-            .filter { $0.source == .ai }
+            .filter { currentAIArtifactIDs.contains($0.id) }
             .max(by: { $0.createdAt < $1.createdAt })
     }
 
