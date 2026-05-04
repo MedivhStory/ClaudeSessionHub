@@ -217,36 +217,46 @@ public final class SessionStore: @unchecked Sendable {
         let lastActive = session?.lastActiveAt ?? Date()
 
         if hasV2Ownership {
-            // V2 has taken ownership of at least one field. P1 dual-write
-            // keeps V1 in sync, so V1 snapshot is the source of truth for
-            // model/time and the existing basedOnLastActiveAt-based stale
-            // check.
-            if let snap = understandingStore.snapshot(for: sid) {
-                let stale = understandingStore.isStale(
-                    for: sid, lastActiveAt: lastActive
-                )
-                return ResolvedMetadata(
-                    model: snap.modelName,
-                    time: snap.generatedAt,
-                    isStale: stale
-                )
-            }
-            // V1 snapshot missing (would happen only after dual-write is
-            // removed in a later PR). Fall back to the latest V2 AI
-            // artifact's metadata; use createdAt as a stale proxy.
-            if let state = understandingV2.state(for: sid) {
-                let candidate = state.summaryVersions.last(where: { $0.source == .ai })
-                    ?? state.titleVersions.last(where: { $0.source == .ai })
-                    ?? state.progressVersions.last(where: { $0.source == .ai })
-                if let artifact = candidate {
+            // V2 has taken ownership of at least one field. Pick the
+            // freshest signal between V1 snapshot and the latest V2 AI
+            // artifact across all three chains. Per-field regenerate is
+            // V2-only (P2 C2), so V1 may lag behind a recent V2 write —
+            // panel metadata must reflect the newer source.
+            let v1 = understandingStore.snapshot(for: sid)
+            let v2Latest = latestV2AIArtifact(for: sid)
+
+            switch (v1, v2Latest) {
+            case (let v1?, let v2?):
+                if v2.createdAt > v1.generatedAt {
+                    // V2 is newer — per-field regenerate after full enhance.
                     return ResolvedMetadata(
-                        model: artifact.modelName ?? "?",
-                        time: artifact.createdAt,
-                        isStale: lastActive > artifact.createdAt
+                        model: v2.modelName ?? "?",
+                        time: v2.createdAt,
+                        isStale: lastActive > v2.createdAt
                     )
                 }
+                // V1 is newer or contemporaneous — use V1's full-fidelity
+                // basedOnLastActiveAt-driven stale signal.
+                return ResolvedMetadata(
+                    model: v1.modelName,
+                    time: v1.generatedAt,
+                    isStale: understandingStore.isStale(for: sid, lastActiveAt: lastActive)
+                )
+            case (let v1?, nil):
+                return ResolvedMetadata(
+                    model: v1.modelName,
+                    time: v1.generatedAt,
+                    isStale: understandingStore.isStale(for: sid, lastActiveAt: lastActive)
+                )
+            case (nil, let v2?):
+                return ResolvedMetadata(
+                    model: v2.modelName ?? "?",
+                    time: v2.createdAt,
+                    isStale: lastActive > v2.createdAt
+                )
+            case (nil, nil):
+                return nil
             }
-            return nil
         }
 
         if hasLegacyCurrent,
@@ -260,6 +270,18 @@ public final class SessionStore: @unchecked Sendable {
         }
 
         return nil
+    }
+
+    /// Returns the most recent `.ai` artifact across the title, progress,
+    /// and summary chains for `sessionID`, or nil if none exists. Used by
+    /// `resolvedMetadata` to compare V2 freshness against V1.
+    @MainActor
+    private func latestV2AIArtifact(for sessionID: String) -> UnderstandingArtifact? {
+        guard let state = understandingV2.state(for: sessionID) else { return nil }
+        let pool = state.titleVersions + state.progressVersions + state.summaryVersions
+        return pool
+            .filter { $0.source == .ai }
+            .max(by: { $0.createdAt < $1.createdAt })
     }
 
     /// Composes the rule-layer title fallback: smart title (TitleStore)

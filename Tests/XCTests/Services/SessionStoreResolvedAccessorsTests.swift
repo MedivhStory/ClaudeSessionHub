@@ -227,6 +227,88 @@ final class SessionStoreResolvedAccessorsTests: XCTestCase {
         )
     }
 
+    /// Per-field regenerate (P2 C2) is V2-only. After an older full
+    /// enhance wrote V1+V2, a single-field appendAIArtifact / regenerate
+    /// produces a V2 artifact newer than the V1 snapshot. The metadata
+    /// accessor must surface the newer V2 model/time, not the stale V1.
+    func testResolvedMetadataPrefersNewerV2ArtifactAfterPerFieldRegenerate() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+
+        // Step 1: full enhance — writes V1 + V2 with old model/time.
+        let oldTime = Date(timeIntervalSinceNow: -3_600)
+        store.persistEnhancement(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "old title",
+            progress: "old progress",
+            summary: "old summary",
+            modelName: "old-model",
+            generatedAt: oldTime,
+            basedOnLastActiveAt: oldTime
+        ))
+        XCTAssertEqual(store.understandingStore.snapshot(for: "s1")?.modelName, "old-model")
+
+        // Step 2: per-field regenerate (V2-only) — newer artifact.
+        let newTime = Date()
+        store.appendAIArtifact(
+            for: "s1",
+            field: .title,
+            value: "new title",
+            modelName: "new-model",
+            generatedAt: newTime
+        )
+        // V1 snapshot must not have been touched by the per-field write.
+        XCTAssertEqual(store.understandingStore.snapshot(for: "s1")?.modelName, "old-model")
+        XCTAssertEqual(store.understandingStore.snapshot(for: "s1")?.generatedAt, oldTime)
+
+        // Step 3: metadata accessor must reflect the newer V2 artifact.
+        let meta = store.resolvedMetadata(for: ref())
+        XCTAssertEqual(
+            meta?.model, "new-model",
+            "metadata must prefer newer V2 artifact after per-field regenerate"
+        )
+        XCTAssertEqual(meta?.time, newTime)
+    }
+
+    /// Inverse case: V1 newer than the latest V2 AI artifact. Metadata
+    /// must keep using V1 so the basedOnLastActiveAt-driven stale signal
+    /// stays in effect.
+    func testResolvedMetadataPrefersV1WhenV1IsNewer() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+
+        // Step 1: older V2 AI artifact only (simulates earlier per-field write).
+        let oldTime = Date(timeIntervalSinceNow: -3_600)
+        store.appendAIArtifact(
+            for: "s1",
+            field: .title,
+            value: "old v2 title",
+            modelName: "old-v2-model",
+            generatedAt: oldTime
+        )
+
+        // Step 2: newer V1 snapshot (simulates a later full enhance whose
+        // V1 dual-write completed but where V2's chain only reflects the
+        // earlier per-field write — synthetic scenario; primarily a
+        // tie-breaking guard).
+        let newTime = Date()
+        store.understandingStore.setSnapshot(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "new v1",
+            progress: nil,
+            summary: nil,
+            modelName: "new-v1-model",
+            generatedAt: newTime,
+            basedOnLastActiveAt: newTime
+        ))
+
+        let meta = store.resolvedMetadata(for: ref())
+        XCTAssertEqual(meta?.model, "new-v1-model")
+        XCTAssertEqual(meta?.time, newTime)
+    }
+
     /// No content at all (no V1 snapshot, no V2 artifacts, no legacy)
     /// → metadata is nil so the panel hides the model/time row.
     func testNoContentMetadataIsNil() {
