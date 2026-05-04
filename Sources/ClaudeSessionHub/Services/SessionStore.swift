@@ -412,6 +412,102 @@ public final class SessionStore: @unchecked Sendable {
         persistEnhancement(snapshot)
     }
 
+    // MARK: - v0.2.9 P2 — manual edit + adopt
+
+    /// Append a `.manual` title artifact and move the current pointer
+    /// to it. Trims whitespace; empty values are a no-op. If the
+    /// session has a current rationale, marks it `.stalePartial` since
+    /// the rationale's basis is no longer current.
+    @MainActor
+    public func editTitle(for ref: SessionRef, newValue: String) {
+        appendManualEdit(for: ref, field: .title, newValue: newValue, reason: "title edited")
+    }
+
+    /// Append a `.manual` progress artifact and move the current
+    /// pointer to it. Same semantics as `editTitle(for:newValue:)`.
+    @MainActor
+    public func editProgress(for ref: SessionRef, newValue: String) {
+        appendManualEdit(for: ref, field: .progress, newValue: newValue, reason: "progress edited")
+    }
+
+    @MainActor
+    private func appendManualEdit(
+        for ref: SessionRef,
+        field: UnderstandingField,
+        newValue: String,
+        reason: String
+    ) {
+        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let artifact = UnderstandingArtifact(
+            value: trimmed,
+            source: .manual,
+            trigger: .manualEdit
+        )
+        understandingV2.appendArtifact(for: ref.sessionID, field: field, artifact)
+        understandingV2.setRationaleStaleState(
+            for: ref.sessionID,
+            .stalePartial(reason: reason)
+        )
+    }
+
+    /// Switch the current pointer for `field` to an existing AI
+    /// artifact identified by `versionID`. The artifact must already
+    /// be present in the chain and have `source == .ai`. Records a
+    /// `SelectionEvent(action: .adopt, previousVersionID:targetVersionID:)`.
+    /// **No new artifact is created.**
+    ///
+    /// Throws:
+    /// - `StoreError.versionNotFound` if `versionID` is not in the chain
+    ///   (or the session has no V2 state at all)
+    /// - `StoreError.versionNotAI` if `versionID` exists in the chain
+    ///   but its source is not `.ai` (manual / rule artifacts are not
+    ///   adoptable; this is distinct from "unknown id")
+    @MainActor
+    public func adoptAIVersion(
+        for ref: SessionRef,
+        field: UnderstandingField,
+        versionID: UUID
+    ) throws {
+        let sid = ref.sessionID
+        guard let state = understandingV2.state(for: sid) else {
+            throw UnderstandingStoreV2.StoreError.versionNotFound(field: field, id: versionID)
+        }
+
+        let chain: [UnderstandingArtifact]
+        let previousPointer: UUID?
+        switch field {
+        case .title:
+            chain = state.titleVersions
+            previousPointer = state.currentTitleVersionID
+        case .progress:
+            chain = state.progressVersions
+            previousPointer = state.currentProgressVersionID
+        case .summary:
+            chain = state.summaryVersions
+            previousPointer = state.currentSummaryVersionID
+        }
+
+        guard let target = chain.first(where: { $0.id == versionID }) else {
+            throw UnderstandingStoreV2.StoreError.versionNotFound(field: field, id: versionID)
+        }
+        guard target.source == .ai else {
+            throw UnderstandingStoreV2.StoreError.versionNotAI(field: field, id: versionID)
+        }
+
+        try understandingV2.setCurrentPointer(for: sid, field: field, to: versionID)
+        understandingV2.appendSelectionEvent(
+            for: sid,
+            SelectionEvent(
+                field: field,
+                action: .adopt,
+                previousVersionID: previousPointer,
+                targetVersionID: versionID
+            )
+        )
+    }
+
     /// Persist an AI-generated snapshot with dual-write semantics:
     /// - V1: existing `UnderstandingStore.setSnapshot` (preserves downgrade
     ///   compatibility — pre-v0.2.9 builds keep reading current data).

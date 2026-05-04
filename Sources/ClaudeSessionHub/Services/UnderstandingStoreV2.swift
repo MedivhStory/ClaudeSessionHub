@@ -14,7 +14,12 @@ import Observation
 public final class UnderstandingStoreV2: @unchecked Sendable {
 
     public enum StoreError: Error, Equatable {
+        /// The given version ID is not present in the field's chain.
         case versionNotFound(field: UnderstandingField, id: UUID)
+        /// The version ID exists in the chain but its source is not `.ai`.
+        /// Distinguishes "wrong artifact type for this operation" from
+        /// "no such artifact" so adopt-AI flows don't conflate the two.
+        case versionNotAI(field: UnderstandingField, id: UUID)
     }
 
     public static let currentSchemaVersion = "1"
@@ -76,6 +81,51 @@ public final class UnderstandingStoreV2: @unchecked Sendable {
             throw StoreError.versionNotFound(field: field, id: versionID)
         }
         setPointer(in: &state, field: field, to: versionID)
+        statesByID[sessionID] = state
+        save()
+    }
+
+    /// Replace (or clear) the session's current rationale. Rationale has
+    /// no version chain in v0.2.9 — new rationales replace the previous
+    /// current. Pass `nil` to clear.
+    public func setRationale(
+        for sessionID: String,
+        _ rationale: RationaleMetadata?
+    ) {
+        lock.lock(); defer { lock.unlock() }
+        ensureLoaded()
+
+        var state = statesByID[sessionID] ?? UnderstandingState(sessionID: sessionID)
+        state.currentRationale = rationale
+        statesByID[sessionID] = state
+        save()
+    }
+
+    /// Update the current rationale's `staleState`. Used by edit flows
+    /// that need to mark rationale stale-partial without touching the
+    /// rationale's text or input references. Silent no-op if no current
+    /// rationale exists for the session (rationale is optional).
+    public func setRationaleStaleState(
+        for sessionID: String,
+        _ stale: StaleState
+    ) {
+        lock.lock(); defer { lock.unlock() }
+        ensureLoaded()
+
+        guard var state = statesByID[sessionID],
+              let current = state.currentRationale
+        else { return }
+
+        state.currentRationale = RationaleMetadata(
+            text: current.text,
+            trigger: current.trigger,
+            createdAt: current.createdAt,
+            basedOnTitleVersionID: current.basedOnTitleVersionID,
+            basedOnProgressVersionID: current.basedOnProgressVersionID,
+            basedOnSummaryVersionID: current.basedOnSummaryVersionID,
+            evidenceRefs: current.evidenceRefs,
+            staleState: stale
+        )
         statesByID[sessionID] = state
         save()
     }
