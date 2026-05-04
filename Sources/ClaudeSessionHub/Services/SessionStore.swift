@@ -13,7 +13,16 @@ public final class SessionStore: @unchecked Sendable {
     public let archiveStore: ArchiveStore
     public let settings: SettingsStore
     public let titleStore: TitleStore
+    /// V1 understanding storage. Kept for dual-write compatibility during
+    /// v0.2.9. Will become read-only / removed in a later PR after V2 is
+    /// proven across P1/P2/P3.
     public let understandingStore: UnderstandingStore
+    /// V2 versioned understanding storage (v0.2.9, P1).
+    public let understandingV2: UnderstandingStoreV2
+    /// Read-only adapter over V1 file as legacy baseline source (v0.2.9, P1).
+    public let legacyAdapter: LegacyUnderstandingAdapter
+    /// Pure resolver for v0.2.9 display precedence (v0.2.9, P1).
+    public let displayPolicy: UnderstandingDisplayPolicy
     private let signalExtractor: SignalExtractor
     private let titleStrategy: any SessionTitleStrategy
     @MainActor private var historyTextsCache: [String: [String]] = [:]
@@ -27,7 +36,10 @@ public final class SessionStore: @unchecked Sendable {
                 titleStore: TitleStore = TitleStore(),
                 signalExtractor: SignalExtractor = SignalExtractor(),
                 titleStrategy: any SessionTitleStrategy = RuleTitleStrategy(),
-                understandingStore: UnderstandingStore = UnderstandingStore()) {
+                understandingStore: UnderstandingStore = UnderstandingStore(),
+                understandingV2: UnderstandingStoreV2 = UnderstandingStoreV2(),
+                legacyAdapter: LegacyUnderstandingAdapter = LegacyUnderstandingAdapter(),
+                displayPolicy: UnderstandingDisplayPolicy = UnderstandingDisplayPolicy()) {
         self.coordinator = coordinator
         self.labelStore = labelStore
         self.archiveStore = archiveStore
@@ -36,6 +48,9 @@ public final class SessionStore: @unchecked Sendable {
         self.signalExtractor = signalExtractor
         self.titleStrategy = titleStrategy
         self.understandingStore = understandingStore
+        self.understandingV2 = understandingV2
+        self.legacyAdapter = legacyAdapter
+        self.displayPolicy = displayPolicy
     }
 
     @MainActor
@@ -129,6 +144,135 @@ public final class SessionStore: @unchecked Sendable {
     @MainActor
     public func cachedHistoryTexts(for sessionID: String) -> [String] {
         historyTextsCache[sessionID] ?? []
+    }
+
+    // MARK: - v0.2.9 resolved field accessors
+    //
+    // Convenience entry points that join V2 state, legacy snapshot, and
+    // rule-layer fallbacks in a single call. Views consume `ResolvedField`
+    // and render source chips / staleness from it.
+
+    /// Resolves the current title for a session via the v0.2.9 display
+    /// policy: Manual(v2) > AI(v2) > Legacy.title > Rule > UUID prefix.
+    @MainActor
+    public func resolvedTitle(for ref: SessionRef) -> ResolvedField {
+        let sid = ref.sessionID
+        let session = sessions.first { $0.ref == ref }
+        let ruleTitle = ruleTitleFallback(for: sid, session: session)
+        return displayPolicy.resolveTitle(
+            state: understandingV2.state(for: sid),
+            legacy: legacyAdapter.legacySnapshot(for: sid),
+            ruleTitle: ruleTitle,
+            sessionIDForFallback: sid
+        )
+    }
+
+    /// Resolves the current progress for a session via the v0.2.9 display
+    /// policy: Manual(v2) > AI(v2) > Legacy.progress > Rule/derived.
+    @MainActor
+    public func resolvedProgress(for ref: SessionRef) -> ResolvedField {
+        let sid = ref.sessionID
+        let session = sessions.first { $0.ref == ref }
+        let ruleProgress = titleStore.lastProgress(for: sid) ?? session?.currentTaskSummary
+        return displayPolicy.resolveProgress(
+            state: understandingV2.state(for: sid),
+            legacy: legacyAdapter.legacySnapshot(for: sid),
+            ruleProgress: ruleProgress
+        )
+    }
+
+    /// Resolves the current summary for a session via the v0.2.9 display
+    /// policy: AI(v2) > Legacy.summary > nil. No manual path.
+    @MainActor
+    public func resolvedSummary(for ref: SessionRef) -> ResolvedField {
+        let sid = ref.sessionID
+        return displayPolicy.resolveSummary(
+            state: understandingV2.state(for: sid),
+            legacy: legacyAdapter.legacySnapshot(for: sid)
+        )
+    }
+
+    /// Source-aware metadata for the AI panel's bottom row.
+    ///
+    /// Only consults V1 snapshot (and its `basedOnLastActiveAt`-driven
+    /// stale signal) when the resolved fields show V2 has taken
+    /// ownership (any title/progress/summary source is `.ai` or
+    /// `.manual`). Legacy-only baselines route through `legacyAdapter`
+    /// and force `isStale = false`, matching `StaleState.legacyUnknown`
+    /// — legacy carries no trustworthy staleness claim.
+    ///
+    /// Returns nil when no AI / legacy content exists.
+    @MainActor
+    public func resolvedMetadata(for ref: SessionRef) -> ResolvedMetadata? {
+        let sid = ref.sessionID
+        let sources: [ResolvedSource] = [
+            resolvedTitle(for: ref).source,
+            resolvedProgress(for: ref).source,
+            resolvedSummary(for: ref).source,
+        ]
+        let hasV2Ownership = sources.contains { $0 == .ai || $0 == .manual }
+        let hasLegacyCurrent = sources.contains { $0 == .legacy }
+
+        let session = sessions.first { $0.ref == ref }
+        let lastActive = session?.lastActiveAt ?? Date()
+
+        if hasV2Ownership {
+            // V2 has taken ownership of at least one field. P1 dual-write
+            // keeps V1 in sync, so V1 snapshot is the source of truth for
+            // model/time and the existing basedOnLastActiveAt-based stale
+            // check.
+            if let snap = understandingStore.snapshot(for: sid) {
+                let stale = understandingStore.isStale(
+                    for: sid, lastActiveAt: lastActive
+                )
+                return ResolvedMetadata(
+                    model: snap.modelName,
+                    time: snap.generatedAt,
+                    isStale: stale
+                )
+            }
+            // V1 snapshot missing (would happen only after dual-write is
+            // removed in a later PR). Fall back to the latest V2 AI
+            // artifact's metadata; use createdAt as a stale proxy.
+            if let state = understandingV2.state(for: sid) {
+                let candidate = state.summaryVersions.last(where: { $0.source == .ai })
+                    ?? state.titleVersions.last(where: { $0.source == .ai })
+                    ?? state.progressVersions.last(where: { $0.source == .ai })
+                if let artifact = candidate {
+                    return ResolvedMetadata(
+                        model: artifact.modelName ?? "?",
+                        time: artifact.createdAt,
+                        isStale: lastActive > artifact.createdAt
+                    )
+                }
+            }
+            return nil
+        }
+
+        if hasLegacyCurrent,
+           let legacy = legacyAdapter.legacySnapshot(for: sid),
+           let when = legacy.generatedAt {
+            return ResolvedMetadata(
+                model: legacy.modelName ?? "Legacy",
+                time: when,
+                isStale: false
+            )
+        }
+
+        return nil
+    }
+
+    /// Composes the rule-layer title fallback: smart title (TitleStore)
+    /// or, if absent, the cleaned raw session title. Returns nil if both
+    /// would be empty so the policy walks down to UUID prefix.
+    @MainActor
+    private func ruleTitleFallback(for sid: String, session: SessionSummary?) -> String? {
+        if let smart = titleStore.currentTitle(for: sid)?.text, !smart.isEmpty {
+            return smart
+        }
+        guard let session else { return nil }
+        let cleaned = RuleTitleStrategy.normalizeText(session.title)
+        return cleaned.isEmpty ? nil : cleaned
     }
 
     @MainActor
@@ -265,7 +409,58 @@ public final class SessionStore: @unchecked Sendable {
 
         let enhancer = LLMEnhancer(config: settings.llmConfig)
         guard let snapshot = await enhancer.enhance(signals: signals, rawTurns: rawTurns, basedOnLastActiveAt: lastActiveAt) else { return }
+        persistEnhancement(snapshot)
+    }
+
+    /// Persist an AI-generated snapshot with dual-write semantics:
+    /// - V1: existing `UnderstandingStore.setSnapshot` (preserves downgrade
+    ///   compatibility — pre-v0.2.9 builds keep reading current data).
+    /// - V2: `UnderstandingStoreV2.appendArtifact` for title + (optional)
+    ///   progress + (optional) summary. Pointer movement follows the C2
+    ///   rules (manual override, if any, is preserved).
+    ///
+    /// Either write may fail independently; failures are best-effort and
+    /// do not throw, matching the existing v0.2.7+ behavior.
+    @MainActor
+    func persistEnhancement(_ snapshot: LLMUnderstandingSnapshot) {
+        // V1 dual-write (existing path)
         understandingStore.setSnapshot(snapshot)
+
+        // V2 dual-write (new path) — convert snapshot fields to artifacts.
+        let sid = snapshot.sessionID
+        let titleArtifact = UnderstandingArtifact(
+            value: snapshot.title,
+            source: .ai,
+            trigger: .manualGenerate,
+            createdAt: snapshot.generatedAt,
+            staleState: .fresh,
+            modelName: snapshot.modelName
+        )
+        understandingV2.appendArtifact(for: sid, field: .title, titleArtifact)
+
+        if let progress = snapshot.progress, !progress.isEmpty {
+            let progressArtifact = UnderstandingArtifact(
+                value: progress,
+                source: .ai,
+                trigger: .manualGenerate,
+                createdAt: snapshot.generatedAt,
+                staleState: .fresh,
+                modelName: snapshot.modelName
+            )
+            understandingV2.appendArtifact(for: sid, field: .progress, progressArtifact)
+        }
+
+        if let summary = snapshot.summary, !summary.isEmpty {
+            let summaryArtifact = UnderstandingArtifact(
+                value: summary,
+                source: .ai,
+                trigger: .manualGenerate,
+                createdAt: snapshot.generatedAt,
+                staleState: .fresh,
+                modelName: snapshot.modelName
+            )
+            understandingV2.appendArtifact(for: sid, field: .summary, summaryArtifact)
+        }
     }
 
     /// LLM-enhance a specific list of sessions. User-triggered only.

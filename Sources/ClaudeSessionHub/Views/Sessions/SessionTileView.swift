@@ -10,32 +10,33 @@ struct SessionTileView: View {
 
     // MARK: - Computed Properties
 
-    private var displayTitle: String {
-        if let ai = store.understandingStore.snapshot(for: session.ref.sessionID) { return ai.title }
-        if let smart = store.titleStore.currentTitle(for: session.ref.sessionID) { return smart.text }
-        let cleaned = RuleTitleStrategy.normalizeText(session.title)
-        return cleaned.isEmpty ? String(session.ref.sessionID.prefix(8)) : cleaned
+    /// Title resolved through v0.2.9 display policy:
+    /// Manual(v2) > AI(v2) > Legacy > Rule > UUID prefix.
+    private var resolvedTitleField: ResolvedField {
+        store.resolvedTitle(for: session.ref)
     }
 
+    private var displayTitle: String {
+        resolvedTitleField.value ?? String(session.ref.sessionID.prefix(8))
+    }
+
+    /// The Chinese chip label for the title's resolved source, or nil
+    /// when no chip should be shown (`.uuidPrefix` / `.none`).
     private var titleSource: String? {
-        let sid = session.ref.sessionID
-        if store.understandingStore.hasEnhancement(for: sid) { return "AI" }
-        if store.titleStore.currentTitle(for: sid) != nil { return "规则" }
-        return nil
+        SourceChip.label(for: resolvedTitleField.source)
     }
 
     private var bestSummary: String? {
-        let sid = session.ref.sessionID
-        if let snapshot = store.understandingStore.snapshot(for: sid) {
-            if let summary = snapshot.summary {
-                let first = summary.components(separatedBy: CharacterSet(charactersIn: "。.！!？?\n"))
-                    .first?.trimmingCharacters(in: .whitespacesAndNewlines)
-                if let s = first, !s.isEmpty { return s }
-            }
-            if let progress = snapshot.progress { return progress }
+        // Prefer AI/Legacy summary (first sentence), then progress.
+        let summaryRes = store.resolvedSummary(for: session.ref)
+        if let raw = summaryRes.value, !raw.isEmpty {
+            let first = raw.components(separatedBy: CharacterSet(charactersIn: "。.！!？?\n"))
+                .first?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let s = first, !s.isEmpty { return s }
         }
-        if let ruleProgress = store.titleStore.lastProgress(for: sid) { return ruleProgress }
-        return session.currentTaskSummary
+        let progressRes = store.resolvedProgress(for: session.ref)
+        if let p = progressRes.value, !p.isEmpty { return p }
+        return nil
     }
 
     private var userNote: String? {
@@ -125,14 +126,16 @@ struct SessionTileView: View {
                     .accessibilityIdentifier("tileTitle_\(session.ref.sessionID)")
 
                 if let source = titleSource {
+                    let color = SourceChip.color(for: resolvedTitleField.source)
                     Text(source)
                         .font(.system(size: 11, weight: .medium))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
-                        .background(source == "AI" ? Color.purple.opacity(0.15) : Color.gray.opacity(0.15))
-                        .foregroundStyle(source == "AI" ? .purple : .secondary)
+                        .background(color.opacity(0.15))
+                        .foregroundStyle(color)
                         .clipShape(RoundedRectangle(cornerRadius: 3))
                         .accessibilityIdentifier("sourceBadge_\(session.ref.sessionID)")
+                        .help(resolvedTitleField.source == .legacy ? "Pre-v0.2.9 baseline" : source)
                 }
 
                 BadgeView.agent(session.ref.providerID)
