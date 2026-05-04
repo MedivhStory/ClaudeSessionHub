@@ -511,7 +511,7 @@ public final class SessionStore: @unchecked Sendable {
     /// Persist an AI-generated snapshot with dual-write semantics:
     /// - V1: existing `UnderstandingStore.setSnapshot` (preserves downgrade
     ///   compatibility — pre-v0.2.9 builds keep reading current data).
-    /// - V2: `UnderstandingStoreV2.appendArtifact` for title + (optional)
+    /// - V2: funneled through `appendAIArtifact` for title + (optional)
     ///   progress + (optional) summary. Pointer movement follows the C2
     ///   rules (manual override, if any, is preserved).
     ///
@@ -522,41 +522,111 @@ public final class SessionStore: @unchecked Sendable {
         // V1 dual-write (existing path)
         understandingStore.setSnapshot(snapshot)
 
-        // V2 dual-write (new path) — convert snapshot fields to artifacts.
+        // V2 dual-write — every AI write goes through the appendAIArtifact seam.
         let sid = snapshot.sessionID
-        let titleArtifact = UnderstandingArtifact(
+        appendAIArtifact(
+            for: sid,
+            field: .title,
             value: snapshot.title,
+            modelName: snapshot.modelName,
+            generatedAt: snapshot.generatedAt
+        )
+        if let progress = snapshot.progress, !progress.isEmpty {
+            appendAIArtifact(
+                for: sid,
+                field: .progress,
+                value: progress,
+                modelName: snapshot.modelName,
+                generatedAt: snapshot.generatedAt
+            )
+        }
+        if let summary = snapshot.summary, !summary.isEmpty {
+            appendAIArtifact(
+                for: sid,
+                field: .summary,
+                value: summary,
+                modelName: snapshot.modelName,
+                generatedAt: snapshot.generatedAt
+            )
+        }
+    }
+
+    // MARK: - v0.2.9 P2 — per-field regenerate
+
+    /// Regenerate a single field (title) via one LLM call. V2-only:
+    /// V1 dual-write is intentionally skipped for per-field regenerate
+    /// to avoid synthesizing placeholder values for the other two
+    /// fields. Pointer movement follows C2 rules — manual override is
+    /// preserved.
+    @MainActor
+    public func regenerateTitle(for ref: SessionRef) async throws {
+        try await regenerateField(.title, for: ref)
+    }
+
+    @MainActor
+    public func regenerateProgress(for ref: SessionRef) async throws {
+        try await regenerateField(.progress, for: ref)
+    }
+
+    @MainActor
+    public func regenerateSummary(for ref: SessionRef) async throws {
+        try await regenerateField(.summary, for: ref)
+    }
+
+    @MainActor
+    private func regenerateField(_ field: UnderstandingField, for ref: SessionRef) async throws {
+        settings.ensureApiKeyLoaded()
+        guard settings.llmConfig.isConfigured else {
+            throw LLMClient.LLMError.notConfigured
+        }
+        guard let provider = await coordinator.provider(for: ref.providerID) as? ClaudeProvider,
+              let inputs = try? await provider.extractEnhanceInputs(for: ref) else { return }
+        let signals = signalExtractor.enrich(inputs.signals)
+
+        let session = sessions.first { $0.ref == ref }
+        let lastActiveAt = session?.lastActiveAt ?? Date()
+
+        let enhancer = LLMEnhancer(config: settings.llmConfig)
+        guard let result = await enhancer.enhanceField(
+            field,
+            signals: signals,
+            rawTurns: inputs.rawTurns,
+            basedOnLastActiveAt: lastActiveAt
+        ) else { return }
+
+        appendAIArtifact(
+            for: ref.sessionID,
+            field: result.field,
+            value: result.value,
+            modelName: result.modelName,
+            generatedAt: result.generatedAt
+        )
+    }
+
+    /// Persistence-only seam: every AI artifact write — full enhance,
+    /// per-field regenerate, and (in tests) synthesized values — goes
+    /// through this method. Tests can call it directly to exercise
+    /// pointer-rule behavior without depending on a real LLM.
+    ///
+    /// Internal access — production code paths should call the public
+    /// `regenerate*` or `enhanceWithLLM` methods.
+    @MainActor
+    func appendAIArtifact(
+        for sessionID: String,
+        field: UnderstandingField,
+        value: String,
+        modelName: String,
+        generatedAt: Date
+    ) {
+        let artifact = UnderstandingArtifact(
+            value: value,
             source: .ai,
             trigger: .manualGenerate,
-            createdAt: snapshot.generatedAt,
+            createdAt: generatedAt,
             staleState: .fresh,
-            modelName: snapshot.modelName
+            modelName: modelName
         )
-        understandingV2.appendArtifact(for: sid, field: .title, titleArtifact)
-
-        if let progress = snapshot.progress, !progress.isEmpty {
-            let progressArtifact = UnderstandingArtifact(
-                value: progress,
-                source: .ai,
-                trigger: .manualGenerate,
-                createdAt: snapshot.generatedAt,
-                staleState: .fresh,
-                modelName: snapshot.modelName
-            )
-            understandingV2.appendArtifact(for: sid, field: .progress, progressArtifact)
-        }
-
-        if let summary = snapshot.summary, !summary.isEmpty {
-            let summaryArtifact = UnderstandingArtifact(
-                value: summary,
-                source: .ai,
-                trigger: .manualGenerate,
-                createdAt: snapshot.generatedAt,
-                staleState: .fresh,
-                modelName: snapshot.modelName
-            )
-            understandingV2.appendArtifact(for: sid, field: .summary, summaryArtifact)
-        }
+        understandingV2.appendArtifact(for: sessionID, field: field, artifact)
     }
 
     /// LLM-enhance a specific list of sessions. User-triggered only.
