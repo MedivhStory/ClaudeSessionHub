@@ -272,6 +272,51 @@ final class SessionStoreEditAdoptTests: XCTestCase {
         }
     }
 
+    // MARK: - unadoptedAICandidate accessor (P2 C3 surface)
+
+    func testUnadoptedAICandidateReturnsNilWhenNoManualCurrent() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+        let ai = UnderstandingArtifact(value: "ai", source: .ai, trigger: .manualGenerate)
+        store.understandingV2.appendArtifact(for: "s1", field: .title, ai)
+        // Title source is .ai, not .manual — no adopt affordance applies.
+        XCTAssertNil(store.unadoptedAICandidate(for: ref(), field: .title))
+    }
+
+    func testUnadoptedAICandidateReturnsNilWhenManualCurrentButNoAIInChain() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+        store.editTitle(for: ref(), newValue: "user title")
+        XCTAssertNil(store.unadoptedAICandidate(for: ref(), field: .title))
+    }
+
+    func testUnadoptedAICandidateReturnsLatestAIWhenManualOverridesAI() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+        let a1 = UnderstandingArtifact(value: "a1", source: .ai, trigger: .manualGenerate)
+        let a2 = UnderstandingArtifact(value: "a2", source: .ai, trigger: .manualGenerate)
+        store.understandingV2.appendArtifact(for: "s1", field: .title, a1)
+        store.understandingV2.appendArtifact(for: "s1", field: .title, a2)
+        // Now editTitle adds a manual artifact and pointer flips.
+        store.editTitle(for: ref(), newValue: "user title")
+
+        let candidate = store.unadoptedAICandidate(for: ref(), field: .title)
+        XCTAssertEqual(candidate?.id, a2.id, "latest AI candidate should be returned")
+    }
+
+    func testUnadoptedAICandidateNilForSummary() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+        // Summary has no manual path; even if AI exists, no adopt affordance.
+        let ai = UnderstandingArtifact(value: "ai sum", source: .ai, trigger: .manualGenerate)
+        store.understandingV2.appendArtifact(for: "s1", field: .summary, ai)
+        XCTAssertNil(store.unadoptedAICandidate(for: ref(), field: .summary))
+    }
+
     func testAdoptPreviousPointerNilWhenChainHadNoCurrent() throws {
         let dir = makeTempDir()
         defer { cleanup(dir) }

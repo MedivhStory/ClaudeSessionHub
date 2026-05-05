@@ -281,6 +281,38 @@ public final class SessionStore: @unchecked Sendable {
         return nil
     }
 
+    /// Returns the latest `.ai` artifact in `field`'s chain that is
+    /// currently NOT selected by the pointer, when the resolved field
+    /// has a `.manual` current source. Used by the panel to surface
+    /// an "Adopt AI version" affordance.
+    ///
+    /// Returns nil when:
+    /// - The session has no V2 state.
+    /// - The resolved field's source is not `.manual` (no manual
+    ///   override to compete against).
+    /// - No `.ai` artifact exists in the chain.
+    @MainActor
+    public func unadoptedAICandidate(
+        for ref: SessionRef,
+        field: UnderstandingField
+    ) -> UnderstandingArtifact? {
+        let resolved: ResolvedField
+        switch field {
+        case .title:    resolved = resolvedTitle(for: ref)
+        case .progress: resolved = resolvedProgress(for: ref)
+        case .summary:  resolved = resolvedSummary(for: ref)
+        }
+        guard resolved.source == .manual else { return nil }
+        guard let state = understandingV2.state(for: ref.sessionID) else { return nil }
+        let chain: [UnderstandingArtifact]
+        switch field {
+        case .title:    chain = state.titleVersions
+        case .progress: chain = state.progressVersions
+        case .summary:  chain = state.summaryVersions
+        }
+        return chain.reversed().first(where: { $0.source == .ai })
+    }
+
     /// Returns the most recent `.ai` artifact among those currently
     /// displayed (i.e. ID is in `currentAIArtifactIDs`), or nil if no
     /// resolved field currently has an AI source. Unadopted AI
