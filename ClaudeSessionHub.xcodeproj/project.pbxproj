@@ -102,6 +102,8 @@
 		A0290021 /* SessionStoreResolvedAccessorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290021; };
 		A0290022 /* SessionStoreEditAdoptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290022; };
 		A0290023 /* SessionStorePerFieldRegenerateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290023; };
+		A0290024 /* UnderstandingHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290024; };
+		A0290025 /* SessionStoreFieldHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290025; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -222,6 +224,8 @@
 		B0290021 /* SessionStoreResolvedAccessorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreResolvedAccessorsTests.swift; sourceTree = "<group>"; };
 		B0290022 /* SessionStoreEditAdoptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreEditAdoptTests.swift; sourceTree = "<group>"; };
 		B0290023 /* SessionStorePerFieldRegenerateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStorePerFieldRegenerateTests.swift; sourceTree = "<group>"; };
+		B0290024 /* UnderstandingHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingHistoryEntry.swift; sourceTree = "<group>"; };
+		B0290025 /* SessionStoreFieldHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreFieldHistoryTests.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -318,6 +322,7 @@
 				B1000005 /* ResumeTarget.swift */,
 				B0200001 /* SessionSignals.swift */,
 				B0290010 /* UnderstandingArtifact.swift */,
+				B0290024 /* UnderstandingHistoryEntry.swift */,
 				B0290011 /* UnderstandingState.swift */,
 				B0280001 /* VersionMention.swift */,
 			);
@@ -473,6 +478,7 @@
 				B0290008 /* ScanCoordinatorTests.swift */,
 				B0200011 /* SearchScoringTests.swift */,
 				B0290022 /* SessionStoreEditAdoptTests.swift */,
+				B0290025 /* SessionStoreFieldHistoryTests.swift */,
 				B0290023 /* SessionStorePerFieldRegenerateTests.swift */,
 				B0290021 /* SessionStoreResolvedAccessorsTests.swift */,
 				B0270003 /* SecretStoreTests.swift */,
@@ -646,6 +652,7 @@
 				A0290015 /* LegacyUnderstandingAdapter.swift in Sources */,
 				A0290017 /* UnderstandingDisplayPolicy.swift in Sources */,
 				A0290020 /* SourceChip.swift in Sources */,
+				A0290024 /* UnderstandingHistoryEntry.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -696,6 +703,7 @@
 				A0290021 /* SessionStoreResolvedAccessorsTests.swift in Sources */,
 				A0290022 /* SessionStoreEditAdoptTests.swift in Sources */,
 				A0290023 /* SessionStorePerFieldRegenerateTests.swift in Sources */,
+				A0290025 /* SessionStoreFieldHistoryTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
