@@ -100,6 +100,8 @@
 		A0290019 /* UnderstandingMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290019; };
 		A0290020 /* SourceChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290020; };
 		A0290021 /* SessionStoreResolvedAccessorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290021; };
+		A0290022 /* SessionStoreEditAdoptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290022; };
+		A0290023 /* SessionStorePerFieldRegenerateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290023; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -218,6 +220,8 @@
 		B0290019 /* UnderstandingMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingMigrationTests.swift; sourceTree = "<group>"; };
 		B0290020 /* SourceChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceChip.swift; sourceTree = "<group>"; };
 		B0290021 /* SessionStoreResolvedAccessorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreResolvedAccessorsTests.swift; sourceTree = "<group>"; };
+		B0290022 /* SessionStoreEditAdoptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreEditAdoptTests.swift; sourceTree = "<group>"; };
+		B0290023 /* SessionStorePerFieldRegenerateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStorePerFieldRegenerateTests.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -468,6 +472,8 @@
 				B0200009 /* RuleTitleStrategyTests.swift */,
 				B0290008 /* ScanCoordinatorTests.swift */,
 				B0200011 /* SearchScoringTests.swift */,
+				B0290022 /* SessionStoreEditAdoptTests.swift */,
+				B0290023 /* SessionStorePerFieldRegenerateTests.swift */,
 				B0290021 /* SessionStoreResolvedAccessorsTests.swift */,
 				B0270003 /* SecretStoreTests.swift */,
 				B0200012 /* SettingsStoreTests.swift */,
@@ -688,6 +694,8 @@
 				A0290018 /* UnderstandingDisplayPolicyTests.swift in Sources */,
 				A0290019 /* UnderstandingMigrationTests.swift in Sources */,
 				A0290021 /* SessionStoreResolvedAccessorsTests.swift in Sources */,
+				A0290022 /* SessionStoreEditAdoptTests.swift in Sources */,
+				A0290023 /* SessionStorePerFieldRegenerateTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

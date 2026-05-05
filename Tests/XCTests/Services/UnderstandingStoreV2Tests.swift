@@ -276,6 +276,65 @@ final class UnderstandingStoreV2Tests: XCTestCase {
         XCTAssertNil(s1["legacySnapshot"], "legacySnapshot must not be persisted in V2")
     }
 
+    // MARK: - Rationale API (P2 prep)
+
+    func testSetRationaleRoundTrip() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store1 = UnderstandingStoreV2(directory: dir)
+        let r = RationaleMetadata(
+            text: "based on file changes",
+            trigger: .manualGenerate,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            evidenceRefs: ["a", "b"],
+            staleState: .fresh
+        )
+        store1.setRationale(for: "s1", r)
+
+        let store2 = UnderstandingStoreV2(directory: dir)
+        let loaded = store2.state(for: "s1")?.currentRationale
+        XCTAssertEqual(loaded?.text, "based on file changes")
+        XCTAssertEqual(loaded?.evidenceRefs, ["a", "b"])
+        XCTAssertEqual(loaded?.staleState, .fresh)
+    }
+
+    func testSetRationaleNilClears() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = UnderstandingStoreV2(directory: dir)
+        store.setRationale(for: "s1", RationaleMetadata(text: "x", trigger: .manualGenerate))
+        XCTAssertNotNil(store.state(for: "s1")?.currentRationale)
+        store.setRationale(for: "s1", nil)
+        XCTAssertNil(store.state(for: "s1")?.currentRationale)
+    }
+
+    func testSetRationaleStaleStatePreservesOtherFields() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = UnderstandingStoreV2(directory: dir)
+        let r = RationaleMetadata(
+            text: "based on x",
+            trigger: .manualGenerate,
+            evidenceRefs: ["e1"],
+            staleState: .fresh
+        )
+        store.setRationale(for: "s1", r)
+        store.setRationaleStaleState(for: "s1", .stalePartial(reason: "title edited"))
+        let updated = store.state(for: "s1")?.currentRationale
+        XCTAssertEqual(updated?.text, "based on x")
+        XCTAssertEqual(updated?.evidenceRefs, ["e1"])
+        XCTAssertEqual(updated?.staleState, .stalePartial(reason: "title edited"))
+    }
+
+    func testSetRationaleStaleStateNoOpWhenAbsent() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = UnderstandingStoreV2(directory: dir)
+        // No rationale set; calling stale state must not crash or create one.
+        store.setRationaleStaleState(for: "s1", .stalePartial(reason: "noop"))
+        XCTAssertNil(store.state(for: "s1")?.currentRationale)
+    }
+
     // MARK: - Multi-session isolation
 
     func testMultipleSessionsIndependent() {

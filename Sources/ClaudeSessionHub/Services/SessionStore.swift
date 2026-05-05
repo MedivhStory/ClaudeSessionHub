@@ -205,11 +205,10 @@ public final class SessionStore: @unchecked Sendable {
     @MainActor
     public func resolvedMetadata(for ref: SessionRef) -> ResolvedMetadata? {
         let sid = ref.sessionID
-        let sources: [ResolvedSource] = [
-            resolvedTitle(for: ref).source,
-            resolvedProgress(for: ref).source,
-            resolvedSummary(for: ref).source,
-        ]
+        let titleR = resolvedTitle(for: ref)
+        let progressR = resolvedProgress(for: ref)
+        let summaryR = resolvedSummary(for: ref)
+        let sources = [titleR.source, progressR.source, summaryR.source]
         let hasV2Ownership = sources.contains { $0 == .ai || $0 == .manual }
         let hasLegacyCurrent = sources.contains { $0 == .legacy }
 
@@ -217,36 +216,56 @@ public final class SessionStore: @unchecked Sendable {
         let lastActive = session?.lastActiveAt ?? Date()
 
         if hasV2Ownership {
-            // V2 has taken ownership of at least one field. P1 dual-write
-            // keeps V1 in sync, so V1 snapshot is the source of truth for
-            // model/time and the existing basedOnLastActiveAt-based stale
-            // check.
-            if let snap = understandingStore.snapshot(for: sid) {
-                let stale = understandingStore.isStale(
-                    for: sid, lastActiveAt: lastActive
-                )
-                return ResolvedMetadata(
-                    model: snap.modelName,
-                    time: snap.generatedAt,
-                    isStale: stale
-                )
-            }
-            // V1 snapshot missing (would happen only after dual-write is
-            // removed in a later PR). Fall back to the latest V2 AI
-            // artifact's metadata; use createdAt as a stale proxy.
-            if let state = understandingV2.state(for: sid) {
-                let candidate = state.summaryVersions.last(where: { $0.source == .ai })
-                    ?? state.titleVersions.last(where: { $0.source == .ai })
-                    ?? state.progressVersions.last(where: { $0.source == .ai })
-                if let artifact = candidate {
+            // V2 has taken ownership of at least one field. Pick the
+            // freshest signal between V1 snapshot and the latest V2 AI
+            // artifact that is *currently displayed* (i.e. one of the
+            // resolved fields' artifactIDs). Per-field regenerate is
+            // V2-only (P2 C2), so V1 may lag behind a recent V2 write —
+            // panel metadata must reflect the newer source. But an
+            // unadopted AI candidate sitting in the chain while a manual
+            // pointer wins must NOT surface its metadata, because the
+            // visible field is still the manual value.
+            let currentAIArtifactIDs: [UUID] = [titleR, progressR, summaryR]
+                .filter { $0.source == .ai }
+                .compactMap { $0.artifactID }
+            let v1 = understandingStore.snapshot(for: sid)
+            let v2Latest = latestCurrentV2AIArtifact(
+                for: sid,
+                currentAIArtifactIDs: currentAIArtifactIDs
+            )
+
+            switch (v1, v2Latest) {
+            case (let v1?, let v2?):
+                if v2.createdAt > v1.generatedAt {
+                    // V2 is newer — per-field regenerate after full enhance.
                     return ResolvedMetadata(
-                        model: artifact.modelName ?? "?",
-                        time: artifact.createdAt,
-                        isStale: lastActive > artifact.createdAt
+                        model: v2.modelName ?? "?",
+                        time: v2.createdAt,
+                        isStale: lastActive > v2.createdAt
                     )
                 }
+                // V1 is newer or contemporaneous — use V1's full-fidelity
+                // basedOnLastActiveAt-driven stale signal.
+                return ResolvedMetadata(
+                    model: v1.modelName,
+                    time: v1.generatedAt,
+                    isStale: understandingStore.isStale(for: sid, lastActiveAt: lastActive)
+                )
+            case (let v1?, nil):
+                return ResolvedMetadata(
+                    model: v1.modelName,
+                    time: v1.generatedAt,
+                    isStale: understandingStore.isStale(for: sid, lastActiveAt: lastActive)
+                )
+            case (nil, let v2?):
+                return ResolvedMetadata(
+                    model: v2.modelName ?? "?",
+                    time: v2.createdAt,
+                    isStale: lastActive > v2.createdAt
+                )
+            case (nil, nil):
+                return nil
             }
-            return nil
         }
 
         if hasLegacyCurrent,
@@ -260,6 +279,58 @@ public final class SessionStore: @unchecked Sendable {
         }
 
         return nil
+    }
+
+    /// Returns the latest `.ai` artifact in `field`'s chain that is
+    /// currently NOT selected by the pointer, when the resolved field
+    /// has a `.manual` current source. Used by the panel to surface
+    /// an "Adopt AI version" affordance.
+    ///
+    /// Returns nil when:
+    /// - The session has no V2 state.
+    /// - The resolved field's source is not `.manual` (no manual
+    ///   override to compete against).
+    /// - No `.ai` artifact exists in the chain.
+    @MainActor
+    public func unadoptedAICandidate(
+        for ref: SessionRef,
+        field: UnderstandingField
+    ) -> UnderstandingArtifact? {
+        let resolved: ResolvedField
+        switch field {
+        case .title:    resolved = resolvedTitle(for: ref)
+        case .progress: resolved = resolvedProgress(for: ref)
+        case .summary:  resolved = resolvedSummary(for: ref)
+        }
+        guard resolved.source == .manual else { return nil }
+        guard let state = understandingV2.state(for: ref.sessionID) else { return nil }
+        let chain: [UnderstandingArtifact]
+        switch field {
+        case .title:    chain = state.titleVersions
+        case .progress: chain = state.progressVersions
+        case .summary:  chain = state.summaryVersions
+        }
+        return chain.reversed().first(where: { $0.source == .ai })
+    }
+
+    /// Returns the most recent `.ai` artifact among those currently
+    /// displayed (i.e. ID is in `currentAIArtifactIDs`), or nil if no
+    /// resolved field currently has an AI source. Unadopted AI
+    /// candidates that sit in the chain but are not selected by any
+    /// pointer are intentionally excluded — their metadata is not the
+    /// metadata of what the user actually sees.
+    @MainActor
+    private func latestCurrentV2AIArtifact(
+        for sessionID: String,
+        currentAIArtifactIDs: [UUID]
+    ) -> UnderstandingArtifact? {
+        guard !currentAIArtifactIDs.isEmpty,
+              let state = understandingV2.state(for: sessionID)
+        else { return nil }
+        let pool = state.titleVersions + state.progressVersions + state.summaryVersions
+        return pool
+            .filter { currentAIArtifactIDs.contains($0.id) }
+            .max(by: { $0.createdAt < $1.createdAt })
     }
 
     /// Composes the rule-layer title fallback: smart title (TitleStore)
@@ -412,10 +483,106 @@ public final class SessionStore: @unchecked Sendable {
         persistEnhancement(snapshot)
     }
 
+    // MARK: - v0.2.9 P2 — manual edit + adopt
+
+    /// Append a `.manual` title artifact and move the current pointer
+    /// to it. Trims whitespace; empty values are a no-op. If the
+    /// session has a current rationale, marks it `.stalePartial` since
+    /// the rationale's basis is no longer current.
+    @MainActor
+    public func editTitle(for ref: SessionRef, newValue: String) {
+        appendManualEdit(for: ref, field: .title, newValue: newValue, reason: "title edited")
+    }
+
+    /// Append a `.manual` progress artifact and move the current
+    /// pointer to it. Same semantics as `editTitle(for:newValue:)`.
+    @MainActor
+    public func editProgress(for ref: SessionRef, newValue: String) {
+        appendManualEdit(for: ref, field: .progress, newValue: newValue, reason: "progress edited")
+    }
+
+    @MainActor
+    private func appendManualEdit(
+        for ref: SessionRef,
+        field: UnderstandingField,
+        newValue: String,
+        reason: String
+    ) {
+        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let artifact = UnderstandingArtifact(
+            value: trimmed,
+            source: .manual,
+            trigger: .manualEdit
+        )
+        understandingV2.appendArtifact(for: ref.sessionID, field: field, artifact)
+        understandingV2.setRationaleStaleState(
+            for: ref.sessionID,
+            .stalePartial(reason: reason)
+        )
+    }
+
+    /// Switch the current pointer for `field` to an existing AI
+    /// artifact identified by `versionID`. The artifact must already
+    /// be present in the chain and have `source == .ai`. Records a
+    /// `SelectionEvent(action: .adopt, previousVersionID:targetVersionID:)`.
+    /// **No new artifact is created.**
+    ///
+    /// Throws:
+    /// - `StoreError.versionNotFound` if `versionID` is not in the chain
+    ///   (or the session has no V2 state at all)
+    /// - `StoreError.versionNotAI` if `versionID` exists in the chain
+    ///   but its source is not `.ai` (manual / rule artifacts are not
+    ///   adoptable; this is distinct from "unknown id")
+    @MainActor
+    public func adoptAIVersion(
+        for ref: SessionRef,
+        field: UnderstandingField,
+        versionID: UUID
+    ) throws {
+        let sid = ref.sessionID
+        guard let state = understandingV2.state(for: sid) else {
+            throw UnderstandingStoreV2.StoreError.versionNotFound(field: field, id: versionID)
+        }
+
+        let chain: [UnderstandingArtifact]
+        let previousPointer: UUID?
+        switch field {
+        case .title:
+            chain = state.titleVersions
+            previousPointer = state.currentTitleVersionID
+        case .progress:
+            chain = state.progressVersions
+            previousPointer = state.currentProgressVersionID
+        case .summary:
+            chain = state.summaryVersions
+            previousPointer = state.currentSummaryVersionID
+        }
+
+        guard let target = chain.first(where: { $0.id == versionID }) else {
+            throw UnderstandingStoreV2.StoreError.versionNotFound(field: field, id: versionID)
+        }
+        guard target.source == .ai else {
+            throw UnderstandingStoreV2.StoreError.versionNotAI(field: field, id: versionID)
+        }
+
+        try understandingV2.setCurrentPointer(for: sid, field: field, to: versionID)
+        understandingV2.appendSelectionEvent(
+            for: sid,
+            SelectionEvent(
+                field: field,
+                action: .adopt,
+                previousVersionID: previousPointer,
+                targetVersionID: versionID
+            )
+        )
+    }
+
     /// Persist an AI-generated snapshot with dual-write semantics:
     /// - V1: existing `UnderstandingStore.setSnapshot` (preserves downgrade
     ///   compatibility — pre-v0.2.9 builds keep reading current data).
-    /// - V2: `UnderstandingStoreV2.appendArtifact` for title + (optional)
+    /// - V2: funneled through `appendAIArtifact` for title + (optional)
     ///   progress + (optional) summary. Pointer movement follows the C2
     ///   rules (manual override, if any, is preserved).
     ///
@@ -426,41 +593,111 @@ public final class SessionStore: @unchecked Sendable {
         // V1 dual-write (existing path)
         understandingStore.setSnapshot(snapshot)
 
-        // V2 dual-write (new path) — convert snapshot fields to artifacts.
+        // V2 dual-write — every AI write goes through the appendAIArtifact seam.
         let sid = snapshot.sessionID
-        let titleArtifact = UnderstandingArtifact(
+        appendAIArtifact(
+            for: sid,
+            field: .title,
             value: snapshot.title,
+            modelName: snapshot.modelName,
+            generatedAt: snapshot.generatedAt
+        )
+        if let progress = snapshot.progress, !progress.isEmpty {
+            appendAIArtifact(
+                for: sid,
+                field: .progress,
+                value: progress,
+                modelName: snapshot.modelName,
+                generatedAt: snapshot.generatedAt
+            )
+        }
+        if let summary = snapshot.summary, !summary.isEmpty {
+            appendAIArtifact(
+                for: sid,
+                field: .summary,
+                value: summary,
+                modelName: snapshot.modelName,
+                generatedAt: snapshot.generatedAt
+            )
+        }
+    }
+
+    // MARK: - v0.2.9 P2 — per-field regenerate
+
+    /// Regenerate a single field (title) via one LLM call. V2-only:
+    /// V1 dual-write is intentionally skipped for per-field regenerate
+    /// to avoid synthesizing placeholder values for the other two
+    /// fields. Pointer movement follows C2 rules — manual override is
+    /// preserved.
+    @MainActor
+    public func regenerateTitle(for ref: SessionRef) async throws {
+        try await regenerateField(.title, for: ref)
+    }
+
+    @MainActor
+    public func regenerateProgress(for ref: SessionRef) async throws {
+        try await regenerateField(.progress, for: ref)
+    }
+
+    @MainActor
+    public func regenerateSummary(for ref: SessionRef) async throws {
+        try await regenerateField(.summary, for: ref)
+    }
+
+    @MainActor
+    private func regenerateField(_ field: UnderstandingField, for ref: SessionRef) async throws {
+        settings.ensureApiKeyLoaded()
+        guard settings.llmConfig.isConfigured else {
+            throw LLMClient.LLMError.notConfigured
+        }
+        guard let provider = await coordinator.provider(for: ref.providerID) as? ClaudeProvider,
+              let inputs = try? await provider.extractEnhanceInputs(for: ref) else { return }
+        let signals = signalExtractor.enrich(inputs.signals)
+
+        let session = sessions.first { $0.ref == ref }
+        let lastActiveAt = session?.lastActiveAt ?? Date()
+
+        let enhancer = LLMEnhancer(config: settings.llmConfig)
+        guard let result = await enhancer.enhanceField(
+            field,
+            signals: signals,
+            rawTurns: inputs.rawTurns,
+            basedOnLastActiveAt: lastActiveAt
+        ) else { return }
+
+        appendAIArtifact(
+            for: ref.sessionID,
+            field: result.field,
+            value: result.value,
+            modelName: result.modelName,
+            generatedAt: result.generatedAt
+        )
+    }
+
+    /// Persistence-only seam: every AI artifact write — full enhance,
+    /// per-field regenerate, and (in tests) synthesized values — goes
+    /// through this method. Tests can call it directly to exercise
+    /// pointer-rule behavior without depending on a real LLM.
+    ///
+    /// Internal access — production code paths should call the public
+    /// `regenerate*` or `enhanceWithLLM` methods.
+    @MainActor
+    func appendAIArtifact(
+        for sessionID: String,
+        field: UnderstandingField,
+        value: String,
+        modelName: String,
+        generatedAt: Date
+    ) {
+        let artifact = UnderstandingArtifact(
+            value: value,
             source: .ai,
             trigger: .manualGenerate,
-            createdAt: snapshot.generatedAt,
+            createdAt: generatedAt,
             staleState: .fresh,
-            modelName: snapshot.modelName
+            modelName: modelName
         )
-        understandingV2.appendArtifact(for: sid, field: .title, titleArtifact)
-
-        if let progress = snapshot.progress, !progress.isEmpty {
-            let progressArtifact = UnderstandingArtifact(
-                value: progress,
-                source: .ai,
-                trigger: .manualGenerate,
-                createdAt: snapshot.generatedAt,
-                staleState: .fresh,
-                modelName: snapshot.modelName
-            )
-            understandingV2.appendArtifact(for: sid, field: .progress, progressArtifact)
-        }
-
-        if let summary = snapshot.summary, !summary.isEmpty {
-            let summaryArtifact = UnderstandingArtifact(
-                value: summary,
-                source: .ai,
-                trigger: .manualGenerate,
-                createdAt: snapshot.generatedAt,
-                staleState: .fresh,
-                modelName: snapshot.modelName
-            )
-            understandingV2.appendArtifact(for: sid, field: .summary, summaryArtifact)
-        }
+        understandingV2.appendArtifact(for: sessionID, field: field, artifact)
     }
 
     /// LLM-enhance a specific list of sessions. User-triggered only.

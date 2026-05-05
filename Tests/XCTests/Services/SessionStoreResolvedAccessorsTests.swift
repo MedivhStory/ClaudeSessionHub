@@ -227,6 +227,191 @@ final class SessionStoreResolvedAccessorsTests: XCTestCase {
         )
     }
 
+    /// Per-field regenerate (P2 C2) is V2-only. After an older full
+    /// enhance wrote V1+V2, a single-field appendAIArtifact / regenerate
+    /// produces a V2 artifact newer than the V1 snapshot. The metadata
+    /// accessor must surface the newer V2 model/time, not the stale V1.
+    func testResolvedMetadataPrefersNewerV2ArtifactAfterPerFieldRegenerate() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+
+        // Step 1: full enhance — writes V1 + V2 with old model/time.
+        let oldTime = Date(timeIntervalSinceNow: -3_600)
+        store.persistEnhancement(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "old title",
+            progress: "old progress",
+            summary: "old summary",
+            modelName: "old-model",
+            generatedAt: oldTime,
+            basedOnLastActiveAt: oldTime
+        ))
+        XCTAssertEqual(store.understandingStore.snapshot(for: "s1")?.modelName, "old-model")
+
+        // Step 2: per-field regenerate (V2-only) — newer artifact.
+        let newTime = Date()
+        store.appendAIArtifact(
+            for: "s1",
+            field: .title,
+            value: "new title",
+            modelName: "new-model",
+            generatedAt: newTime
+        )
+        // V1 snapshot must not have been touched by the per-field write.
+        XCTAssertEqual(store.understandingStore.snapshot(for: "s1")?.modelName, "old-model")
+        XCTAssertEqual(store.understandingStore.snapshot(for: "s1")?.generatedAt, oldTime)
+
+        // Step 3: metadata accessor must reflect the newer V2 artifact.
+        let meta = store.resolvedMetadata(for: ref())
+        XCTAssertEqual(
+            meta?.model, "new-model",
+            "metadata must prefer newer V2 artifact after per-field regenerate"
+        )
+        XCTAssertEqual(meta?.time, newTime)
+    }
+
+    /// Inverse case: V1 newer than the latest V2 AI artifact. Metadata
+    /// must keep using V1 so the basedOnLastActiveAt-driven stale signal
+    /// stays in effect.
+    func testResolvedMetadataPrefersV1WhenV1IsNewer() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+
+        // Step 1: older V2 AI artifact only (simulates earlier per-field write).
+        let oldTime = Date(timeIntervalSinceNow: -3_600)
+        store.appendAIArtifact(
+            for: "s1",
+            field: .title,
+            value: "old v2 title",
+            modelName: "old-v2-model",
+            generatedAt: oldTime
+        )
+
+        // Step 2: newer V1 snapshot (simulates a later full enhance whose
+        // V1 dual-write completed but where V2's chain only reflects the
+        // earlier per-field write — synthetic scenario; primarily a
+        // tie-breaking guard).
+        let newTime = Date()
+        store.understandingStore.setSnapshot(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "new v1",
+            progress: nil,
+            summary: nil,
+            modelName: "new-v1-model",
+            generatedAt: newTime,
+            basedOnLastActiveAt: newTime
+        ))
+
+        let meta = store.resolvedMetadata(for: ref())
+        XCTAssertEqual(meta?.model, "new-v1-model")
+        XCTAssertEqual(meta?.time, newTime)
+    }
+
+    /// Provenance constraint: an unadopted AI candidate (sitting in the
+    /// chain because regenerate appended it while the manual pointer
+    /// won) must NOT surface its metadata. The visible field is still
+    /// the manual value, so metadata must keep showing whatever drove
+    /// the visible state — here, the older V1 snapshot from the prior
+    /// full enhance.
+    func testResolvedMetadataIgnoresUnadoptedAICandidate() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+
+        // Step 1: full enhance — V1 + V2 baseline at oldTime.
+        let oldTime = Date(timeIntervalSinceNow: -3_600)
+        store.persistEnhancement(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "old title",
+            progress: "old progress",
+            summary: "old summary",
+            modelName: "old-model",
+            generatedAt: oldTime,
+            basedOnLastActiveAt: oldTime
+        ))
+
+        // Step 2: user manual edit on title — pointer flips to manual.
+        store.editTitle(for: ref(), newValue: "user title")
+        XCTAssertEqual(store.resolvedTitle(for: ref()).source, .manual)
+
+        // Step 3: per-field regenerate appends a NEW AI title candidate
+        // (V2-only). C2 pointer rule keeps the pointer on manual.
+        let newTime = Date()
+        store.appendAIArtifact(
+            for: "s1",
+            field: .title,
+            value: "ai candidate",
+            modelName: "new-model",
+            generatedAt: newTime
+        )
+        // Title is still manual — candidate is in chain but not current.
+        XCTAssertEqual(store.resolvedTitle(for: ref()).source, .manual)
+
+        // Metadata must NOT use the unadopted candidate. Title currently
+        // shows the manual value; progress / summary still show the old
+        // AI artifacts from step 1, so V1 / V2 are contemporaneous and
+        // V1 wins on the tie. Either way: model must be old-model.
+        let meta = store.resolvedMetadata(for: ref())
+        XCTAssertEqual(
+            meta?.model, "old-model",
+            "unadopted AI candidate must not surface its metadata"
+        )
+        XCTAssertEqual(meta?.time, oldTime)
+    }
+
+    /// Once the user explicitly adopts the AI candidate via
+    /// `adoptAIVersion`, the title pointer moves to the candidate and
+    /// the candidate becomes a current AI artifact. Metadata may now
+    /// surface the candidate's model/time.
+    func testResolvedMetadataUsesCandidateAfterAdopt() throws {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+
+        // Baseline + manual edit.
+        let oldTime = Date(timeIntervalSinceNow: -3_600)
+        store.persistEnhancement(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "old title",
+            progress: nil,
+            summary: nil,
+            modelName: "old-model",
+            generatedAt: oldTime,
+            basedOnLastActiveAt: oldTime
+        ))
+        store.editTitle(for: ref(), newValue: "user title")
+
+        // New AI candidate at newTime.
+        let newTime = Date()
+        store.appendAIArtifact(
+            for: "s1",
+            field: .title,
+            value: "ai candidate",
+            modelName: "new-model",
+            generatedAt: newTime
+        )
+
+        // Find the candidate ID and adopt it.
+        let candidate = store.understandingV2.state(for: "s1")?
+            .titleVersions.first(where: { $0.value == "ai candidate" })
+        try store.adoptAIVersion(
+            for: ref(),
+            field: .title,
+            versionID: candidate!.id
+        )
+        XCTAssertEqual(store.resolvedTitle(for: ref()).source, .ai)
+
+        // Metadata may now surface the newer candidate.
+        let meta = store.resolvedMetadata(for: ref())
+        XCTAssertEqual(
+            meta?.model, "new-model",
+            "after adopt, candidate metadata may surface"
+        )
+        XCTAssertEqual(meta?.time, newTime)
+    }
+
     /// No content at all (no V1 snapshot, no V2 artifacts, no legacy)
     /// → metadata is nil so the panel hides the model/time row.
     func testNoContentMetadataIsNil() {
