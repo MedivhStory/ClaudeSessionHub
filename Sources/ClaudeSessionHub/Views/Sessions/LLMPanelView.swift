@@ -20,6 +20,15 @@ struct LLMPanelView: View {
     @State private var progressBuffer: String = ""
     @FocusState private var focusedField: UnderstandingField?
 
+    // P3 C3: per-field history drawer presentation. Identifiable wrapper
+    // so SwiftUI's `.sheet(item:)` can drive a single sheet from any of
+    // the three field rows without one bool per field.
+    private struct OpenHistory: Identifiable {
+        let field: UnderstandingField
+        var id: String { field.rawValue }
+    }
+    @State private var openHistory: OpenHistory? = nil
+
     // MARK: - Resolved fields
 
     private var titleField: ResolvedField {
@@ -73,6 +82,10 @@ struct LLMPanelView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("llmPanel_\(session.ref.sessionID)")
         .accessibilityElement(children: .contain)
+        .sheet(item: $openHistory) { state in
+            UnderstandingHistoryDrawer(session: session, field: state.field)
+                .environment(store)
+        }
     }
 
     // MARK: - Has resolved content
@@ -120,6 +133,7 @@ struct LLMPanelView: View {
             SourceChip(source: titleField.source)
             regenerateButton(for: .title)
             adoptButtonIfNeeded(for: .title)
+            historyButton(for: .title)
         }
     }
 
@@ -147,6 +161,7 @@ struct LLMPanelView: View {
             SourceChip(source: progressField.source)
             regenerateButton(for: .progress)
             adoptButtonIfNeeded(for: .progress)
+            historyButton(for: .progress)
         }
     }
 
@@ -160,6 +175,7 @@ struct LLMPanelView: View {
                         .foregroundStyle(.tertiary)
                     SourceChip(source: summaryField.source)
                     regenerateButton(for: .summary)
+                    historyButton(for: .summary)
                 }
                 Text(summary)
                     .font(.system(size: 11))
@@ -246,6 +262,25 @@ struct LLMPanelView: View {
             .accessibilityIdentifier("regenerate\(fieldName(field))_\(session.ref.sessionID)")
             .accessibilityLabel(regenerateHelp(field))
         }
+    }
+
+    /// P3 C3: opens the read-only history drawer for `field`. Always
+    /// enabled — the drawer renders an empty-state when there is nothing
+    /// to show, which is rare because the panel only renders when at
+    /// least one field has resolved content.
+    @ViewBuilder
+    private func historyButton(for field: UnderstandingField) -> some View {
+        Button {
+            openHistory = OpenHistory(field: field)
+        } label: {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 11))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help("查看 \(fieldLabel(field)) 历史")
+        .accessibilityIdentifier("history\(fieldName(field))_\(session.ref.sessionID)")
+        .accessibilityLabel("查看 \(fieldLabel(field)) 历史")
     }
 
     @ViewBuilder

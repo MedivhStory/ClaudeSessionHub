@@ -106,6 +106,7 @@
 		A0290025 /* SessionStoreFieldHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290025; };
 		A0290026 /* StaleStateDerivationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290026; };
 		A0290027 /* StaleStateExplanationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290027; };
+		A0290028 /* UnderstandingHistoryDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290028; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -230,6 +231,7 @@
 		B0290025 /* SessionStoreFieldHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreFieldHistoryTests.swift; sourceTree = "<group>"; };
 		B0290026 /* StaleStateDerivationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaleStateDerivationTests.swift; sourceTree = "<group>"; };
 		B0290027 /* StaleStateExplanationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaleStateExplanationTests.swift; sourceTree = "<group>"; };
+		B0290028 /* UnderstandingHistoryDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingHistoryDrawer.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -420,6 +422,7 @@
 				B1000027 /* SessionListView.swift */,
 				B1000028 /* SessionTileView.swift */,
 				B1000029 /* SidebarView.swift */,
+				B0290028 /* UnderstandingHistoryDrawer.swift */,
 			);
 			path = Sessions;
 			sourceTree = "<group>";
@@ -659,6 +662,7 @@
 				A0290017 /* UnderstandingDisplayPolicy.swift in Sources */,
 				A0290020 /* SourceChip.swift in Sources */,
 				A0290024 /* UnderstandingHistoryEntry.swift in Sources */,
+				A0290028 /* UnderstandingHistoryDrawer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
