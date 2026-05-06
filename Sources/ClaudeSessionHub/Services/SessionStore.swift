@@ -337,19 +337,7 @@ public final class SessionStore: @unchecked Sendable {
 
         let session = sessions.first { $0.ref == ref }
         let lastActive = session?.lastActiveAt
-
-        let createdAt: Date? = {
-            guard let id = resolved.artifactID,
-                  let state = understandingV2.state(for: ref.sessionID)
-            else { return nil }
-            let chain: [UnderstandingArtifact]
-            switch field {
-            case .title:    chain = state.titleVersions
-            case .progress: chain = state.progressVersions
-            case .summary:  chain = state.summaryVersions
-            }
-            return chain.first(where: { $0.id == id })?.createdAt
-        }()
+        let createdAt = resolvedArtifactCreatedAt(for: ref, field: field, resolved: resolved)
 
         return displayPolicy.staleStateBy(
             resolvedSource: resolved.source,
@@ -357,6 +345,55 @@ public final class SessionStore: @unchecked Sendable {
             artifactCreatedAt: createdAt,
             sessionLastActiveAt: lastActive
         )
+    }
+
+    /// Humanized staleness explanation for the panel's per-field
+    /// explanation line. Returns nil for `.fresh` (no explanation needed)
+    /// and a Chinese-language string otherwise. Composes
+    /// `resolvedStaleState` + the field's artifact `createdAt` and
+    /// delegates the text mapping to
+    /// `UnderstandingDisplayPolicy.explanation(...)`.
+    @MainActor
+    public func resolvedStaleExplanation(
+        for ref: SessionRef,
+        field: UnderstandingField
+    ) -> String? {
+        let stale = resolvedStaleState(for: ref, field: field)
+        let session = sessions.first { $0.ref == ref }
+        let lastActive = session?.lastActiveAt ?? Date()
+        let resolved: ResolvedField
+        switch field {
+        case .title:    resolved = resolvedTitle(for: ref)
+        case .progress: resolved = resolvedProgress(for: ref)
+        case .summary:  resolved = resolvedSummary(for: ref)
+        }
+        let generatedAt = resolvedArtifactCreatedAt(for: ref, field: field, resolved: resolved) ?? lastActive
+        return displayPolicy.explanation(
+            for: stale,
+            lastActiveAt: lastActive,
+            generatedAt: generatedAt
+        )
+    }
+
+    /// Looks up the V2 chain artifact's `createdAt` for `field`, given a
+    /// pre-resolved field. Returns nil if no V2 artifact backs the
+    /// resolved value (legacy / rule / uuidPrefix / none sources).
+    @MainActor
+    private func resolvedArtifactCreatedAt(
+        for ref: SessionRef,
+        field: UnderstandingField,
+        resolved: ResolvedField
+    ) -> Date? {
+        guard let id = resolved.artifactID,
+              let state = understandingV2.state(for: ref.sessionID)
+        else { return nil }
+        let chain: [UnderstandingArtifact]
+        switch field {
+        case .title:    chain = state.titleVersions
+        case .progress: chain = state.progressVersions
+        case .summary:  chain = state.summaryVersions
+        }
+        return chain.first(where: { $0.id == id })?.createdAt
     }
 
     /// Per-field chronological history for the v0.2.9 history drawer.

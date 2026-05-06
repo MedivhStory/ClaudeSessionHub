@@ -254,6 +254,98 @@ final class SessionStoreResolvedStaleStateTests: XCTestCase {
         )
     }
 
+    // MARK: - resolvedStaleExplanation (C4)
+
+    func testResolvedStaleExplanationFreshReturnsNil() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+        XCTAssertNil(store.resolvedStaleExplanation(for: ref(), field: .title))
+    }
+
+    func testResolvedStaleExplanationLegacyReturnsBaselineNotice() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        UnderstandingStore(directory: dir).setSnapshot(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "legacy",
+            progress: nil,
+            summary: nil,
+            modelName: "m",
+            generatedAt: Date(timeIntervalSince1970: 100),
+            basedOnLastActiveAt: Date()
+        ))
+        let store = makeStore(directory: dir)
+        XCTAssertEqual(
+            store.resolvedStaleExplanation(for: ref(), field: .title),
+            "Pre-v0.2.9 旧基线,无法判断时效"
+        )
+    }
+
+    func testResolvedStaleExplanationStoredPartialReturnsReason() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+        let artifact = UnderstandingArtifact(
+            value: "edited",
+            source: .manual,
+            trigger: .manualEdit,
+            createdAt: Date(timeIntervalSince1970: 1000),
+            staleState: .stalePartial(reason: "user edited")
+        )
+        store.understandingV2.appendArtifact(for: "s1", field: .title, artifact)
+        XCTAssertEqual(
+            store.resolvedStaleExplanation(for: ref(), field: .title),
+            "此字段标注为 stale: user edited"
+        )
+    }
+
+    // MARK: - Regenerate clears stale (C4 acceptance row)
+
+    /// rev.3 acceptance: "Regenerate refreshes including legacy/stale
+    /// (gated only on isConfigured)". Drives the seam used by the public
+    /// `regenerate*` methods so we can verify the post-regenerate state
+    /// without an actual LLM call: the field flips from `.legacy` to
+    /// `.ai`, staleState becomes `.fresh`, and the explanation clears.
+    func testRegenerateOnStaleLegacySessionAppendsAIArtifactAndClearsBadge() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        UnderstandingStore(directory: dir).setSnapshot(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "legacy title",
+            progress: nil,
+            summary: nil,
+            modelName: "old",
+            generatedAt: Date(timeIntervalSince1970: 100),
+            basedOnLastActiveAt: Date()
+        ))
+        let store = makeStore(directory: dir)
+
+        XCTAssertEqual(store.resolvedTitle(for: ref()).source, .legacy)
+        XCTAssertEqual(store.resolvedStaleState(for: ref(), field: .title), .legacyUnknown)
+        XCTAssertEqual(
+            store.resolvedStaleExplanation(for: ref(), field: .title),
+            "Pre-v0.2.9 旧基线,无法判断时效"
+        )
+
+        // Simulate the per-field regenerate's terminal step (the public
+        // `regenerateTitle` requires a configured LLM client).
+        store.appendAIArtifact(
+            for: "s1",
+            field: .title,
+            value: "ai title",
+            modelName: "gpt",
+            generatedAt: Date(timeIntervalSince1970: 5000)
+        )
+
+        XCTAssertEqual(store.resolvedTitle(for: ref()).source, .ai)
+        XCTAssertEqual(store.resolvedStaleState(for: ref(), field: .title), .fresh)
+        XCTAssertNil(
+            store.resolvedStaleExplanation(for: ref(), field: .title),
+            "fresh state must produce no explanation text"
+        )
+    }
+
     /// C2.1: real-drift wiring. Populate `sessions[]` through the scan
     /// path with a SessionSummary whose `lastActiveAt` is strictly after
     /// the artifact's `createdAt`, then assert the store hands back
@@ -311,6 +403,14 @@ final class SessionStoreResolvedStaleStateTests: XCTestCase {
         XCTAssertEqual(
             stale, .staleSessionUpdated(at: lastActive),
             "lastActiveAt > createdAt + stored .fresh must derive .staleSessionUpdated(at: lastActiveAt)"
+        )
+
+        // C4 wire-through: humanized explanation reaches the panel-bound
+        // accessor with the right hour count. 4000s drift → 1 小时
+        // (Int truncation; sub-hour drifts are clamped to ≥ 1).
+        XCTAssertEqual(
+            store.resolvedStaleExplanation(for: driftRef, field: .title),
+            "会话在生成后又更新了 1 小时,此字段可能不再可信"
         )
     }
 }
