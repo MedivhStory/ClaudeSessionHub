@@ -1,5 +1,9 @@
 # P3 Implementation Note rev.3 — Staleness UI + History drawer
 
+status: closed
+closed_date: 2026-05-06
+closed_in: PR #28
+
 **Acceptance**: PLAN-v0.2.9.md §8 + P3 exit criteria — "Field-level staleness explanation displayed; history drawer accessible per field showing artifacts + selection events; stale → regenerate works."
 
 ## Files to modify
