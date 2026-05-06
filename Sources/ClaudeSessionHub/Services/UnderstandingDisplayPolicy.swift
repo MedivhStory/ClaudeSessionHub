@@ -287,4 +287,64 @@ public struct UnderstandingDisplayPolicy: Sendable {
             invalidPointer: invalidPointer
         )
     }
+
+    // MARK: - P3 C2: staleness derivation + humanizer
+
+    /// Pure staleness derivation. See PLAN-v0.2.9-P3.md §"Staleness derivation".
+    ///
+    /// Rules in order:
+    /// 1. **Legacy first** — `resolvedSource == .legacy` always returns
+    ///    `.legacyUnknown`. Old sessions can claim "this is a baseline",
+    ///    never "this is stale".
+    /// 2. **Stored partial preserved** — a stored `.stalePartial(reason)`
+    ///    is returned as-is. P2 edit flows write this; P3 only renders.
+    /// 3. **Stored fresh + session drift** — when stored is `.fresh` and
+    ///    `sessionLastActiveAt > artifactCreatedAt`, derive
+    ///    `.staleSessionUpdated(at: sessionLastActiveAt)` at read time.
+    /// 4. **Else** — `.fresh`.
+    public func staleStateBy(
+        resolvedSource: ResolvedSource,
+        storedStale: StaleState?,
+        artifactCreatedAt: Date?,
+        sessionLastActiveAt: Date?
+    ) -> StaleState {
+        if resolvedSource == .legacy {
+            return .legacyUnknown
+        }
+        if case .stalePartial(let reason)? = storedStale {
+            return .stalePartial(reason: reason)
+        }
+        if case .fresh? = storedStale,
+           let createdAt = artifactCreatedAt,
+           let lastActive = sessionLastActiveAt,
+           lastActive > createdAt {
+            return .staleSessionUpdated(at: lastActive)
+        }
+        return .fresh
+    }
+
+    /// Pure humanizer. Returns nil for `.fresh` (no explanation needed) and
+    /// a Chinese-language explanation otherwise.
+    ///
+    /// For `.staleSessionUpdated`, the displayed hour count is
+    /// `floor((lastActiveAt - generatedAt) / 3600)` clamped to ≥ 1 so
+    /// sub-hour drifts still render a non-zero gap.
+    public func explanation(
+        for stale: StaleState,
+        lastActiveAt: Date,
+        generatedAt: Date
+    ) -> String? {
+        switch stale {
+        case .fresh:
+            return nil
+        case .staleSessionUpdated:
+            let secs = lastActiveAt.timeIntervalSince(generatedAt)
+            let hours = max(1, Int(secs / 3600))
+            return "会话在生成后又更新了 \(hours) 小时,此字段可能不再可信"
+        case .stalePartial(let reason):
+            return "此字段标注为 stale: \(reason)"
+        case .legacyUnknown:
+            return "Pre-v0.2.9 旧基线,无法判断时效"
+        }
+    }
 }

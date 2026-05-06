@@ -20,6 +20,15 @@ struct LLMPanelView: View {
     @State private var progressBuffer: String = ""
     @FocusState private var focusedField: UnderstandingField?
 
+    // P3 C3: per-field history drawer presentation. Identifiable wrapper
+    // so SwiftUI's `.sheet(item:)` can drive a single sheet from any of
+    // the three field rows without one bool per field.
+    private struct OpenHistory: Identifiable {
+        let field: UnderstandingField
+        var id: String { field.rawValue }
+    }
+    @State private var openHistory: OpenHistory? = nil
+
     // MARK: - Resolved fields
 
     private var titleField: ResolvedField {
@@ -73,6 +82,10 @@ struct LLMPanelView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("llmPanel_\(session.ref.sessionID)")
         .accessibilityElement(children: .contain)
+        .sheet(item: $openHistory) { state in
+            UnderstandingHistoryDrawer(session: session, field: state.field)
+                .environment(store)
+        }
     }
 
     // MARK: - Has resolved content
@@ -97,56 +110,66 @@ struct LLMPanelView: View {
     // MARK: - Per-field rows
 
     private var titleRow: some View {
-        HStack(alignment: .center, spacing: 4) {
-            Text("AI 标题:")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: 4) {
+                Text("AI 标题:")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
 
-            TextField("", text: $titleBuffer, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(.system(size: 11))
-                .lineLimit(1...2)
-                .focused($focusedField, equals: .title)
-                .onSubmit { commitEdit(.title) }
-                .onExitCommand { cancelEdit(.title) }
-                .onChange(of: titleField.value, initial: true) { _, newValue in
-                    if focusedField != .title {
-                        titleBuffer = newValue ?? ""
+                TextField("", text: $titleBuffer, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11))
+                    .lineLimit(1...2)
+                    .focused($focusedField, equals: .title)
+                    .onSubmit { commitEdit(.title) }
+                    .onExitCommand { cancelEdit(.title) }
+                    .onChange(of: titleField.value, initial: true) { _, newValue in
+                        if focusedField != .title {
+                            titleBuffer = newValue ?? ""
+                        }
                     }
-                }
-                .accessibilityIdentifier("titleEdit_\(session.ref.sessionID)")
-                .accessibilityLabel("编辑标题")
+                    .accessibilityIdentifier("titleEdit_\(session.ref.sessionID)")
+                    .accessibilityLabel("编辑标题")
 
-            SourceChip(source: titleField.source)
-            regenerateButton(for: .title)
-            adoptButtonIfNeeded(for: .title)
+                SourceChip(source: titleField.source)
+                staleBadgeIfNeeded(for: .title)
+                regenerateButton(for: .title)
+                adoptButtonIfNeeded(for: .title)
+                historyButton(for: .title)
+            }
+            explanationLineIfNeeded(for: .title)
         }
     }
 
     private var progressRow: some View {
-        HStack(alignment: .center, spacing: 4) {
-            Text("AI 进展:")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: 4) {
+                Text("AI 进展:")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
 
-            TextField("", text: $progressBuffer, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(.system(size: 11))
-                .lineLimit(1...2)
-                .focused($focusedField, equals: .progress)
-                .onSubmit { commitEdit(.progress) }
-                .onExitCommand { cancelEdit(.progress) }
-                .onChange(of: progressField.value, initial: true) { _, newValue in
-                    if focusedField != .progress {
-                        progressBuffer = newValue ?? ""
+                TextField("", text: $progressBuffer, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11))
+                    .lineLimit(1...2)
+                    .focused($focusedField, equals: .progress)
+                    .onSubmit { commitEdit(.progress) }
+                    .onExitCommand { cancelEdit(.progress) }
+                    .onChange(of: progressField.value, initial: true) { _, newValue in
+                        if focusedField != .progress {
+                            progressBuffer = newValue ?? ""
+                        }
                     }
-                }
-                .accessibilityIdentifier("progressEdit_\(session.ref.sessionID)")
-                .accessibilityLabel("编辑进展")
+                    .accessibilityIdentifier("progressEdit_\(session.ref.sessionID)")
+                    .accessibilityLabel("编辑进展")
 
-            SourceChip(source: progressField.source)
-            regenerateButton(for: .progress)
-            adoptButtonIfNeeded(for: .progress)
+                SourceChip(source: progressField.source)
+                staleBadgeIfNeeded(for: .progress)
+                regenerateButton(for: .progress)
+                adoptButtonIfNeeded(for: .progress)
+                historyButton(for: .progress)
+            }
+            explanationLineIfNeeded(for: .progress)
         }
     }
 
@@ -159,12 +182,15 @@ struct LLMPanelView: View {
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                     SourceChip(source: summaryField.source)
+                    staleBadgeIfNeeded(for: .summary)
                     regenerateButton(for: .summary)
+                    historyButton(for: .summary)
                 }
                 Text(summary)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(5)
+                explanationLineIfNeeded(for: .summary)
             }
         } else if isConfigured {
             // No summary yet — offer regenerate so users can produce one
@@ -246,6 +272,73 @@ struct LLMPanelView: View {
             .accessibilityIdentifier("regenerate\(fieldName(field))_\(session.ref.sessionID)")
             .accessibilityLabel(regenerateHelp(field))
         }
+    }
+
+    /// P3 C4: visible stale badge next to the SourceChip. Renders only
+    /// for `.staleSessionUpdated` ("⚠ 已过期") and `.legacyUnknown`
+    /// ("Pre-v0.2.9 旧基线"). `.stalePartial` surfaces only via the
+    /// explanation line below the row; `.fresh` shows nothing.
+    @ViewBuilder
+    private func staleBadgeIfNeeded(for field: UnderstandingField) -> some View {
+        let stale = store.resolvedStaleState(for: session.ref, field: field)
+        switch stale {
+        case .staleSessionUpdated:
+            staleBadge(
+                text: "⚠ 已过期",
+                identifier: "staleBadge\(fieldName(field))_\(session.ref.sessionID)"
+            )
+        case .legacyUnknown:
+            staleBadge(
+                text: "Pre-v0.2.9 旧基线",
+                identifier: "legacyBadge\(fieldName(field))_\(session.ref.sessionID)"
+            )
+        case .fresh, .stalePartial:
+            EmptyView()
+        }
+    }
+
+    private func staleBadge(text: String, identifier: String) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .medium))
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(.orange.opacity(0.15))
+            .foregroundStyle(.orange)
+            .clipShape(.capsule)
+            .accessibilityIdentifier(identifier)
+            .accessibilityLabel(text)
+    }
+
+    /// P3 C4: visible per-field staleness explanation line below the row
+    /// (never hover-only). Returns nothing for `.fresh`.
+    @ViewBuilder
+    private func explanationLineIfNeeded(for field: UnderstandingField) -> some View {
+        if let text = store.resolvedStaleExplanation(for: session.ref, field: field) {
+            Text(text)
+                .font(.system(size: 10))
+                .italic()
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("staleExplanation\(fieldName(field))_\(session.ref.sessionID)")
+        }
+    }
+
+    /// P3 C3: opens the read-only history drawer for `field`. Always
+    /// enabled — the drawer renders an empty-state when there is nothing
+    /// to show, which is rare because the panel only renders when at
+    /// least one field has resolved content.
+    @ViewBuilder
+    private func historyButton(for field: UnderstandingField) -> some View {
+        Button {
+            openHistory = OpenHistory(field: field)
+        } label: {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 11))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help("查看 \(fieldLabel(field)) 历史")
+        .accessibilityIdentifier("history\(fieldName(field))_\(session.ref.sessionID)")
+        .accessibilityLabel("查看 \(fieldLabel(field)) 历史")
     }
 
     @ViewBuilder

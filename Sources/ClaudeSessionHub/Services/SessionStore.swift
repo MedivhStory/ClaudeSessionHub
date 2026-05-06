@@ -313,6 +313,161 @@ public final class SessionStore: @unchecked Sendable {
         return chain.reversed().first(where: { $0.source == .ai })
     }
 
+    /// Resolved staleness for a field, applying P3 derivation rules over
+    /// the resolved field's source / stored staleState plus the session's
+    /// `lastActiveAt`. Mirrors the rules in
+    /// `UnderstandingDisplayPolicy.staleStateBy(...)`:
+    ///
+    /// 1. Legacy → `.legacyUnknown` (never derived stale).
+    /// 2. Stored `.stalePartial(reason)` preserved as-is.
+    /// 3. Stored `.fresh` + `lastActiveAt > artifact.createdAt` → derive
+    ///    `.staleSessionUpdated(at: lastActiveAt)` at read time.
+    /// 4. Else → `.fresh`.
+    @MainActor
+    public func resolvedStaleState(
+        for ref: SessionRef,
+        field: UnderstandingField
+    ) -> StaleState {
+        let resolved: ResolvedField
+        switch field {
+        case .title:    resolved = resolvedTitle(for: ref)
+        case .progress: resolved = resolvedProgress(for: ref)
+        case .summary:  resolved = resolvedSummary(for: ref)
+        }
+
+        let session = sessions.first { $0.ref == ref }
+        let lastActive = session?.lastActiveAt
+        let createdAt = resolvedArtifactCreatedAt(for: ref, field: field, resolved: resolved)
+
+        return displayPolicy.staleStateBy(
+            resolvedSource: resolved.source,
+            storedStale: resolved.staleState,
+            artifactCreatedAt: createdAt,
+            sessionLastActiveAt: lastActive
+        )
+    }
+
+    /// Humanized staleness explanation for the panel's per-field
+    /// explanation line. Returns nil for `.fresh` (no explanation needed)
+    /// and a Chinese-language string otherwise. Composes
+    /// `resolvedStaleState` + the field's artifact `createdAt` and
+    /// delegates the text mapping to
+    /// `UnderstandingDisplayPolicy.explanation(...)`.
+    @MainActor
+    public func resolvedStaleExplanation(
+        for ref: SessionRef,
+        field: UnderstandingField
+    ) -> String? {
+        let stale = resolvedStaleState(for: ref, field: field)
+        let session = sessions.first { $0.ref == ref }
+        let lastActive = session?.lastActiveAt ?? Date()
+        let resolved: ResolvedField
+        switch field {
+        case .title:    resolved = resolvedTitle(for: ref)
+        case .progress: resolved = resolvedProgress(for: ref)
+        case .summary:  resolved = resolvedSummary(for: ref)
+        }
+        let generatedAt = resolvedArtifactCreatedAt(for: ref, field: field, resolved: resolved) ?? lastActive
+        return displayPolicy.explanation(
+            for: stale,
+            lastActiveAt: lastActive,
+            generatedAt: generatedAt
+        )
+    }
+
+    /// Looks up the V2 chain artifact's `createdAt` for `field`, given a
+    /// pre-resolved field. Returns nil if no V2 artifact backs the
+    /// resolved value (legacy / rule / uuidPrefix / none sources).
+    @MainActor
+    private func resolvedArtifactCreatedAt(
+        for ref: SessionRef,
+        field: UnderstandingField,
+        resolved: ResolvedField
+    ) -> Date? {
+        guard let id = resolved.artifactID,
+              let state = understandingV2.state(for: ref.sessionID)
+        else { return nil }
+        let chain: [UnderstandingArtifact]
+        switch field {
+        case .title:    chain = state.titleVersions
+        case .progress: chain = state.progressVersions
+        case .summary:  chain = state.summaryVersions
+        }
+        return chain.first(where: { $0.id == id })?.createdAt
+    }
+
+    /// Per-field chronological history for the v0.2.9 history drawer.
+    ///
+    /// Returns artifacts (each carrying an `isCurrent` flag), selection
+    /// events for the requested field, and an optional legacy baseline
+    /// row, all interleaved by timestamp.
+    ///
+    /// - Legacy entries appear only when the legacy snapshot has a
+    ///   non-empty value for `field`.
+    /// - An artifact is marked current when its ID matches the resolved
+    ///   field's `artifactID` (delegating "what's current" to the display
+    ///   policy so manual-vs-AI candidate semantics stay consistent).
+    /// - Legacy is marked current when the resolved field's source is
+    ///   `.legacy` (V2 has no artifact owning this field).
+    /// - Legacy entries with a nil `generatedAt` sort to the chronological
+    ///   start via `HistoryEntry.timestamp`'s `.distantPast` fallback.
+    @MainActor
+    public func fieldHistory(
+        for ref: SessionRef,
+        field: UnderstandingField
+    ) -> [HistoryEntry] {
+        let sid = ref.sessionID
+        let state = understandingV2.state(for: sid)
+        let legacy = legacyAdapter.legacySnapshot(for: sid)
+
+        let resolved: ResolvedField
+        switch field {
+        case .title:    resolved = resolvedTitle(for: ref)
+        case .progress: resolved = resolvedProgress(for: ref)
+        case .summary:  resolved = resolvedSummary(for: ref)
+        }
+
+        let chain: [UnderstandingArtifact]
+        let legacyValue: String?
+        switch field {
+        case .title:
+            chain = state?.titleVersions ?? []
+            legacyValue = legacy?.title
+        case .progress:
+            chain = state?.progressVersions ?? []
+            legacyValue = legacy?.progress
+        case .summary:
+            chain = state?.summaryVersions ?? []
+            legacyValue = legacy?.summary
+        }
+
+        var entries: [HistoryEntry] = []
+
+        for artifact in chain {
+            entries.append(.artifact(artifact, isCurrent: artifact.id == resolved.artifactID))
+        }
+
+        if let events = state?.selectionEvents {
+            for event in events where event.field == field {
+                entries.append(.selection(event))
+            }
+        }
+
+        if let value = legacyValue, !value.isEmpty, let snap = legacy {
+            entries.append(.legacy(snap, field: field, isCurrent: resolved.source == .legacy))
+        }
+
+        return entries.sorted { lhs, rhs in
+            if lhs.timestamp != rhs.timestamp {
+                return lhs.timestamp < rhs.timestamp
+            }
+            if lhs.caseOrder != rhs.caseOrder {
+                return lhs.caseOrder < rhs.caseOrder
+            }
+            return lhs.stableID < rhs.stableID
+        }
+    }
+
     /// Returns the most recent `.ai` artifact among those currently
     /// displayed (i.e. ID is in `currentAIArtifactIDs`), or nil if no
     /// resolved field currently has an AI source. Unadopted AI
