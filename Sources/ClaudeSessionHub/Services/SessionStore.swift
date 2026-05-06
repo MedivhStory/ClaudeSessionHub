@@ -313,6 +313,52 @@ public final class SessionStore: @unchecked Sendable {
         return chain.reversed().first(where: { $0.source == .ai })
     }
 
+    /// Resolved staleness for a field, applying P3 derivation rules over
+    /// the resolved field's source / stored staleState plus the session's
+    /// `lastActiveAt`. Mirrors the rules in
+    /// `UnderstandingDisplayPolicy.staleStateBy(...)`:
+    ///
+    /// 1. Legacy → `.legacyUnknown` (never derived stale).
+    /// 2. Stored `.stalePartial(reason)` preserved as-is.
+    /// 3. Stored `.fresh` + `lastActiveAt > artifact.createdAt` → derive
+    ///    `.staleSessionUpdated(at: lastActiveAt)` at read time.
+    /// 4. Else → `.fresh`.
+    @MainActor
+    public func resolvedStaleState(
+        for ref: SessionRef,
+        field: UnderstandingField
+    ) -> StaleState {
+        let resolved: ResolvedField
+        switch field {
+        case .title:    resolved = resolvedTitle(for: ref)
+        case .progress: resolved = resolvedProgress(for: ref)
+        case .summary:  resolved = resolvedSummary(for: ref)
+        }
+
+        let session = sessions.first { $0.ref == ref }
+        let lastActive = session?.lastActiveAt
+
+        let createdAt: Date? = {
+            guard let id = resolved.artifactID,
+                  let state = understandingV2.state(for: ref.sessionID)
+            else { return nil }
+            let chain: [UnderstandingArtifact]
+            switch field {
+            case .title:    chain = state.titleVersions
+            case .progress: chain = state.progressVersions
+            case .summary:  chain = state.summaryVersions
+            }
+            return chain.first(where: { $0.id == id })?.createdAt
+        }()
+
+        return displayPolicy.staleStateBy(
+            resolvedSource: resolved.source,
+            storedStale: resolved.staleState,
+            artifactCreatedAt: createdAt,
+            sessionLastActiveAt: lastActive
+        )
+    }
+
     /// Per-field chronological history for the v0.2.9 history drawer.
     ///
     /// Returns artifacts (each carrying an `isCurrent` flag), selection

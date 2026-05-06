@@ -104,6 +104,8 @@
 		A0290023 /* SessionStorePerFieldRegenerateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290023; };
 		A0290024 /* UnderstandingHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290024; };
 		A0290025 /* SessionStoreFieldHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290025; };
+		A0290026 /* StaleStateDerivationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290026; };
+		A0290027 /* StaleStateExplanationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290027; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -226,6 +228,8 @@
 		B0290023 /* SessionStorePerFieldRegenerateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStorePerFieldRegenerateTests.swift; sourceTree = "<group>"; };
 		B0290024 /* UnderstandingHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingHistoryEntry.swift; sourceTree = "<group>"; };
 		B0290025 /* SessionStoreFieldHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreFieldHistoryTests.swift; sourceTree = "<group>"; };
+		B0290026 /* StaleStateDerivationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaleStateDerivationTests.swift; sourceTree = "<group>"; };
+		B0290027 /* StaleStateExplanationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaleStateExplanationTests.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -481,6 +485,8 @@
 				B0290025 /* SessionStoreFieldHistoryTests.swift */,
 				B0290023 /* SessionStorePerFieldRegenerateTests.swift */,
 				B0290021 /* SessionStoreResolvedAccessorsTests.swift */,
+				B0290026 /* StaleStateDerivationTests.swift */,
+				B0290027 /* StaleStateExplanationTests.swift */,
 				B0270003 /* SecretStoreTests.swift */,
 				B0200012 /* SettingsStoreTests.swift */,
 				B0200008 /* SignalExtractorTests.swift */,
@@ -704,6 +710,8 @@
 				A0290022 /* SessionStoreEditAdoptTests.swift in Sources */,
 				A0290023 /* SessionStorePerFieldRegenerateTests.swift in Sources */,
 				A0290025 /* SessionStoreFieldHistoryTests.swift in Sources */,
+				A0290026 /* StaleStateDerivationTests.swift in Sources */,
+				A0290027 /* StaleStateExplanationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
