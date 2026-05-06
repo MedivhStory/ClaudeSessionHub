@@ -374,7 +374,15 @@ public final class SessionStore: @unchecked Sendable {
             entries.append(.legacy(snap, field: field, isCurrent: resolved.source == .legacy))
         }
 
-        return entries.sorted { $0.timestamp < $1.timestamp }
+        return entries.sorted { lhs, rhs in
+            if lhs.timestamp != rhs.timestamp {
+                return lhs.timestamp < rhs.timestamp
+            }
+            if lhs.caseOrder != rhs.caseOrder {
+                return lhs.caseOrder < rhs.caseOrder
+            }
+            return lhs.stableID < rhs.stableID
+        }
     }
 
     /// Returns the most recent `.ai` artifact among those currently

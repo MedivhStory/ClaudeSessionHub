@@ -283,6 +283,109 @@ final class SessionStoreFieldHistoryTests: XCTestCase {
         )
     }
 
+    // MARK: - Same-timestamp deterministic ordering (C1.1)
+
+    /// Same timestamp across artifacts and a selection event: the resulting
+    /// order must follow the documented rule
+    /// `legacy < artifact < selection`, then UUID ascending within the same
+    /// case. Repeated calls must produce identical output.
+    func testSameTimestampOrderIsDeterministic() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let store = makeStore(directory: dir)
+
+        let t = Date(timeIntervalSince1970: 1000)
+
+        // Two artifacts with intentionally non-monotonic UUIDs.
+        let art1 = UnderstandingArtifact(
+            id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            value: "art1",
+            source: .ai,
+            trigger: .manualGenerate,
+            createdAt: t
+        )
+        let art2 = UnderstandingArtifact(
+            id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
+            value: "art2",
+            source: .manual,
+            trigger: .manualEdit,
+            createdAt: t
+        )
+        // Append in reverse UUID order — sort must still place 1... before 2...
+        store.understandingV2.appendArtifact(for: "s1", field: .title, art2)
+        store.understandingV2.appendArtifact(for: "s1", field: .title, art1)
+
+        let event = SelectionEvent(
+            id: UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!,
+            field: .title,
+            action: .adopt,
+            previousVersionID: art1.id,
+            targetVersionID: art2.id,
+            timestamp: t
+        )
+        store.understandingV2.appendSelectionEvent(for: "s1", event)
+
+        let h1 = store.fieldHistory(for: ref(), field: .title)
+        let h2 = store.fieldHistory(for: ref(), field: .title)
+        XCTAssertEqual(h1.count, 3)
+        XCTAssertEqual(
+            h1.map(\.stableID), h2.map(\.stableID),
+            "two consecutive calls must produce identical ordering"
+        )
+
+        // Concrete order: artifacts (caseOrder 1) before selection (2),
+        // and within artifacts UUID asc → art1 before art2.
+        XCTAssertEqual(h1[0].caseOrder, 1)
+        XCTAssertEqual(h1[1].caseOrder, 1)
+        XCTAssertEqual(h1[2].caseOrder, 2)
+
+        guard case .artifact(let firstArt, _) = h1[0],
+              case .artifact(let secondArt, _) = h1[1]
+        else { return XCTFail("expected two artifacts at indices 0–1") }
+        XCTAssertEqual(firstArt.id, art1.id, "uuid asc within same case rank")
+        XCTAssertEqual(secondArt.id, art2.id)
+
+        guard case .selection(let recordedEvent) = h1[2] else {
+            return XCTFail("expected selection at index 2")
+        }
+        XCTAssertEqual(recordedEvent.id, event.id)
+    }
+
+    /// At the same timestamp legacy must sort before artifact even though
+    /// the artifact was appended first.
+    func testSameTimestampOrderingPlacesLegacyBeforeArtifact() {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+        let when = Date(timeIntervalSince1970: 1_700_000_000)
+        writeLegacy(LLMUnderstandingSnapshot(
+            sessionID: "s1",
+            title: "legacy title",
+            progress: nil,
+            summary: nil,
+            modelName: "m",
+            generatedAt: when,
+            basedOnLastActiveAt: Date()
+        ), to: dir)
+
+        let store = makeStore(directory: dir)
+        let art = UnderstandingArtifact(
+            value: "v2",
+            source: .ai,
+            trigger: .manualGenerate,
+            createdAt: when
+        )
+        store.understandingV2.appendArtifact(for: "s1", field: .title, art)
+
+        let history = store.fieldHistory(for: ref(), field: .title)
+        XCTAssertEqual(history.count, 2)
+        guard case .legacy = history[0] else {
+            return XCTFail("legacy must rank before artifact at same timestamp")
+        }
+        guard case .artifact = history[1] else {
+            return XCTFail("artifact must come after legacy at same timestamp")
+        }
+    }
+
     func testLegacyWithNilGeneratedAtSortsAtStart() {
         let dir = makeTempDir()
         defer { cleanup(dir) }

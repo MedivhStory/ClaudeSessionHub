@@ -29,4 +29,28 @@ public enum HistoryEntry: Sendable, Equatable {
             return snapshot.generatedAt ?? .distantPast
         }
     }
+
+    /// Case-rank tiebreaker for entries at the same `timestamp`. Legacy
+    /// rows sort first (baseline / oldest), artifacts next, selection
+    /// events last. Used after `timestamp` so the history drawer renders
+    /// a deterministic order when synthetic / coarse timestamps collide.
+    public var caseOrder: Int {
+        switch self {
+        case .legacy:    return 0
+        case .artifact:  return 1
+        case .selection: return 2
+        }
+    }
+
+    /// Final tiebreaker after `timestamp` and `caseOrder`. Uses the
+    /// artifact / selection UUID so two entries of the same case at the
+    /// same timestamp still order deterministically. Legacy returns ""
+    /// because at most one legacy entry exists per (session, field).
+    public var stableID: String {
+        switch self {
+        case .legacy:                return ""
+        case .artifact(let art, _):  return art.id.uuidString
+        case .selection(let event):  return event.id.uuidString
+        }
+    }
 }
