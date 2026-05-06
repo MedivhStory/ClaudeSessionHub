@@ -5,6 +5,31 @@ import XCTest
 @testable import ClaudeSessionHub
 #endif
 
+/// Stub provider for `SessionStoreResolvedStaleStateTests` — feeds a
+/// fixed `[SessionSummary]` through `ScanCoordinator` so `performScan`
+/// can populate `SessionStore.sessions` (which is `private(set)` and
+/// therefore the only test seam available is the scan path).
+private final class MockSessionProvider: AgentProvider, @unchecked Sendable {
+    let id: ProviderID
+    let displayName: String = "Mock"
+    let capabilities: ProviderCapabilities = []
+    private let sessions: [SessionSummary]
+
+    init(providerID: String = "mock", sessions: [SessionSummary]) {
+        self.id = providerID
+        self.sessions = sessions
+    }
+
+    func discoverSessions() async throws -> [SessionSummary] { sessions }
+    func loadSessionDetail(for ref: SessionRef) async throws -> SessionDetail {
+        throw CocoaError(.featureUnsupported)
+    }
+    func makeResumeTarget(for ref: SessionRef) throws -> ResumeTarget {
+        ResumeTarget(executable: "mock", arguments: [], workingDirectory: nil, displayCommand: "mock")
+    }
+    func refreshRuntimeState(for refs: [SessionRef]) async -> [SessionRef: SessionRuntimeState] { [:] }
+}
+
 /// C2 coverage: pure derivation rules for
 /// `UnderstandingDisplayPolicy.staleStateBy(...)`.
 ///
@@ -226,6 +251,66 @@ final class SessionStoreResolvedStaleStateTests: XCTestCase {
         XCTAssertEqual(
             store.resolvedStaleState(for: ref(), field: .title),
             .stalePartial(reason: "user-edited")
+        )
+    }
+
+    /// C2.1: real-drift wiring. Populate `sessions[]` through the scan
+    /// path with a SessionSummary whose `lastActiveAt` is strictly after
+    /// the artifact's `createdAt`, then assert the store hands back
+    /// `.staleSessionUpdated(at: lastActiveAt)`. This complements the
+    /// pure-policy drift test — the prior wiring tests covered legacy /
+    /// stored-partial / empty paths but never reached rule 3 because
+    /// `sessions[]` was empty.
+    func testSessionDriftWiresThroughToStaleSessionUpdated() async {
+        let dir = makeTempDir()
+        defer { cleanup(dir) }
+
+        let artifactCreatedAt = Date(timeIntervalSince1970: 1000)
+        let lastActive = Date(timeIntervalSince1970: 5000)
+
+        let summary = SessionSummary(
+            ref: SessionRef(providerID: "mock", sessionID: "s1"),
+            title: "drift test",
+            currentTaskSummary: nil,
+            runtimeState: .active,
+            taskPhase: .inProgress,
+            cwd: "/tmp",
+            branch: "main",
+            turnCount: 1, filesTouched: 0, recentErrorCount: 0,
+            createdAt: Date(timeIntervalSince1970: 500),
+            lastActiveAt: lastActive,
+            contextUsage: nil
+        )
+        let provider = MockSessionProvider(providerID: "mock", sessions: [summary])
+
+        let store = SessionStore(
+            coordinator: ScanCoordinator(providers: [provider]),
+            settings: SettingsStore(directory: dir, secretStore: InMemorySecretStore()),
+            understandingStore: UnderstandingStore(directory: dir),
+            understandingV2: UnderstandingStoreV2(directory: dir),
+            legacyAdapter: LegacyUnderstandingAdapter(directory: dir)
+        )
+
+        let artifact = UnderstandingArtifact(
+            value: "ai title",
+            source: .ai,
+            trigger: .manualGenerate,
+            createdAt: artifactCreatedAt,
+            staleState: .fresh
+        )
+        store.understandingV2.appendArtifact(for: "s1", field: .title, artifact)
+
+        // Drive the scan path so `sessions[]` is populated; no real I/O
+        // happens because MockSessionProvider hands back the fixture
+        // directly.
+        await store.performScan()
+        XCTAssertEqual(store.sessions.count, 1, "scan should have populated one session")
+
+        let driftRef = SessionRef(providerID: "mock", sessionID: "s1")
+        let stale = store.resolvedStaleState(for: driftRef, field: .title)
+        XCTAssertEqual(
+            stale, .staleSessionUpdated(at: lastActive),
+            "lastActiveAt > createdAt + stored .fresh must derive .staleSessionUpdated(at: lastActiveAt)"
         )
     }
 }
