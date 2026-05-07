@@ -75,3 +75,26 @@ Audit run on `feature/v0.2.9-p4-evidence` (parent: `main` @ `048b5bc`). Each row
 ### One product-impact note for PM (R007 default action)
 
 Source 1 degradation drops file-list richness to a count line. Source 2 omission removes the "recent tool operations" category from the P4 evidence section entirely. Both are within rev.3's "P4 may omit / degrade rather than add infrastructure" envelope, but they reduce evidence richness vs. PLAN §9's full surface. **Default action: proceed with degrade-1 + omit-2 in C1 as graded above.** If PM wants either upgraded later, that's a follow-up infra PR (sync detail cache for source 1; sync signals cache for source 2) outside P4 scope — flag now if you want to re-scope. If no objection, C1 begins on PM go-ahead.
+
+---
+
+## Known build/surface ratio risk (post-C3.2 finding)
+
+**Surfaced after C3 smoke and C3.1 de-dup.** P4's data layer ships 7 evidence categories (`recentFiles`, `timeAnchors`, `branchCwd`, `relatedSessions`, `projectName`, `currentPhase`, `latestProgress`) end-to-end (model + composer + store accessor + tests). The C3.2 expanded-tile filter intentionally drops 5 of those 7 because they duplicate higher-fidelity content already shown by other tile chrome (QuickFactsView / tile header / metadata row / leftColumn).
+
+| Layer | Categories shipped | Categories actually rendered in expanded tile |
+|---|---|---|
+| Data (`EvidenceComposer` + `SessionStore.evidence(for:)`) | 7 | n/a |
+| UI (`EvidencePanel` after expanded-tile filter) | n/a | up to 2 (`currentPhase` + `latestProgress`); often only `latestProgress` |
+
+**Build-vs-surface ratio ≈ 7:1.** The other 5 categories are dormant infrastructure pending one of:
+
+- **P5** prompt-input rewrite — may consume dormant categories as structured prompt context.
+- **P7** rationale generation — may use the categories as rationale grounding.
+- A future detail / inspector surface — if a non-tile host context wants to render the full canonical package, the C3.1 filter is opt-in (composer canonical package is unchanged).
+
+### Required follow-up (tracking item)
+
+- **Before P5 starts**: verify whether P5 will actually consume any of the 5 dormant categories. If yes, the data layer earns its keep retroactively. If no, the dormant categories should be **pruned** rather than carried into v0.3.
+- **Re-evaluate at v0.2.9 GA / v0.3 kickoff**: if neither P5 nor P7 nor a new surface materializes the dormant categories, open a follow-up cleanup PR to prune them from `EvidenceCategory` + `EvidenceComposer` + their tests. Carrying unused infrastructure into v0.3 is the avoidable cost this section flags.
+- **Process change for future phases**: the data-first slip that produced this ratio is the case study behind RULES.md R016 (UI-first phase note). P5 / P6 / P7 implementation notes will lead with "what does the user see" before listing files; P4 is grandfathered.
