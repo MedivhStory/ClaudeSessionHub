@@ -468,6 +468,28 @@ public final class SessionStore: @unchecked Sendable {
         }
     }
 
+    /// v0.2.9 P4: pure-rule structural evidence for the panel section
+    /// rendered below `LLMPanelView`. Composes a fresh `EvidencePackage`
+    /// from the session's `SessionSummary` plus its computed relations.
+    ///
+    /// Returns an empty package when `ref` is not in `sessions[]` (e.g.
+    /// the session was archived / removed between scans). All produced
+    /// items are read-only structural data — no LLM calls, no async, no
+    /// I/O beyond reading already-scanned in-memory state.
+    ///
+    /// See `docs/PLAN-v0.2.9-P4.md` C0 audit for the per-source binding
+    /// decisions; the composer enforces them.
+    @MainActor
+    public func evidence(for ref: SessionRef) -> EvidencePackage {
+        guard let session = sessions.first(where: { $0.ref == ref }) else {
+            return EvidencePackage(items: [])
+        }
+        return EvidenceComposer.compose(
+            session: session,
+            relations: relations(for: ref)
+        )
+    }
+
     /// Returns the most recent `.ai` artifact among those currently
     /// displayed (i.e. ID is in `currentAIArtifactIDs`), or nil if no
     /// resolved field currently has an AI source. Unadopted AI
