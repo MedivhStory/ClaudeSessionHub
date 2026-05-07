@@ -107,6 +107,9 @@
 		A0290026 /* StaleStateDerivationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290026; };
 		A0290027 /* StaleStateExplanationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290027; };
 		A0290028 /* UnderstandingHistoryDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290028; };
+		A0290029 /* EvidenceItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290029; };
+		A0290030 /* EvidenceComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290030; };
+		A0290031 /* EvidenceComposerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290031; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -232,6 +235,9 @@
 		B0290026 /* StaleStateDerivationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaleStateDerivationTests.swift; sourceTree = "<group>"; };
 		B0290027 /* StaleStateExplanationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaleStateExplanationTests.swift; sourceTree = "<group>"; };
 		B0290028 /* UnderstandingHistoryDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnderstandingHistoryDrawer.swift; sourceTree = "<group>"; };
+		B0290029 /* EvidenceItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceItem.swift; sourceTree = "<group>"; };
+		B0290030 /* EvidenceComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceComposer.swift; sourceTree = "<group>"; };
+		B0290031 /* EvidenceComposerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceComposerTests.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -327,6 +333,7 @@
 				B1000004 /* ProviderTypes.swift */,
 				B1000005 /* ResumeTarget.swift */,
 				B0200001 /* SessionSignals.swift */,
+				B0290029 /* EvidenceItem.swift */,
 				B0290010 /* UnderstandingArtifact.swift */,
 				B0290024 /* UnderstandingHistoryEntry.swift */,
 				B0290011 /* UnderstandingState.swift */,
@@ -351,6 +358,7 @@
 			isa = PBXGroup;
 			children = (
 				B1000032 /* ArchiveStore.swift */,
+				B0290030 /* EvidenceComposer.swift */,
 				B1000010 /* HealthEngine.swift */,
 				B1000011 /* LabelStore.swift */,
 				B0290015 /* LegacyUnderstandingAdapter.swift */,
@@ -473,6 +481,7 @@
 			isa = PBXGroup;
 			children = (
 				B0290004 /* ArchiveStoreTests.swift */,
+				B0290031 /* EvidenceComposerTests.swift */,
 				B0290005 /* HealthEngineTests.swift */,
 				B0290007 /* LabelStoreTests.swift */,
 				B0290016 /* LegacyUnderstandingAdapterTests.swift */,
@@ -663,6 +672,8 @@
 				A0290020 /* SourceChip.swift in Sources */,
 				A0290024 /* UnderstandingHistoryEntry.swift in Sources */,
 				A0290028 /* UnderstandingHistoryDrawer.swift in Sources */,
+				A0290029 /* EvidenceItem.swift in Sources */,
+				A0290030 /* EvidenceComposer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -716,6 +727,7 @@
 				A0290025 /* SessionStoreFieldHistoryTests.swift in Sources */,
 				A0290026 /* StaleStateDerivationTests.swift in Sources */,
 				A0290027 /* StaleStateExplanationTests.swift in Sources */,
+				A0290031 /* EvidenceComposerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
