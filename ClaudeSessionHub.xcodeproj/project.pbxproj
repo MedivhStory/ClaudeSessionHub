@@ -111,6 +111,7 @@
 		A0290030 /* EvidenceComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290030; };
 		A0290031 /* EvidenceComposerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290031; };
 		A0290032 /* SessionStoreEvidenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290032; };
+		A0290033 /* EvidencePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0290033; };
 		A0300001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300001; };
 		A0300002 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0300002; };
 /* End PBXBuildFile section */
@@ -240,6 +241,7 @@
 		B0290030 /* EvidenceComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceComposer.swift; sourceTree = "<group>"; };
 		B0290031 /* EvidenceComposerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceComposerTests.swift; sourceTree = "<group>"; };
 		B0290032 /* SessionStoreEvidenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreEvidenceTests.swift; sourceTree = "<group>"; };
+		B0290033 /* EvidencePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidencePanel.swift; sourceTree = "<group>"; };
 		B0300001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		B0300002 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -427,6 +429,7 @@
 		GRPVWSES /* Sessions */ = {
 			isa = PBXGroup;
 			children = (
+				B0290033 /* EvidencePanel.swift */,
 				B0250008 /* LLMPanelView.swift */,
 				B1000026 /* QuickFactsView.swift */,
 				B1000027 /* SessionListView.swift */,
@@ -677,6 +680,7 @@
 				A0290028 /* UnderstandingHistoryDrawer.swift in Sources */,
 				A0290029 /* EvidenceItem.swift in Sources */,
 				A0290030 /* EvidenceComposer.swift in Sources */,
+				A0290033 /* EvidencePanel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -302,7 +302,11 @@ struct SessionTileView: View {
             HStack(alignment: .top, spacing: 16) {
                 leftColumn.frame(maxWidth: .infinity, alignment: .leading)
                 Divider()
-                LLMPanelView(session: session).frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 8) {
+                    LLMPanelView(session: session)
+                    EvidencePanel(session: session)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             let titleHistory = store.titleStore.titleHistory(for: session.ref.sessionID)
             if titleHistory.count > 1 {
