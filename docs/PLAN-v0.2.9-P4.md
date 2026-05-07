@@ -40,12 +40,12 @@
 ## Post-merge housekeeping (NOT in P4 commit order)
 After P4 merge: open `chore/close-p4-doc` PR per R015 to add R011.a closure header to this file. Separate PR, separate CI run.
 
-## C4 smoke checklist
-1. Expanded tile of active session → evidence section visible below AI panel; categories populated.
-2. Collapse/expand `DisclosureGroup` → state preserved per tile.
-3. Session with nil branch / empty relations → those categories omitted (no empty rows).
-4. Session with `.unknown` taskPhase → current phase category absent.
-5. No network activity during evidence rendering.
+## C4 smoke checklist (updated post-C3.1 — focus is de-dup, not "categories populated")
+1. **No duplication with existing tile chrome**: in the expanded tile, the EvidencePanel must NOT render any of: recent files (QuickFacts owns it), time anchors (tile header owns it), branch + cwd / project name (metadata row owns it), related sessions (leftColumn owns it). C3.1 view-level filter drops these 5 categories before render.
+2. **What CAN appear**: at most "当前阶段" and "最近进展" — the only two §9 categories not duplicated by other expanded-tile UI. If both also empty/`.unknown`, the entire EvidencePanel must hide (no header, no chrome).
+3. Collapse/expand the `DisclosureGroup` → state preserved per tile (until tile itself collapses).
+4. Session with `.unknown` taskPhase + empty progress → EvidencePanel renders nothing.
+5. No network activity during evidence rendering (Console filter).
 
 ---
 

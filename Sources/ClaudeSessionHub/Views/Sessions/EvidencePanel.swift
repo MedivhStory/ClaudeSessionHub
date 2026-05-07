@@ -16,7 +16,39 @@ struct EvidencePanel: View {
     @State private var isExpanded = false
 
     private var package: EvidencePackage {
-        store.evidence(for: session.ref)
+        Self.expandedTileFiltered(store.evidence(for: session.ref))
+    }
+
+    /// View-level display policy for the expanded-tile host context.
+    /// Drops categories whose information is already surfaced at higher
+    /// fidelity elsewhere in the same expanded tile:
+    ///
+    /// - `.recentFiles` — `QuickFactsView` shows concrete file names;
+    ///   the composer's degraded `filesTouched` count is lower fidelity.
+    /// - `.timeAnchors` — the tile header already shows created /
+    ///   last-active timestamps.
+    /// - `.branchCwd` / `.projectName` — the tile metadata row already
+    ///   shows project name + branch.
+    /// - `.relatedSessions` — the left column already lists related
+    ///   sessions with type chips.
+    ///
+    /// Keeps `.currentPhase` and `.latestProgress` — neither is
+    /// duplicated by other expanded-tile chrome.
+    ///
+    /// The composer's canonical package is unchanged; this filter is a
+    /// **host-context** policy, not a model change. Different host views
+    /// (a future session inspector / detail pane) may apply a different
+    /// filter or none at all.
+    static func expandedTileFiltered(_ package: EvidencePackage) -> EvidencePackage {
+        let dropped: Set<EvidenceCategory> = [
+            .recentFiles,
+            .timeAnchors,
+            .branchCwd,
+            .projectName,
+            .relatedSessions
+        ]
+        let kept = package.items.filter { !dropped.contains($0.category) }
+        return EvidencePackage(items: kept)
     }
 
     var body: some View {
